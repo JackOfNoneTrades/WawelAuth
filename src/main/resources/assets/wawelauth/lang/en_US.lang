@@ -105,6 +105,7 @@ wawelauth.gui.local_auth.status.trust_first=Trust and create a local provider to
 wawelauth.gui.local_auth.trust_refresh=Trust / Refresh
 
 wawelauth.gui.server_picker.manage_local_auth=Manage Local Auth...
+wawelauth.gui.server_picker.status.bound=Bound to this server as %s
 wawelauth.gui.server_picker.title=Select Account for %s
 wawelauth.gui.server_picker.tooltip.account=Account: %s
 wawelauth.gui.server_picker.tooltip.provider=Provider: %s

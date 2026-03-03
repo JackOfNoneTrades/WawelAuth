@@ -35,7 +35,7 @@ public final class LocalAuthProviderResolver {
         }
 
         String apiRoot = WawelPingPayload.normalizeUrl(capabilities.getLocalAuthApiRoot());
-        String fingerprint = normalizeFingerprint(capabilities.getLocalAuthPublicKeyFingerprint());
+        String fingerprint = requiredFingerprint(capabilities);
         String publicKeyBase64 = normalizeString(capabilities.getLocalAuthPublicKeyBase64());
 
         if (apiRoot == null || fingerprint == null) {
@@ -90,6 +90,20 @@ public final class LocalAuthProviderResolver {
             providerDAO.update(provider);
         }
         return provider;
+    }
+
+    public ClientProvider findExisting(ServerCapabilities capabilities) {
+        if (capabilities == null || !capabilities.isLocalAuthSupported()) {
+            return null;
+        }
+
+        String fingerprint = requiredFingerprint(capabilities);
+        if (fingerprint == null) {
+            return null;
+        }
+
+        String publicKeyBase64 = normalizeString(capabilities.getLocalAuthPublicKeyBase64());
+        return findByPublicKey(publicKeyBase64, fingerprint);
     }
 
     private ClientProvider findByPublicKey(String publicKeyBase64, String fingerprint) {
@@ -156,5 +170,12 @@ public final class LocalAuthProviderResolver {
     private static String normalizeFingerprint(String value) {
         String normalized = normalizeString(value);
         return normalized == null ? null : normalized.toLowerCase();
+    }
+
+    private static String requiredFingerprint(ServerCapabilities capabilities) {
+        if (capabilities == null) {
+            return null;
+        }
+        return normalizeFingerprint(capabilities.getLocalAuthPublicKeyFingerprint());
     }
 }

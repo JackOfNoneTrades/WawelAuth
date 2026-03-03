@@ -105,6 +105,7 @@ wawelauth.gui.local_auth.status.trust_first=Faites confiance et créez un fourni
 wawelauth.gui.local_auth.trust_refresh=Confiance / Rafraîchir
 
 wawelauth.gui.server_picker.manage_local_auth=Gérer l'auth locale...
+wawelauth.gui.server_picker.status.bound=Lié à ce serveur en tant que %s
 wawelauth.gui.server_picker.title=Sélectionner un compte pour %s
 wawelauth.gui.server_picker.tooltip.account=Compte : %s
 wawelauth.gui.server_picker.tooltip.provider=Fournisseur : %s

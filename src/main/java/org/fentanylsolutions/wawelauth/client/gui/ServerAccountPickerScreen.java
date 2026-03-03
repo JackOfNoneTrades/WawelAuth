@@ -13,6 +13,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.AccountStatus;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
+import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
@@ -41,11 +42,17 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
      * is available during buildUI(). Single-threaded (render thread only).
      */
     private static ServerData pendingServerData;
+    private static String pendingStatusMessage;
 
     private final ServerData serverData;
 
     public static void open(ServerData serverData) {
+        open(serverData, null);
+    }
+
+    public static void open(ServerData serverData, String statusMessage) {
         pendingServerData = serverData;
+        pendingStatusMessage = statusMessage;
         ClientGUI.open(new ServerAccountPickerScreen());
     }
 
@@ -73,13 +80,34 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         IServerDataExt ext = (IServerDataExt) targetServerData;
         String serverName = targetServerData.serverName != null ? targetServerData.serverName
             : GuiText.tr("wawelauth.gui.common.server");
+        String statusMessage = pendingStatusMessage;
+        pendingStatusMessage = null;
 
-        ModularPanel panel = ModularPanel.defaultPanel("wawelauth_server_picker", 200, 202);
+        ModularPanel panel = ModularPanel.defaultPanel("wawelauth_server_picker", 200, 226);
 
         ServerCapabilities capabilities = ext.getWawelCapabilities();
+        boolean wawelAuthServer = capabilities != null && capabilities.isWawelAuthAdvertised();
         boolean localAuthAvailable = capabilities != null && capabilities.isLocalAuthSupported()
             && notBlank(capabilities.getLocalAuthApiRoot())
             && notBlank(capabilities.getLocalAuthPublicKeyFingerprint());
+        String[] trustedLocalProviderName = { null };
+
+        LoginDialog loginDialog = LoginDialog.attach(panel, account -> {
+            if (account == null) return;
+            trustedLocalProviderName[0] = account.getProviderName();
+            ext.setWawelAccountId(account.getId());
+            ext.setWawelProviderName(account.getProviderName());
+            ServerBindingPersistence.persistServerSelection(targetServerData);
+            String successMessage = GuiText.tr(
+                "wawelauth.gui.server_picker.status.bound",
+                account.getProfileName() != null ? account.getProfileName() : "?");
+            GuiTransitionScheduler.transition(panel, () -> ServerAccountPickerScreen.open(targetServerData, successMessage));
+        });
+        RegisterDialog registerDialog = RegisterDialog.attach(panel, success -> {
+            if (Boolean.TRUE.equals(success) && trustedLocalProviderName[0] != null) {
+                loginDialog.openAfterRegister(trustedLocalProviderName[0]);
+            }
+        });
 
         ListWidget<IWidget, ?> accountList = new ListWidget<>();
         accountList.widthRel(1.0f)
@@ -115,27 +143,108 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         GuiText.fitButtonLabelMaxWidth(manageLocalAuthBtn, 180, "wawelauth.gui.server_picker.manage_local_auth");
         manageLocalAuthBtn.setEnabled(localAuthAvailable);
 
-        panel.child(
-            new Column().widthRel(1.0f)
-                .heightRel(1.0f)
-                .padding(6)
+        Column content = new Column();
+        content.widthRel(1.0f)
+            .heightRel(1.0f)
+            .padding(6);
+        content.child(
+            new TextWidget<>(GuiText.key("wawelauth.gui.server_picker.title", serverName)).widthRel(1.0f)
+                .height(14));
+        content.child(accountList);
+        if (statusMessage != null && !statusMessage.isEmpty()) {
+            content.child(
+                new TextWidget<>(IKey.str(statusMessage)).color(0xFF55FF55)
+                    .widthRel(1.0f)
+                    .height(10)
+                    .margin(0, 2));
+        }
+        content.child(
+            GuiText.fitButtonLabelMaxWidth(
+                new ButtonWidget<>().widthRel(1.0f)
+                    .height(18),
+                180,
+                "wawelauth.gui.common.manage_accounts")
+                .onMousePressed(mouseButton -> {
+                    GuiTransitionScheduler.transition(panel, () -> ClientGUI.open(new AccountManagerScreen()));
+                    return true;
+                }));
+        content.child(manageLocalAuthBtn);
+
+        if (wawelAuthServer) {
+            ButtonWidget<?> loginLocalBtn = GuiText.fitButtonLabel(
+                new ButtonWidget<>().width(90)
+                    .height(18),
+                90,
+                "wawelauth.gui.common.login");
+            loginLocalBtn.setEnabled(localAuthAvailable);
+            loginLocalBtn.onMousePressed(mouseButton -> {
+                openLocalAuthAction(
+                    targetServerData,
+                    capabilities,
+                    panel,
+                    trustedLocalProviderName,
+                    loginDialog,
+                    registerDialog,
+                    false);
+                return true;
+            });
+
+            ButtonWidget<?> registerLocalBtn = GuiText.fitButtonLabel(
+                new ButtonWidget<>().width(90)
+                    .height(18),
+                90,
+                "wawelauth.gui.common.register");
+            registerLocalBtn.setEnabled(localAuthAvailable);
+            registerLocalBtn.onMousePressed(mouseButton -> {
+                openLocalAuthAction(
+                    targetServerData,
+                    capabilities,
+                    panel,
+                    trustedLocalProviderName,
+                    loginDialog,
+                    registerDialog,
+                    true);
+                return true;
+            });
+
+            content.child(new Widget<>().size(1, 3))
                 .child(
-                    new TextWidget<>(GuiText.key("wawelauth.gui.server_picker.title", serverName)).widthRel(1.0f)
-                        .height(14))
-                .child(accountList)
-                .child(
-                    GuiText.fitButtonLabelMaxWidth(
-                        new ButtonWidget<>().widthRel(1.0f)
-                            .height(18),
-                        180,
-                        "wawelauth.gui.common.manage_accounts")
-                        .onMousePressed(mouseButton -> {
-                            GuiTransitionScheduler.transition(panel, () -> ClientGUI.open(new AccountManagerScreen()));
-                            return true;
-                        }))
-                .child(manageLocalAuthBtn));
+                    new Row().widthRel(1.0f)
+                        .height(20)
+                        .child(loginLocalBtn)
+                        .child(new Widget<>().size(6, 18))
+                        .child(registerLocalBtn));
+        }
+
+        panel.child(content);
 
         return panel;
+    }
+
+    private static void openLocalAuthAction(ServerData targetServerData, ServerCapabilities capabilities, ModularPanel panel,
+        String[] trustedLocalProviderName, LoginDialog loginDialog, RegisterDialog registerDialog, boolean register) {
+        if (capabilities == null) {
+            return;
+        }
+
+        WawelClient client = WawelClient.instance();
+        if (client == null) {
+            return;
+        }
+
+        ClientProvider trustedProvider = client.getLocalAuthProviderResolver()
+            .findExisting(capabilities);
+        if (trustedProvider == null) {
+            GuiTransitionScheduler.transition(panel, () -> LocalAuthManagerScreen.open(targetServerData));
+            return;
+        }
+
+        trustedLocalProviderName[0] = trustedProvider.getName();
+        if (register) {
+            registerDialog.open(trustedProvider.getName());
+        } else {
+            loginDialog.open(trustedProvider.getName());
+        }
     }
 
     private ButtonWidget<?> buildAccountEntry(ClientAccount account, ServerData targetServerData, IServerDataExt ext,
