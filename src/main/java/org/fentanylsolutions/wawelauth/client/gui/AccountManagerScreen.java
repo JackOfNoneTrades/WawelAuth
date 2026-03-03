@@ -15,6 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -23,6 +24,8 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
+import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.AccountStatus;
@@ -39,6 +42,7 @@ import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.Rectangle;
 import com.cleanroommc.modularui.drawable.UITexture;
+import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
 import com.cleanroommc.modularui.utils.Alignment;
@@ -77,6 +81,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final IDrawable PROVIDER_SETTINGS_ICON_HOVER = PROVIDER_SETTINGS_TEXTURE
         .getSubArea(0.5f, 0.0f, 1.0f, 1.0f);
 
+    private static ServerData pendingFocusedServerData;
+    private static ServerCapabilities pendingFocusedCapabilities;
+
     private ClientProvider selectedProvider;
     private ClientAccount selectedAccount;
     private PlayerPreviewEntity previewFrontEntity;
@@ -105,6 +112,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private String textureSelectionStatus = "";
     private String textureUploadStatus = "";
 
+    private ServerData focusedLocalServerData;
+    private ServerCapabilities focusedLocalCapabilities;
+    private String focusedLocalStatusText = "";
+
     private ModularPanel mainPanel;
     private ListWidget<IWidget, ?> providerList;
     private ListWidget<IWidget, ?> accountList;
@@ -120,6 +131,14 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         openParentOnClose(true);
     }
 
+    public static void openForLocalAuth(ServerData serverData) {
+        pendingFocusedServerData = serverData;
+        pendingFocusedCapabilities = serverData instanceof IServerDataExt
+            ? ((IServerDataExt) serverData).getWawelCapabilities()
+            : null;
+        ClientGUI.open(new AccountManagerScreen());
+    }
+
     @Override
     public ModularPanel buildUI(ModularGuiContext context) {
         mainPanel = ModularPanel.defaultPanel("wawelauth_account_manager", 360, 240);
@@ -129,6 +148,25 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         registerCapabilityProbeInFlight = new HashSet<>();
         nextStatusUiRefreshAtMs = 0L;
         accountListRebuildPending = false;
+
+        if (pendingFocusedServerData != null || pendingFocusedCapabilities != null) {
+            focusedLocalServerData = pendingFocusedServerData;
+            focusedLocalCapabilities = pendingFocusedCapabilities;
+            pendingFocusedServerData = null;
+            pendingFocusedCapabilities = null;
+        }
+
+        if (hasFocusedLocalContext()) {
+            selectedProvider = resolveFocusedLocalProvider();
+            if (selectedProvider != null) {
+                ensureRegisterCapabilityProbe(selectedProvider);
+            }
+            if (focusedLocalStatusText == null || focusedLocalStatusText.isEmpty()) {
+                focusedLocalStatusText = selectedProvider != null
+                    ? GuiText.tr("wawelauth.gui.common.ready_message", selectedProvider.getName())
+                    : GuiText.tr("wawelauth.gui.local_auth.status.trust_first");
+            }
+        }
 
         providerList = new ListWidget<>();
         accountList = new ListWidget<>();
@@ -489,8 +527,293 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
         clearTextureSelection();
         rebuildProviderList();
+        if (hasFocusedLocalContext()) {
+            rebuildAccountList();
+        }
 
         return mainPanel;
+    }
+
+    private void populateGeneralSidebar(Column leftSidebar, Column providerListFrame, Column accountListFrame) {
+        leftSidebar.child(
+            new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.providers")).widthRel(1.0f)
+                .height(12))
+            .child(providerListFrame)
+            .child(
+                GuiText.fitButtonLabelMaxWidth(
+                    new ButtonWidget<>().widthRel(1.0f)
+                        .height(16),
+                    104,
+                    "wawelauth.gui.add_provider.title")
+                    .onMousePressed(mouseButton -> {
+                        addProviderDialog.open();
+                        return true;
+                    }));
+        appendSharedAccountSection(leftSidebar, accountListFrame);
+    }
+
+    private void populateFocusedLocalSidebar(Column leftSidebar, Column accountListFrame) {
+        String serverAddress = getFocusedLocalServerAddress();
+        String displayAddress = GuiText.ellipsizeToPixelWidth(serverAddress, 104);
+        TextWidget<?> addressText = new TextWidget<>(IKey.str(displayAddress));
+        addressText.widthRel(1.0f)
+            .height(12);
+        if (!displayAddress.equals(serverAddress)) {
+            addressText.addTooltipLine(serverAddress);
+        }
+        leftSidebar.child(addressText);
+
+        String serverName = getFocusedLocalServerName();
+        if (serverName != null && !serverName.isEmpty() && !serverName.equals(serverAddress)) {
+            String displayName = GuiText.ellipsizeToPixelWidth(serverName, 104);
+            TextWidget<?> nameText = new TextWidget<>(IKey.str(displayName));
+            nameText.color(DETAIL_SECONDARY_TEXT_COLOR)
+                .scale(0.8f)
+                .widthRel(1.0f)
+                .height(10);
+            if (!displayName.equals(serverName)) {
+                nameText.addTooltipLine(serverName);
+            }
+            leftSidebar.child(nameText);
+        }
+
+        if (selectedProvider != null) {
+            String providerLine = GuiText.tr(
+                "wawelauth.gui.account_manager.provider_line",
+                ProviderDisplayName.displayName(selectedProvider.getName()));
+            String displayProviderLine = GuiText.ellipsizeToPixelWidth(providerLine, 104);
+            TextWidget<?> providerText = new TextWidget<>(IKey.str(displayProviderLine));
+            providerText.color(DETAIL_SECONDARY_TEXT_COLOR)
+                .scale(0.8f)
+                .widthRel(1.0f)
+                .height(10);
+            if (!displayProviderLine.equals(providerLine)) {
+                providerText.addTooltipLine(providerLine);
+            }
+            leftSidebar.child(providerText);
+        }
+
+        leftSidebar.child(
+            new TextWidget<>(GuiText.key("wawelauth.gui.common.fingerprint")).widthRel(1.0f)
+                .height(10)
+                .margin(0, 2));
+
+        String fingerprint = getFocusedLocalFingerprint();
+        String displayFingerprint = GuiText.ellipsizeToPixelWidth(fingerprint, 104);
+        TextWidget<?> fingerprintText = new TextWidget<>(IKey.str(displayFingerprint));
+        fingerprintText.color(0xFF55FFFF)
+            .scale(0.7f)
+            .widthRel(1.0f)
+            .height(10);
+        if (!displayFingerprint.equals(fingerprint)) {
+            fingerprintText.addTooltipLine(fingerprint);
+        }
+        leftSidebar.child(fingerprintText)
+            .child(
+                new TextWidget<>(IKey.dynamic(() -> focusedLocalStatusText != null ? focusedLocalStatusText : ""))
+                    .color(0xFFFFFF55)
+                    .scale(0.8f)
+                    .widthRel(1.0f)
+                    .height(10)
+                    .margin(0, 2))
+            .child(
+                GuiText.fitButtonLabelMaxWidth(
+                    new ButtonWidget<>().widthRel(1.0f)
+                        .height(16)
+                        .setEnabledIf(widget -> hasFocusedLocalMetadata()),
+                    104,
+                    "wawelauth.gui.local_auth.trust_refresh")
+                    .onMousePressed(mouseButton -> {
+                        ensureFocusedLocalProvider(null);
+                        return true;
+                    }));
+
+        appendSharedAccountSection(leftSidebar, accountListFrame);
+    }
+
+    private void appendSharedAccountSection(Column leftSidebar, Column accountListFrame) {
+        leftSidebar.child(
+            new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.accounts")).widthRel(1.0f)
+                .height(12)
+                .margin(0, 4))
+            .child(accountListFrame)
+            .child(
+                new Row().widthRel(1.0f)
+                    .height(17)
+                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                    .collapseDisabledChild()
+                    .child(
+                        GuiText.fitButtonLabel(
+                            new ButtonWidget<>().size(52, 16)
+                                .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()),
+                            52,
+                            "wawelauth.gui.common.login")
+                            .onMousePressed(mouseButton -> {
+                                handlePrimaryLoginAction();
+                                return true;
+                            }))
+                    .child(
+                        GuiText.fitButtonLabel(
+                            new ButtonWidget<>().size(108, 16)
+                                .setEnabledIf(widget -> !isRegisterVisibleForSelectedProvider()),
+                            108,
+                            "wawelauth.gui.common.login")
+                            .onMousePressed(mouseButton -> {
+                                handlePrimaryLoginAction();
+                                return true;
+                            }))
+                    .child(
+                        new Widget<>().size(4, 16)
+                            .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()))
+                    .child(
+                        GuiText.fitButtonLabel(
+                            new ButtonWidget<>().size(52, 16)
+                                .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()),
+                            52,
+                            "wawelauth.gui.common.register")
+                            .onMousePressed(mouseButton -> {
+                                handlePrimaryRegisterAction();
+                                return true;
+                            })));
+    }
+
+    private void handlePrimaryLoginAction() {
+        if (hasFocusedLocalContext()) {
+            ensureFocusedLocalProvider(() -> {
+                if (selectedProvider != null) {
+                    openLoginDialog(selectedProvider.getName());
+                }
+            });
+            return;
+        }
+
+        if (selectedProvider != null) {
+            openLoginDialog(selectedProvider.getName());
+        }
+    }
+
+    private void handlePrimaryRegisterAction() {
+        if (hasFocusedLocalContext()) {
+            ensureFocusedLocalProvider(() -> {
+                if (selectedProvider != null) {
+                    openRegisterDialog(selectedProvider.getName());
+                }
+            });
+            return;
+        }
+
+        if (selectedProvider != null) {
+            openRegisterDialog(selectedProvider.getName());
+        }
+    }
+
+    private void ensureFocusedLocalProvider(Runnable onReady) {
+        if (!hasFocusedLocalMetadata()) {
+            focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.not_advertised");
+            return;
+        }
+
+        WawelClient client = WawelClient.instance();
+        if (client == null) {
+            focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.client_not_running");
+            return;
+        }
+
+        ClientProvider existing = client.getLocalAuthProviderResolver()
+            .findExisting(focusedLocalCapabilities);
+        if (existing != null) {
+            selectedProvider = resolveProvider(existing);
+            ensureRegisterCapabilityProbe(selectedProvider);
+            focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.ready_message", selectedProvider.getName());
+            rebuildAccountList();
+            requestAccountListRebuild();
+            if (onReady != null) {
+                onReady.run();
+            }
+            return;
+        }
+
+        focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.resolving");
+        CompletableFuture.supplyAsync(
+            () -> client.getLocalAuthProviderResolver()
+                .resolveOrCreate(focusedLocalCapabilities))
+            .whenComplete((provider, err) -> {
+                Minecraft.getMinecraft()
+                    .func_152344_a(() -> {
+                        if (err != null) {
+                            Throwable cause = err.getCause() != null ? err.getCause() : err;
+                            focusedLocalStatusText = GuiText.tr(
+                                "wawelauth.gui.common.failed_message",
+                                cause.getMessage());
+                            return;
+                        }
+
+                        selectedProvider = resolveProvider(provider);
+                        ensureRegisterCapabilityProbe(selectedProvider);
+                        focusedLocalStatusText = GuiText.tr(
+                            "wawelauth.gui.common.ready_message",
+                            selectedProvider.getName());
+                        rebuildProviderList();
+                        rebuildAccountList();
+                        requestAccountListRebuild();
+                        if (onReady != null) {
+                            onReady.run();
+                        }
+                    });
+            });
+    }
+
+    private boolean hasFocusedLocalContext() {
+        return focusedLocalServerData != null && focusedLocalCapabilities != null;
+    }
+
+    private boolean hasFocusedLocalMetadata() {
+        return hasFocusedLocalContext()
+            && notBlank(focusedLocalCapabilities.getLocalAuthApiRoot())
+            && notBlank(focusedLocalCapabilities.getLocalAuthPublicKeyFingerprint());
+    }
+
+    private ClientProvider resolveFocusedLocalProvider() {
+        if (!hasFocusedLocalContext()) {
+            return null;
+        }
+        WawelClient client = WawelClient.instance();
+        if (client == null) {
+            return null;
+        }
+        return resolveProvider(
+            client.getLocalAuthProviderResolver()
+                .findExisting(focusedLocalCapabilities));
+    }
+
+    private String getFocusedLocalServerAddress() {
+        if (focusedLocalServerData != null && focusedLocalServerData.serverIP != null
+            && !focusedLocalServerData.serverIP.trim().isEmpty()) {
+            return focusedLocalServerData.serverIP.trim();
+        }
+        return GuiText.tr("wawelauth.gui.common.server");
+    }
+
+    private String getFocusedLocalServerName() {
+        if (focusedLocalServerData != null && focusedLocalServerData.serverName != null) {
+            String trimmed = focusedLocalServerData.serverName.trim();
+            if (!trimmed.isEmpty()) {
+                return trimmed;
+            }
+        }
+        return "";
+    }
+
+    private static boolean notBlank(String value) {
+        return value != null && !value.trim()
+            .isEmpty();
+    }
+
+    private String getFocusedLocalFingerprint() {
+        if (focusedLocalCapabilities == null || focusedLocalCapabilities.getLocalAuthPublicKeyFingerprint() == null) {
+            return GuiText.tr("wawelauth.gui.common.missing");
+        }
+        return focusedLocalCapabilities.getLocalAuthPublicKeyFingerprint();
     }
 
     @Override
@@ -560,19 +883,47 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         WawelClient client = WawelClient.instance();
         if (client == null) return;
 
-        List<ClientProvider> providers = new ArrayList<>(
-            client.getProviderRegistry()
-                .listProviders());
+        if (hasFocusedLocalContext()) {
+            selectedProvider = resolveFocusedLocalProvider();
+            if (selectedProvider != null) {
+                ensureRegisterCapabilityProbe(selectedProvider);
+                if (focusedLocalStatusText == null || focusedLocalStatusText.isEmpty()) {
+                    focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.ready_message", selectedProvider.getName());
+                }
+            } else {
+                focusedLocalStatusText = hasFocusedLocalMetadata()
+                    ? GuiText.tr("wawelauth.gui.local_auth.status.trust_first")
+                    : GuiText.tr("wawelauth.gui.local_auth.status.not_advertised");
+                if (selectedAccount != null) {
+                    selectedAccount = null;
+                    clearPreview();
+                }
+            }
+            return;
+        }
+
+        List<ClientProvider> providers = new ArrayList<>();
+        for (ClientProvider provider : client.getProviderRegistry()
+            .listProviders()) {
+            if (shouldShowProviderInGeneralList(provider)) {
+                providers.add(provider);
+            }
+        }
         providers.sort(
             Comparator.comparing(
                 provider -> normalizeSortKey(
                     ProviderDisplayName.displayName(provider != null ? provider.getName() : null)),
                 String.CASE_INSENSITIVE_ORDER));
+
+        boolean selectedVisible = false;
         for (ClientProvider provider : providers) {
             String providerName = provider.getName() != null ? provider.getName() : "?";
             String providerDisplayName = ProviderDisplayName.displayName(providerName);
             String displayProviderName = GuiText.ellipsizeToPixelWidth(providerDisplayName, PROVIDER_NAME_MAX_WIDTH_PX);
             boolean isSelected = selectedProvider != null && providerName.equals(selectedProvider.getName());
+            if (isSelected) {
+                selectedVisible = true;
+            }
 
             ButtonWidget<?> selectButton = new ButtonWidget<>();
             selectButton.expanded()
@@ -610,9 +961,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             providerList.child(providerRow);
         }
 
-        if (selectedProvider == null && !providers.isEmpty()) {
-            selectProvider(providers.get(0));
-            rebuildProviderList();
+        if (!selectedVisible) {
+            if (!providers.isEmpty()) {
+                selectProvider(providers.get(0));
+                rebuildProviderList();
+            } else {
+                selectedProvider = null;
+                selectedAccount = null;
+                clearPreview();
+            }
         }
     }
 
@@ -2155,6 +2512,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private boolean isRegisterVisibleForSelectedProvider() {
+        if (hasFocusedLocalContext()) {
+            return hasFocusedLocalMetadata();
+        }
+
         ClientProvider provider = resolveProvider(selectedProvider);
         if (provider == null) {
             return false;
@@ -2215,6 +2576,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         registerCapabilityByProvider.put(providerName, err == null && Boolean.TRUE.equals(supported));
                     });
             });
+    }
+
+    private boolean shouldShowProviderInGeneralList(ClientProvider provider) {
+        return provider != null && (provider.getType() == ProviderType.BUILTIN || provider.isManualEntry());
     }
 
     private static void addProviderTooltip(ButtonWidget<?> button, ClientProvider provider, String providerName,

@@ -137,7 +137,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             .height(18)
             .margin(0, 3, 0, 0)
             .onMousePressed(mouseButton -> {
-                GuiTransitionScheduler.transition(panel, () -> LocalAuthManagerScreen.open(targetServerData));
+                GuiTransitionScheduler.transition(panel, () -> AccountManagerScreen.openForLocalAuth(targetServerData));
                 return true;
             });
         GuiText.fitButtonLabelMaxWidth(manageLocalAuthBtn, 180, "wawelauth.gui.server_picker.manage_local_auth");

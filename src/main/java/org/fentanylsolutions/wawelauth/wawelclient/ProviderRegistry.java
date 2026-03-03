@@ -52,6 +52,7 @@ public class ProviderRegistry {
             mojang.setServicesUrl(MOJANG_SERVICES_URL);
             mojang.setSkinDomains(MOJANG_SKIN_DOMAINS);
             mojang.setCreatedAt(System.currentTimeMillis());
+            mojang.setManualEntry(true);
             providerDAO.create(mojang);
             WawelAuth.LOG.info("Created built-in Mojang provider");
         }
@@ -137,6 +138,7 @@ public class ProviderRegistry {
         provider.setPublicKeyBase64(publicKeyBase64);
         provider.setPublicKeyFingerprint(fingerprint);
         provider.setCreatedAt(System.currentTimeMillis());
+        provider.setManualEntry(true);
 
         return provider;
     }

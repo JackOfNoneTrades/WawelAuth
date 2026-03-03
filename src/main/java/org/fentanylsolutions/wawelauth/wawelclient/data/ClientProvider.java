@@ -60,6 +60,9 @@ public class ClientProvider {
     /** Epoch millis when this provider was added. */
     private long createdAt;
 
+    /** True if this provider was explicitly added by the user. */
+    private boolean manualEntry = true;
+
     public ClientProvider() {}
 
     // --- URL builders ---
@@ -202,5 +205,13 @@ public class ClientProvider {
 
     public void setCreatedAt(long createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public boolean isManualEntry() {
+        return manualEntry;
+    }
+
+    public void setManualEntry(boolean manualEntry) {
+        this.manualEntry = manualEntry;
     }
 }

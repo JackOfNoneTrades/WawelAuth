@@ -51,6 +51,10 @@ public final class LocalAuthProviderResolver {
         }
 
         boolean dirty = false;
+        if (provider.isManualEntry() && isGeneratedNameForFingerprint(provider.getName(), fingerprint)) {
+            provider.setManualEntry(false);
+            dirty = true;
+        }
         if (!apiRoot.equals(WawelPingPayload.normalizeUrl(provider.getApiRoot()))) {
             provider.setApiRoot(apiRoot);
             dirty = true;
@@ -144,6 +148,7 @@ public final class LocalAuthProviderResolver {
         provider.setSkinDomains(skinDomainsToJson(capabilities.getLocalAuthSkinDomains()));
         provider.setPublicKeyFingerprint(fingerprint);
         provider.setPublicKeyBase64(publicKeyBase64);
+        provider.setManualEntry(false);
         provider.setCreatedAt(System.currentTimeMillis());
         return provider;
     }
@@ -159,6 +164,16 @@ public final class LocalAuthProviderResolver {
             }
         }
         return array.toString();
+    }
+
+    private static boolean isGeneratedNameForFingerprint(String providerName, String fingerprint) {
+        if (providerName == null || fingerprint == null) {
+            return false;
+        }
+
+        String suffix = fingerprint.length() > 12 ? fingerprint.substring(0, 12) : fingerprint;
+        String baseName = "LocalAuth-" + suffix;
+        return providerName.equals(baseName) || providerName.startsWith(baseName + "-");
     }
 
     private static String normalizeString(String value) {

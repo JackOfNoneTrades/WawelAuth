@@ -20,7 +20,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteDatabase;
  */
 public class ClientDatabase extends SqliteDatabase {
 
-    private static final int CURRENT_VERSION = 2;
+    private static final int CURRENT_VERSION = 3;
 
     public ClientDatabase(File dbFile) {
         super(dbFile);
@@ -42,8 +42,11 @@ public class ClientDatabase extends SqliteDatabase {
         if (version < 2) {
             migrateToV2();
         }
+        if (version < 3 || !hasColumn("providers", "manual_added")) {
+            migrateToV3();
+        }
 
-        // Future: if (version < 3) { migrateToV3(); }
+        // Future: if (version < 4) { migrateToV4(); }
 
         execute(conn -> {
             try (Statement stmt = conn.createStatement()) {
@@ -66,7 +69,8 @@ public class ClientDatabase extends SqliteDatabase {
                         skin_domains TEXT,
                         public_key TEXT,
                         public_key_fingerprint TEXT,
-                        created_at INTEGER NOT NULL
+                        created_at INTEGER NOT NULL,
+                        manual_added INTEGER NOT NULL DEFAULT 1
                     )""");
 
                 stmt.execute("""
@@ -113,6 +117,17 @@ public class ClientDatabase extends SqliteDatabase {
             });
         }
         WawelAuth.LOG.info("Client DB migrated to version 2");
+    }
+
+    private void migrateToV3() {
+        if (!hasColumn("providers", "manual_added")) {
+            execute(conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("ALTER TABLE providers ADD COLUMN manual_added INTEGER NOT NULL DEFAULT 1");
+                }
+            });
+        }
+        WawelAuth.LOG.info("Client DB migrated to version 3");
     }
 
     private boolean hasColumn(String tableName, String columnName) {

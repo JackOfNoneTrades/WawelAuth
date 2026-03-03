@@ -32,6 +32,7 @@ public class SqliteClientProviderDAO implements ClientProviderDAO {
         p.setPublicKeyBase64(rs.getString("public_key"));
         p.setPublicKeyFingerprint(rs.getString("public_key_fingerprint"));
         p.setCreatedAt(rs.getLong("created_at"));
+        p.setManualEntry(rs.getInt("manual_added") != 0);
         return p;
     }
 
@@ -67,8 +68,8 @@ public class SqliteClientProviderDAO implements ClientProviderDAO {
         db.execute(conn -> {
             try (PreparedStatement ps = conn.prepareStatement(
                 "INSERT INTO providers (name, type, api_root, auth_server_url, session_server_url, "
-                    + "services_url, skin_domains, public_key, public_key_fingerprint, created_at) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+                    + "services_url, skin_domains, public_key, public_key_fingerprint, created_at, manual_added) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
                 ps.setString(1, p.getName());
                 ps.setString(
                     2,
@@ -82,6 +83,7 @@ public class SqliteClientProviderDAO implements ClientProviderDAO {
                 ps.setString(8, p.getPublicKeyBase64());
                 ps.setString(9, p.getPublicKeyFingerprint());
                 ps.setLong(10, p.getCreatedAt());
+                ps.setInt(11, p.isManualEntry() ? 1 : 0);
                 ps.executeUpdate();
             }
         });
@@ -93,7 +95,7 @@ public class SqliteClientProviderDAO implements ClientProviderDAO {
             try (PreparedStatement ps = conn.prepareStatement(
                 "UPDATE providers SET type = ?, api_root = ?, auth_server_url = ?, session_server_url = ?, "
                     + "services_url = ?, skin_domains = ?, public_key = ?, public_key_fingerprint = ?, "
-                    + "created_at = ? WHERE name = ?")) {
+                    + "created_at = ?, manual_added = ? WHERE name = ?")) {
                 ps.setString(
                     1,
                     p.getType()
@@ -106,7 +108,8 @@ public class SqliteClientProviderDAO implements ClientProviderDAO {
                 ps.setString(7, p.getPublicKeyBase64());
                 ps.setString(8, p.getPublicKeyFingerprint());
                 ps.setLong(9, p.getCreatedAt());
-                ps.setString(10, p.getName());
+                ps.setInt(10, p.isManualEntry() ? 1 : 0);
+                ps.setString(11, p.getName());
                 ps.executeUpdate();
             }
         });
@@ -133,9 +136,9 @@ public class SqliteClientProviderDAO implements ClientProviderDAO {
             db.execute(conn -> {
                 try (PreparedStatement ps = conn.prepareStatement(
                     "INSERT INTO providers (name, type, api_root, auth_server_url, session_server_url, "
-                        + "services_url, skin_domains, public_key, public_key_fingerprint, created_at) "
+                        + "services_url, skin_domains, public_key, public_key_fingerprint, created_at, manual_added) "
                         + "SELECT ?, type, api_root, auth_server_url, session_server_url, "
-                        + "services_url, skin_domains, public_key, public_key_fingerprint, created_at "
+                        + "services_url, skin_domains, public_key, public_key_fingerprint, created_at, manual_added "
                         + "FROM providers WHERE name = ?")) {
                     ps.setString(1, newName);
                     ps.setString(2, oldName);
