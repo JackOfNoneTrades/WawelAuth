@@ -1,5 +1,7 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
+import java.awt.FileDialog;
+import java.awt.Frame;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -96,16 +98,16 @@ public final class SystemOpenUtil {
             }
         }
 
-        FilePickerResult tinyfdResult = pickWithTinyfd(title, initialDirectory);
-        if (tinyfdResult.getStatus() != FilePickerResult.Status.UNAVAILABLE) {
-            return validateImageSelection(tinyfdResult);
+        if (!isWindows()) {
+            FilePickerResult tinyfdResult = pickWithTinyfd(title, initialDirectory);
+            if (tinyfdResult.getStatus() != FilePickerResult.Status.UNAVAILABLE) {
+                return validateImageSelection(tinyfdResult);
+            }
         }
 
-        if (!isMacOs()) {
-            FilePickerResult macResult = pickWithMacOsaScript(title, initialDirectory);
-            if (macResult.getStatus() != FilePickerResult.Status.UNAVAILABLE) {
-                return validateImageSelection(macResult);
-            }
+        FilePickerResult awtResult = pickWithAwt(title, initialDirectory);
+        if (awtResult.getStatus() != FilePickerResult.Status.UNAVAILABLE) {
+            return validateImageSelection(awtResult);
         }
 
         return FilePickerResult.unavailable(GuiText.tr("wawelauth.gui.file_picker.unavailable"));
@@ -121,6 +123,32 @@ public final class SystemOpenUtil {
             }
         }
         return new File(".");
+    }
+
+    public static FilePickerResult pickWithAwt(String title, File initialDirectory) {
+        try {
+            FileDialog dialog = new FileDialog((Frame) null, safeTitle(title), FileDialog.LOAD);
+
+            dialog.setDirectory(defaultPickerPath(initialDirectory));
+            dialog.setFile("*.png;*.gif");
+            dialog.setVisible(true);
+
+            String directory = dialog.getDirectory();
+            String file = dialog.getFile();
+
+            if (file == null || file.isEmpty()) {
+                return FilePickerResult.cancelled();
+            }
+
+            File selectedFile = new File(directory, file);
+            return FilePickerResult.selected(selectedFile);
+        } catch (Throwable t) {
+            WawelAuth.LOG.error("Native file picker failed in AWT path", t);
+            String message = t.getMessage() != null ? t.getMessage()
+                : t.getClass()
+                    .getSimpleName();
+            return FilePickerResult.error(GuiText.tr("wawelauth.gui.common.failed_message", message));
+        }
     }
 
     private static FilePickerResult pickWithTinyfd(String title, File initialDirectory) {
@@ -315,6 +343,12 @@ public final class SystemOpenUtil {
         String osName = System.getProperty("os.name", "");
         return osName.toLowerCase()
             .contains("mac");
+    }
+
+    private static boolean isWindows() {
+        String osName = System.getProperty("os.name", "");
+        return osName.toLowerCase()
+            .contains("win");
     }
 
     private static String escapeAppleScript(String value) {
