@@ -3,6 +3,8 @@ package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.model.ModelSkeletonHead;
 import net.minecraft.client.renderer.tileentity.TileEntitySkullRenderer;
 import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
@@ -12,6 +14,7 @@ import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DMesh
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -30,11 +33,20 @@ import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
 @Mixin(TileEntitySkullRenderer.class)
 public class MixinTileEntitySkullRenderer {
 
+    // todo: replace 64x32 with 64x64 if SkinLayers3DConfig.modernSkinSupport
+    @Shadow
+    private ModelSkeletonHead field_147533_g = new ModelSkeletonHead(0, 0, 64, 32);
+
     /**
      * Inject after skull rendering to add 3D hat overlay for player skulls.
      * func_152674_a is the MCP deobfuscated name for the skull render method.
      */
-    @Inject(method = "func_152674_a", at = @At("TAIL"))
+    @Inject(
+        method = "func_152674_a",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/model/ModelSkeletonHead;render(Lnet/minecraft/entity/Entity;FFFFFF)V",
+            shift = At.Shift.AFTER))
     private void wawelauth$renderSkull3DHat(float x, float y, float z, int facing, float rotation, int skullType,
         GameProfile profile, CallbackInfo ci) {
         if (!SkinLayers3DConfig.enabled || !SkinLayers3DConfig.enableSkulls) return;
@@ -47,9 +59,10 @@ public class MixinTileEntitySkullRenderer {
         SkinLayers3DMesh hatMesh = SkinLayers3DSetup.getOrCreateSkullMesh(profile, skinLocation);
         if (hatMesh == null) return;
 
+        ModelRenderer head = this.field_147533_g.skeletonHead;
+
         // The skin texture is already bound by the vanilla skull renderer.
         // Render the 3D hat mesh.
-        GL11.glPushMatrix();
 
         float scale = 1.0F / 16.0F;
         float voxelSize = SkinLayers3DConfig.skullVoxelSize;
@@ -59,11 +72,10 @@ public class MixinTileEntitySkullRenderer {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
         hatMesh.setPosition(0, 0, 0);
-        hatMesh.setRotation(0, 0, 0);
+        hatMesh.setRotation(head.rotateAngleX, head.rotateAngleY, head.rotateAngleZ);
         hatMesh.render(scale, voxelSize);
 
         GL11.glDisable(GL11.GL_BLEND);
-        GL11.glPopMatrix();
     }
 
     /**
