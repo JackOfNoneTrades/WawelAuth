@@ -287,6 +287,7 @@ public class GuiFactory implements IModGuiFactory {
                 defaults3d.modernSkinSupport,
                 "Enable modern client skin support (64x64, slim arms, HD pass-through). Disable for legacy-only behavior. Restart recommended.");
             modernSkinSupport.set(current3d.modernSkinSupport);
+            modernSkinSupport.setRequiresMcRestart(true);
 
             Property enableHat = uiConfig
                 .get(CAT_SKINS, KEY_3D_ENABLE_HAT, defaults3d.enableHat, "3D overlays: render hat layer as voxels.");

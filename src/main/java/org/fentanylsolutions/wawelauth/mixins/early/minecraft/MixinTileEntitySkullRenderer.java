@@ -18,8 +18,10 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
@@ -33,13 +35,20 @@ import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
 @Mixin(TileEntitySkullRenderer.class)
 public class MixinTileEntitySkullRenderer {
 
-    // todo: replace 64x32 with 64x64 if SkinLayers3DConfig.modernSkinSupport
     @Shadow
-    private ModelSkeletonHead field_147533_g = new ModelSkeletonHead(0, 0, 64, 32);
+    private ModelSkeletonHead field_147538_h = new ModelSkeletonHead(0, 0, 64, 64);
+
+    @ModifyVariable(method = "func_152674_a", at = @At("STORE"), ordinal = 0)
+    private ModelSkeletonHead wawelauth$replaceSkullModel(ModelSkeletonHead original,
+        @Local(index = 6, argsOnly = true) int p_152674_6_) {
+        if (SkinLayers3DConfig.modernSkinSupport && p_152674_6_ == 3) {
+            return field_147538_h;
+        }
+        return original;
+    }
 
     /**
      * Inject after skull rendering to add 3D hat overlay for player skulls.
-     * func_152674_a is the MCP deobfuscated name for the skull render method.
      */
     @Inject(
         method = "func_152674_a",
@@ -48,7 +57,7 @@ public class MixinTileEntitySkullRenderer {
             target = "Lnet/minecraft/client/model/ModelSkeletonHead;render(Lnet/minecraft/entity/Entity;FFFFFF)V",
             shift = At.Shift.AFTER))
     private void wawelauth$renderSkull3DHat(float x, float y, float z, int facing, float rotation, int skullType,
-        GameProfile profile, CallbackInfo ci) {
+        GameProfile profile, CallbackInfo ci, @Local ModelSkeletonHead modelskeletonhead) {
         if (!SkinLayers3DConfig.enabled || !SkinLayers3DConfig.enableSkulls) return;
         if (skullType != 3 || profile == null) return; // 3 = player skull
 
@@ -59,7 +68,7 @@ public class MixinTileEntitySkullRenderer {
         SkinLayers3DMesh hatMesh = SkinLayers3DSetup.getOrCreateSkullMesh(profile, skinLocation);
         if (hatMesh == null) return;
 
-        ModelRenderer head = this.field_147533_g.skeletonHead;
+        ModelRenderer head = modelskeletonhead.skeletonHead;
 
         // The skin texture is already bound by the vanilla skull renderer.
         // Render the 3D hat mesh.
