@@ -10,6 +10,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -58,6 +59,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.storage.InviteDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.ProfileDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.TokenDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.UserDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
 import org.fentanylsolutions.wawelauth.wawelcore.util.StringUtil;
 import org.fentanylsolutions.wawelauth.wawelnet.BinaryResponse;
 import org.fentanylsolutions.wawelauth.wawelnet.HttpRouter;
@@ -1708,7 +1710,9 @@ public class AdminWebService {
             port = server.getPort();
         }
         if (port <= 0) return null;
-        return "http://127.0.0.1:" + port;
+        InetAddress loopback = InetAddress.getLoopbackAddress();
+        String host = loopback == null ? "127.0.0.1" : loopback.getHostAddress();
+        return "http://" + NetworkAddressUtil.formatHostPort(host, port);
     }
 
     private static String parseSkinUrlFromProfileResponse(JsonObject profile) {

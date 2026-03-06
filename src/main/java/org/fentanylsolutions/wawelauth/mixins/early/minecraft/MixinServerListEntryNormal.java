@@ -22,6 +22,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.AccountStatus;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
+import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -226,7 +227,7 @@ public class MixinServerListEntryNormal {
             try {
                 URI uri = new URI(authUrl);
                 if (uri.getHost() != null) {
-                    providerHost = uri.getPort() > 0 ? uri.getHost() + ":" + uri.getPort() : uri.getHost();
+                    providerHost = NetworkAddressUtil.formatHostPort(uri.getHost(), uri.getPort());
                 }
             } catch (Exception ignored) {}
 

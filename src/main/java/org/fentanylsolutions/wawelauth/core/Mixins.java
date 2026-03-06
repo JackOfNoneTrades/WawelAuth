@@ -37,6 +37,26 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.SERVER)
             .build();
+        registry.mixin("MixinBanListIpv6")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinEntityPlayerMPIpv6")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinNetHandlerLoginServerIpv6")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinCommandBanIpIpv6")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinCommandPardonIpIpv6")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.SERVER)
+            .build();
 
         // Client Accessors
         registry.mixin("AccessorMinecraft")

@@ -34,6 +34,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderType;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
+import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
 import org.lwjgl.opengl.GL11;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
@@ -2616,7 +2617,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         try {
             URI uri = new URI(apiRoot);
             if (uri.getHost() != null) {
-                return uri.getPort() > 0 ? uri.getHost() + ":" + uri.getPort() : uri.getHost();
+                return NetworkAddressUtil.formatHostPort(uri.getHost(), uri.getPort());
             }
         } catch (Exception ignored) {}
 

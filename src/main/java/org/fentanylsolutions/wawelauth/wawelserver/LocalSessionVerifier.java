@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +24,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.ping.WawelPingPayload;
 import org.fentanylsolutions.wawelauth.wawelcore.util.JsonUtil;
+import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
 import org.fentanylsolutions.wawelauth.wawelcore.util.StringUtil;
 
 import com.google.gson.JsonArray;
@@ -184,7 +186,9 @@ public final class LocalSessionVerifier {
         }
         if (port <= 0) return null;
 
-        return "http://127.0.0.1:" + port;
+        InetAddress loopback = InetAddress.getLoopbackAddress();
+        String host = loopback == null ? "127.0.0.1" : loopback.getHostAddress();
+        return "http://" + NetworkAddressUtil.formatHostPort(host, port);
     }
 
     public static String consumeDisconnectReason(String defaultReason) {
