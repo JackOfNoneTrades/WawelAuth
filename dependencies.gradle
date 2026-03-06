@@ -34,17 +34,17 @@
  * For more details, see https://docs.gradle.org/8.0.1/userguide/java_library_plugin.html#sec:java_library_configurations_graph
  */
 dependencies {
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.83:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.93:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.72-GTNH:dev")
     runtimeOnlyNonPublishable("curse.maven:archaicfix-677782:6785842")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:7695645")) // 1.0.2-1.7.10
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.0.0-alpha25:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.1:dev")
     //runtimeOnlyNonPublishable("com.github.GTNewHorizons:lwjgl3ify:3.0.14:dev")
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:skinport-234948:3212017"))
 
-    compileOnly("org.jetbrains:annotations:24.0.0")
+    compileOnly("org.jetbrains:annotations:26.1.0")
 
-    implementation("com.github.GTNewHorizons:GTNHLib:0.9.33:dev")
+    implementation("com.github.GTNewHorizons:GTNHLib:0.9.36:dev")
     implementation("org.fentanylsolutions.fentlib:FentLib:0.0.44")
 
     // Keep MUI2 available in dev runtime (client), but do not publish it as a hard dependency.
