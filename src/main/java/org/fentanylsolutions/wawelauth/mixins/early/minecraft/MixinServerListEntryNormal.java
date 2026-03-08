@@ -16,7 +16,6 @@ import net.minecraft.util.ResourceLocation;
 import org.fentanylsolutions.wawelauth.client.gui.GuiText;
 import org.fentanylsolutions.wawelauth.client.gui.ProviderDisplayName;
 import org.fentanylsolutions.wawelauth.client.gui.ServerAccountPickerScreen;
-import org.fentanylsolutions.wawelauth.client.gui.TabFacesCompat;
 import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
@@ -140,23 +139,11 @@ public class MixinServerListEntryNormal {
                     displayName = GuiText.tr("wawelauth.gui.server_tooltip.account_fallback", Long.valueOf(accountId));
                 }
 
-                if (TabFacesCompat.isAvailable() && profileUuid != null) {
-                    TabFacesCompat.ensureRegistered(displayName, displayName, profileUuid);
-                    tooltip = new StringBuilder(displayName);
-                    if (providerName != null) {
-                        tooltip.append("\n")
-                            .append(EnumChatFormatting.GRAY)
-                            .append(GuiText.tr("wawelauth.gui.server_tooltip.provider_tag", providerName));
-                    }
-                } else {
-                    tooltip = new StringBuilder(
-                        GuiText.tr("wawelauth.gui.server_tooltip.account_selected", displayName));
-                    if (providerName != null) {
-                        tooltip.append(' ')
-                            .append('[')
-                            .append(providerName)
-                            .append(']');
-                    }
+                tooltip = new StringBuilder(displayName);
+                if (providerName != null) {
+                    tooltip.append("\n")
+                        .append(EnumChatFormatting.GRAY)
+                        .append(GuiText.tr("wawelauth.gui.server_tooltip.provider_tag", providerName));
                 }
 
                 if (client != null) {

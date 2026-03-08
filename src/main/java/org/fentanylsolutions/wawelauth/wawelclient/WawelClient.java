@@ -3,6 +3,7 @@ package org.fentanylsolutions.wawelauth.wawelclient;
 import java.io.File;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.api.WawelSkinResolver;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilHttpClient;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientAccountDAO;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientProviderDAO;
@@ -35,6 +36,7 @@ public class WawelClient {
     private final LocalAuthProviderResolver localAuthProviderResolver;
     private final AccountManager accountManager;
     private final SessionBridge sessionBridge;
+    private final WawelSkinResolver skinResolver;
 
     private WawelClient(File dataDir) {
         WawelAuth.LOG.info("Starting WawelAuth client module...");
@@ -66,6 +68,9 @@ public class WawelClient {
         // Session bridge: coordinates mixin layer with account system
         sessionBridge = new SessionBridge(httpClient, providerDAO, accountDAO, accountManager);
         sessionBridge.tryImportLauncherSession();
+
+        // Skin resolver: unified skin resolution API
+        skinResolver = new WawelSkinResolver(sessionBridge);
 
         int prunedBindings = ServerBindingPersistence.clearMissingAccountBindings(accountManager);
         if (prunedBindings > 0) {
@@ -121,6 +126,11 @@ public class WawelClient {
             WawelAuth.LOG.warn("Error shutting down account manager: {}", e.getMessage());
         }
         try {
+            skinResolver.shutdown();
+        } catch (Exception e) {
+            WawelAuth.LOG.warn("Error shutting down skin resolver: {}", e.getMessage());
+        }
+        try {
             sessionBridge.shutdown();
         } catch (Exception e) {
             WawelAuth.LOG.warn("Error shutting down session bridge: {}", e.getMessage());
@@ -154,6 +164,10 @@ public class WawelClient {
 
     public SessionBridge getSessionBridge() {
         return sessionBridge;
+    }
+
+    public WawelSkinResolver getSkinResolver() {
+        return skinResolver;
     }
 
     public YggdrasilHttpClient getHttpClient() {

@@ -1041,8 +1041,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             row.widthRel(1.0f)
                 .heightRel(1.0f);
             row.child(new Widget<>().size(2, 14));
-            if (TabFacesCompat.isAvailable()) {
-                row.child(createAccountFaceWidget(account.getProviderName(), profileName, account.getProfileUuid()));
+            if (account.getProfileUuid() != null) {
+                row.child(createAccountFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
                 row.child(new Widget<>().size(2, 14));
             }
             row.child(dot);
@@ -1065,11 +1065,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
     }
 
-    private Widget<?> createAccountFaceWidget(String providerName, String displayName, UUID profileUuid) {
-        String faceKey = TabFacesCompat.buildFaceKey(providerName, displayName, profileUuid);
-        Widget<?> face = new TabFacesFaceWidget(faceKey, displayName, profileUuid).size(8, 8)
+    private Widget<?> createAccountFaceWidget(String displayName, UUID profileUuid, String providerName) {
+        return new FaceWidget(displayName, profileUuid, providerName).size(8, 8)
             .margin(0, 3);
-        return face;
     }
 
     private void resetAccountListScroll() {
@@ -1463,13 +1461,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     ClientAccount account = client.getAccountManager()
                         .getAccount(accountId);
                     if (account != null && account.getProfileUuid() != null) {
-                        String profileName = account.getProfileName();
-                        if (profileName != null && !profileName.trim()
-                            .isEmpty()) {
-                            String faceKey = TabFacesCompat
-                                .buildFaceKey(account.getProviderName(), profileName, account.getProfileUuid());
-                            TabFacesCompat.forceRefreshFace(faceKey, profileName, account.getProfileUuid());
-                        }
+                        client.getSkinResolver()
+                            .invalidate(account.getProfileUuid());
                     }
                 }
             }
@@ -2119,16 +2112,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             }
                             // Invalidate cached profile so the next fetch gets the new skin URL
                             if (selectedAccount.getProfileUuid() != null) {
-                                client.getSessionBridge()
-                                    .invalidateProfileCache(selectedAccount.getProfileUuid());
-                                String faceKey = TabFacesCompat.buildFaceKey(
-                                    selectedAccount.getProviderName(),
-                                    selectedAccount.getProfileName(),
-                                    selectedAccount.getProfileUuid());
-                                TabFacesCompat.forceRefreshFace(
-                                    faceKey,
-                                    selectedAccount.getProfileName(),
-                                    selectedAccount.getProfileUuid());
+                                client.getSkinResolver()
+                                    .invalidate(selectedAccount.getProfileUuid());
                             }
                             loadSkinForAccount(selectedAccount);
                         }
@@ -2433,16 +2418,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                                 selectedAccount = refreshed;
                             }
                             if (selectedAccount.getProfileUuid() != null) {
-                                client.getSessionBridge()
-                                    .invalidateProfileCache(selectedAccount.getProfileUuid());
-                                String faceKey = TabFacesCompat.buildFaceKey(
-                                    selectedAccount.getProviderName(),
-                                    selectedAccount.getProfileName(),
-                                    selectedAccount.getProfileUuid());
-                                TabFacesCompat.forceRefreshFace(
-                                    faceKey,
-                                    selectedAccount.getProfileName(),
-                                    selectedAccount.getProfileUuid());
+                                client.getSkinResolver()
+                                    .invalidate(selectedAccount.getProfileUuid());
                             }
                             loadSkinForAccount(selectedAccount);
                         }

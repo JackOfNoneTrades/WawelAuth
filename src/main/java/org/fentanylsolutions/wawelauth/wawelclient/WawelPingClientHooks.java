@@ -5,6 +5,7 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.authlib.GameProfile;
 
 /**
  * Registers client-side ping deserialization for WawelAuth capabilities.
@@ -34,6 +35,16 @@ public final class WawelPingClientHooks {
                 // No payload from this server -> auth provider set is unknown.
                 ext.setWawelCapabilities(ServerCapabilities.unadvertised(now));
                 WawelAuth.debug("Ping capabilities updated for " + serverData.serverIP + " as unadvertised/unknown");
+            }
+
+            WawelClient client = WawelClient.instance();
+            if (client != null && response != null && response.func_151318_b() != null) {
+                GameProfile[] profiles = response.func_151318_b()
+                    .func_151331_c();
+                if (profiles != null && profiles.length > 0) {
+                    client.getSessionBridge()
+                        .rememberPingProfiles(ext.getWawelCapabilities(), profiles);
+                }
             }
         });
 

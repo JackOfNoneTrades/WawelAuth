@@ -47,16 +47,16 @@ public class MixinYggdrasilMinecraftSessionService {
     /**
      * Redirect Property.isSignatureValid(PublicKey) in getTextures().
      *
-     * Try the Mojang key first (fast path for vanilla), then try each
-     * connection-trusted provider's key. NOT all registered providers
-     * globally: only the ones trusted for the current connection.
+     * Try the Mojang key first (fast path for vanilla), then try the
+     * profile-scoped trusted provider keys selected by SessionBridge.
      */
     @Redirect(
         method = "getTextures",
         at = @At(
             value = "INVOKE",
             target = "Lcom/mojang/authlib/properties/Property;isSignatureValid(Ljava/security/PublicKey;)Z"))
-    private boolean wawelauth$verifyScopedKey(Property property, PublicKey mojangKey) {
+    private boolean wawelauth$verifyScopedKey(Property property, PublicKey mojangKey, GameProfile profile,
+        boolean requireSecure) {
         // Try Mojang key first (fast path, covers vanilla case)
         if (property.isSignatureValid(mojangKey)) return true;
 
@@ -66,7 +66,7 @@ public class MixinYggdrasilMinecraftSessionService {
         WawelClient client = WawelClient.instance();
         if (client == null) return false;
         for (PublicKey key : client.getSessionBridge()
-            .getTextureVerificationKeys()) {
+            .getTextureVerificationKeys(profile)) {
             if (property.isSignatureValid(key)) return true;
         }
         return false;
@@ -79,16 +79,15 @@ public class MixinYggdrasilMinecraftSessionService {
      * redirect handler takes only the static method's arg (String url).
      * No instance parameter.
      *
-     * Check vanilla Mojang domains plus all connection-trusted provider
-     * skin domains. This enables texture loading from custom provider
-     * texture servers.
+     * Check vanilla Mojang domains plus the profile-scoped trusted provider
+     * skin domains selected by SessionBridge.
      */
     @Redirect(
         method = "getTextures",
         at = @At(
             value = "INVOKE",
             target = "Lcom/mojang/authlib/yggdrasil/YggdrasilMinecraftSessionService;isWhitelistedDomain(Ljava/lang/String;)Z"))
-    private boolean wawelauth$checkScopedDomains(String url) {
+    private boolean wawelauth$checkScopedDomains(String url, GameProfile profile, boolean requireSecure) {
         WawelClient client = WawelClient.instance();
         if (client == null) {
             // Vanilla-equivalent fallback before WawelAuth client starts
@@ -100,7 +99,7 @@ public class MixinYggdrasilMinecraftSessionService {
             }
         }
         return client.getSessionBridge()
-            .isWhitelistedDomain(url);
+            .isWhitelistedDomain(url, profile);
     }
 
     /**

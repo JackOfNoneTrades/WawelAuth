@@ -285,8 +285,8 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         row.widthRel(1.0f)
             .heightRel(1.0f)
             .child(new Widget<>().size(2, 16));
-        if (TabFacesCompat.isAvailable()) {
-            row.child(createFaceWidget(account.getProviderName(), profileName, account.getProfileUuid()));
+        if (account.getProfileUuid() != null) {
+            row.child(createFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
             row.child(new Widget<>().size(2, 16));
         }
         row.child(dot)
@@ -330,11 +330,9 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         return account.getProfileName();
     }
 
-    private static Widget<?> createFaceWidget(String providerName, String displayName, java.util.UUID profileUuid) {
-        String faceKey = TabFacesCompat.buildFaceKey(providerName, displayName, profileUuid);
-        Widget<?> face = new TabFacesFaceWidget(faceKey, displayName, profileUuid).size(8, 8)
+    private static Widget<?> createFaceWidget(String displayName, java.util.UUID profileUuid, String providerName) {
+        return new FaceWidget(displayName, profileUuid, providerName).size(8, 8)
             .margin(0, 4);
-        return face;
     }
 
 }

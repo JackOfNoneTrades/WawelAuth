@@ -97,6 +97,10 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.CLIENT)
             .build();
+        registry.mixin("MixinSkinManager")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
 
         // Client Mixins: modern skin rendering
         registry.mixin("MixinModelBiped")
@@ -132,13 +136,6 @@ public class Mixins extends FentMixins {
             .modid("authlib")
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.BOTH)
-            .build();
-
-        // TabFaces compat: HD-safe face rendering across all TabFaces UI paths
-        registry.mixin("MixinClientUtil")
-            .modid("tabfaces")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
             .build();
 
     }

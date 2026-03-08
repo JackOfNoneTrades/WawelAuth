@@ -6,6 +6,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import org.fentanylsolutions.wawelauth.client.gui.AnimatedCapeClientHandler;
 import org.fentanylsolutions.wawelauth.client.gui.GuiTransitionScheduler;
+import org.fentanylsolutions.wawelauth.client.gui.SkinResolverClientHandler;
 import org.fentanylsolutions.wawelauth.client.gui.WawelAuthKeybind;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
@@ -45,6 +46,7 @@ public class ClientProxy extends CommonProxy {
         WawelPingClientHooks.register();
         GuiTransitionScheduler.register();
         AnimatedCapeClientHandler.register();
+        SkinResolverClientHandler.register();
 
         // Register keybind for account manager
         WawelAuthKeybind keybind = new WawelAuthKeybind();

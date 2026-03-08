@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Session;
@@ -55,7 +56,7 @@ public class SessionBridge {
 
     private static final String MOJANG_PROVIDER_NAME = "Mojang";
     private static final String[] VANILLA_SKIN_DOMAINS = { ".minecraft.net", ".mojang.com" };
-
+    private static final long PING_PROFILE_CONTEXT_TTL_MS = 30_000L;
     private final YggdrasilHttpClient httpClient;
     private final ClientProviderDAO providerDAO;
     private final ClientAccountDAO accountDAO;
@@ -64,6 +65,7 @@ public class SessionBridge {
 
     /** The launcher's original session, captured at construction. */
     private final Session launcherSession;
+    private final boolean launcherSessionAllowsMojangFallback;
 
     private volatile ClientAccount activeAccount;
     private volatile ClientProvider activeProvider;
@@ -73,15 +75,28 @@ public class SessionBridge {
     private volatile List<PublicKey> trustedKeys = Collections.emptyList();
     private final ConcurrentHashMap<String, GameProfile> profileCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Boolean> profileFetchInFlight = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, PingProfileContext> pingProfileContexts = new ConcurrentHashMap<>();
+    private final ThreadLocal<LookupContext> activeLookupContext = new ThreadLocal<>();
 
     public SessionBridge(YggdrasilHttpClient httpClient, ClientProviderDAO providerDAO, ClientAccountDAO accountDAO,
         AccountManager accountManager) {
+        this(
+            httpClient,
+            providerDAO,
+            accountDAO,
+            accountManager,
+            Minecraft.getMinecraft()
+                .getSession());
+    }
+
+    SessionBridge(YggdrasilHttpClient httpClient, ClientProviderDAO providerDAO, ClientAccountDAO accountDAO,
+        AccountManager accountManager, Session launcherSession) {
         this.httpClient = httpClient;
         this.providerDAO = providerDAO;
         this.accountDAO = accountDAO;
         this.accountManager = accountManager;
-        this.launcherSession = Minecraft.getMinecraft()
-            .getSession();
+        this.launcherSession = launcherSession;
+        this.launcherSessionAllowsMojangFallback = isUsableLauncherSession(this.launcherSession);
         this.profileFetchExecutor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "WawelAuth-ProfileFetch");
             t.setDaemon(true);
@@ -164,6 +179,7 @@ public class SessionBridge {
         this.trustedKeys = Collections.emptyList();
         this.profileCache.clear();
         this.profileFetchInFlight.clear();
+        activeLookupContext.remove();
         ((AccessorMinecraft) Minecraft.getMinecraft()).wawelauth$setSession(launcherSession);
     }
 
@@ -177,6 +193,119 @@ public class SessionBridge {
         String fragment = "|" + UuidUtil.toUnsigned(profileId) + "|";
         profileCache.keySet()
             .removeIf(key -> key.contains(fragment));
+    }
+
+    /**
+     * Track ping-sampled profiles so menu-time lookups can use the hovered
+     * server's advertised auth context instead of global provider state.
+     */
+    public void rememberPingProfiles(ServerCapabilities capabilities, GameProfile[] profiles) {
+        if (profiles == null || profiles.length == 0) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        PingProfileContext context = new PingProfileContext(capabilities, now);
+        for (GameProfile profile : profiles) {
+            if (profile == null || profile.getId() == null) {
+                continue;
+            }
+            pingProfileContexts.put(profile.getId(), context);
+        }
+        purgeExpiredPingProfileContexts(now);
+    }
+
+    /**
+     * Build a request-scoped lookup context for one concrete provider.
+     */
+    public LookupContext createProviderLookupContext(ClientProvider provider, boolean allowVanillaFallback) {
+        if (provider == null) {
+            return new LookupContext(null, null, Collections.emptyList(), allowVanillaFallback);
+        }
+        return new LookupContext(null, provider, Collections.singletonList(provider), allowVanillaFallback);
+    }
+
+    /**
+     * Build a request-scoped lookup context for a configured provider by name.
+     */
+    public LookupContext createProviderLookupContext(String providerName, boolean allowVanillaFallback) {
+        if (providerName == null || providerName.trim()
+            .isEmpty() || providerDAO == null) {
+            return new LookupContext(null, null, Collections.emptyList(), allowVanillaFallback);
+        }
+        return createProviderLookupContext(providerDAO.findByName(providerName), allowVanillaFallback);
+    }
+
+    /**
+     * Build a request-scoped lookup context from one server entry's capabilities.
+     */
+    public LookupContext createServerLookupContext(ServerCapabilities capabilities) {
+        return createLookupContextFromCapabilities(capabilities, true);
+    }
+
+    /**
+     * Build a request-scoped lookup context from one server entry's capabilities,
+     * optionally allowing Mojang fallback when the server auth is unknown.
+     */
+    public LookupContext createServerLookupContext(ServerCapabilities capabilities, boolean allowVanillaFallback) {
+        return createLookupContextFromCapabilities(capabilities, allowVanillaFallback);
+    }
+
+    /**
+     * Run a lookup with a request-scoped provider/session context.
+     */
+    public <T> T withLookupContext(LookupContext context, Supplier<T> action) {
+        LookupContext previous = activeLookupContext.get();
+        if (context == null) {
+            activeLookupContext.remove();
+        } else {
+            activeLookupContext.set(context);
+        }
+        try {
+            return action.get();
+        } finally {
+            if (previous == null) {
+                activeLookupContext.remove();
+            } else {
+                activeLookupContext.set(previous);
+            }
+        }
+    }
+
+    /**
+     * Check whether any WawelAuth provider can resolve this profile.
+     * Returns true if: connected in-world, or ping context exists,
+     * or a locally stored account matches.
+     */
+    public boolean hasProviderForProfile(UUID profileId) {
+        return hasProviderForProfile(profileId, null);
+    }
+
+    /**
+     * Check whether any WawelAuth provider can resolve this profile in the
+     * given request context.
+     */
+    public boolean hasProviderForProfile(UUID profileId, LookupContext context) {
+        if (profileId == null) return false;
+
+        if (context != null) {
+            return context.sessionBase != null || context.provider != null
+                || (context.trustedProviders != null && !context.trustedProviders.isEmpty());
+        }
+
+        if (Minecraft.getMinecraft().theWorld != null) {
+            return connectedSessionServerBase != null || activeProvider != null;
+        }
+
+        if (resolvePingProfileContext(profileId) != null) {
+            return true;
+        }
+
+        return resolveProviderForProfile(profileId) != null;
+    }
+
+    boolean hasFreshPingProfileContext(UUID profileId, long nowMs) {
+        return resolvePingProfileContext(profileId, nowMs) != null;
     }
 
     /** Stop background resources used by session/profile bridging. */
@@ -239,36 +368,8 @@ public class SessionBridge {
         addTrustedProvider(resolved, seen, providerDAO.findByName(MOJANG_PROVIDER_NAME));
         addTrustedProvider(resolved, seen, active);
 
-        if (capabilities != null) {
-            Set<String> acceptedAuthUrls = new HashSet<>();
-            Set<String> acceptedAuthHosts = new HashSet<>();
-            for (String url : capabilities.getAcceptedAuthServerUrls()) {
-                String normalized = WawelPingPayload.normalizeUrl(url);
-                if (normalized != null) {
-                    acceptedAuthUrls.add(normalized);
-                    String host = extractHost(normalized);
-                    if (host != null) {
-                        acceptedAuthHosts.add(host);
-                    }
-                }
-            }
-
-            String localFingerprint = normalizeFingerprint(capabilities.getLocalAuthPublicKeyFingerprint());
-
-            for (ClientProvider provider : providerDAO.listAll()) {
-                String providerAuthUrl = WawelPingPayload.normalizeUrl(provider.getAuthServerUrl());
-                String providerFingerprint = normalizeFingerprint(provider.getPublicKeyFingerprint());
-                boolean matchedByHost = matchesAnyAcceptedHost(acceptedAuthHosts, extractHost(providerAuthUrl))
-                    || matchesAnyAcceptedHost(acceptedAuthHosts, extractHost(provider.getSessionServerUrl()))
-                    || matchesAnyAcceptedHost(acceptedAuthHosts, extractHost(provider.getApiRoot()));
-
-                if ((providerAuthUrl != null && acceptedAuthUrls.contains(providerAuthUrl)) || matchedByHost
-                    || (localFingerprint != null && localFingerprint.equals(providerFingerprint))) {
-                    addTrustedProvider(resolved, seen, provider);
-                }
-            }
-
-            addTrustedProvider(resolved, seen, buildEphemeralLocalProvider(capabilities));
+        for (ClientProvider provider : resolveTrustedProvidersFromCapabilities(capabilities)) {
+            addTrustedProvider(resolved, seen, provider);
         }
 
         setTrustedProviders(resolved);
@@ -419,19 +520,26 @@ public class SessionBridge {
      * Public keys used for texture signature verification.
      *
      * During an active server session, uses connection-trusted keys only.
-     * Outside session context (menus/tooltips), falls back to all configured
-     * provider keys so local UI integrations (e.g. TabFaces) can resolve
-     * custom-provider textures without signature spam.
+     * Outside session context (menus/tooltips), uses a profile-scoped trust
+     * source instead of trusting every configured provider globally.
      */
     public List<PublicKey> getTextureVerificationKeys() {
-        List<PublicKey> scoped = trustedKeys;
-        // Use connection-scoped keys only while actually connected.
-        // On the menu, trustedKeys may be stale from the last session;
-        // fall back to all configured provider keys.
-        if (scoped != null && !scoped.isEmpty() && Minecraft.getMinecraft().theWorld != null) {
-            return scoped;
+        return getTextureVerificationKeys(null);
+    }
+
+    /**
+     * Public keys used for texture signature verification for one profile.
+     *
+     * In-world: use connection-scoped keys.
+     * Menus/UI: use only the profile's trusted source (ping-advertised auth or
+     * locally known account provider), not all configured providers globally.
+     */
+    public List<PublicKey> getTextureVerificationKeys(GameProfile profile) {
+        List<ClientProvider> providers = resolveTextureProviders(profile != null ? profile.getId() : null);
+        if (providers == null || providers.isEmpty()) {
+            return Collections.emptyList();
         }
-        return parsePublicKeys(providerDAO.listAll());
+        return parsePublicKeys(providers);
     }
 
     /**
@@ -439,6 +547,13 @@ public class SessionBridge {
      * for the current connection. Also checks vanilla Mojang domains.
      */
     public boolean isWhitelistedDomain(String url) {
+        return isWhitelistedDomain(url, null);
+    }
+
+    /**
+     * Check if a URL's domain is whitelisted for one profile's texture context.
+     */
+    public boolean isWhitelistedDomain(String url, GameProfile profile) {
         try {
             URI uri = new URI(url);
             String host = uri.getHost();
@@ -449,16 +564,12 @@ public class SessionBridge {
                 if (host.endsWith(domain)) return true;
             }
 
-            List<ClientProvider> providers = trustedProviders;
-            // Use connection-scoped providers only while actually connected.
-            // On the menu, trustedProviders may be stale from the last session;
-            // fall back to all configured providers.
-            if (providers == null || providers.isEmpty() || Minecraft.getMinecraft().theWorld == null) {
-                providers = providerDAO.listAll();
+            List<ClientProvider> providers = resolveTextureProviders(profile != null ? profile.getId() : null);
+            if (providers == null || providers.isEmpty()) {
+                return false;
             }
 
-            // Check provider skin domains (connection-trusted in-session,
-            // all configured providers in UI/off-session contexts).
+            // Check provider skin domains scoped to the current lookup context.
             for (ClientProvider provider : providers) {
                 List<String> domains = provider.getSkinDomainList();
                 for (String domain : domains) {
@@ -481,8 +592,9 @@ public class SessionBridge {
 
     /**
      * Fetch profile properties from the active provider's session server.
-     * Uses active provider when present; otherwise resolves provider by stored
-     * local account profile UUID.
+     * Uses connection-scoped auth while in-world. In menus/UI, can also use
+     * ping-advertised server auth for sampled player profiles before falling
+     * back to locally known account providers.
      *
      * Returns null only when no suitable provider can be determined
      * (caller should fall through to vanilla).
@@ -494,24 +606,29 @@ public class SessionBridge {
 
         String connectedSessionBase = this.connectedSessionServerBase;
         if (connectedSessionBase != null && Minecraft.getMinecraft().theWorld != null) {
-            String cacheKey = buildProfileCacheKey("server:" + connectedSessionBase, profile.getId(), requireSecure);
-            GameProfile cached = profileCache.get(cacheKey);
-            if (cached != null) {
-                return cached;
-            }
-
-            if (Minecraft.getMinecraft()
-                .func_152345_ab()) {
-                queueProfileFetchFromSessionBase(connectedSessionBase, profile, requireSecure, cacheKey);
-                return profile;
-            }
-
-            GameProfile fetchedFromServer = fetchProfileFromSessionServer(connectedSessionBase, profile, requireSecure);
-            if (hasProperties(fetchedFromServer)) {
-                profileCache.put(cacheKey, fetchedFromServer);
-                String altKey = buildProfileCacheKey("server:" + connectedSessionBase, profile.getId(), !requireSecure);
-                profileCache.putIfAbsent(altKey, fetchedFromServer);
+            GameProfile fetchedFromServer = lookupProfileFromSessionBase(connectedSessionBase, profile, requireSecure);
+            if (fetchedFromServer != null) {
                 return fetchedFromServer;
+            }
+        }
+
+        if (Minecraft.getMinecraft().theWorld == null) {
+            LookupContext requestContext = activeLookupContext.get();
+            if (requestContext != null) {
+                GameProfile requestedProfile = lookupProfileFromMenuContext(requestContext, profile, requireSecure);
+                if (requestedProfile != null) {
+                    return requestedProfile;
+                }
+                return requestContext.allowVanillaFallback ? null : profile;
+            }
+
+            MenuProfileLookupContext menuLookup = resolveMenuProfileLookup(profile.getId());
+            if (menuLookup != null) {
+                GameProfile menuProfile = lookupProfileFromMenuContext(menuLookup, profile, requireSecure);
+                if (menuProfile != null) {
+                    return menuProfile;
+                }
+                return menuLookup.isVanillaFallbackAllowed() ? null : profile;
             }
         }
 
@@ -529,33 +646,11 @@ public class SessionBridge {
             return null;
         }
 
-        String cacheKey = buildProfileCacheKey(provider, profile.getId(), requireSecure);
-        GameProfile cached = profileCache.get(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
-
-        // Never block the client thread on remote profile I/O.
-        if (Minecraft.getMinecraft()
-            .func_152345_ab()) { // Minecraft.isCallingFromMinecraftThread
-            queueProfileFetch(provider, profile, requireSecure, cacheKey);
-            return profile;
-        }
-
-        GameProfile fetched = fetchProfileFromProvider(provider, profile, requireSecure);
-        if (hasProperties(fetched)) {
-            profileCache.put(cacheKey, fetched);
-            // Also populate the opposite signed/unsigned key so that concurrent
-            // callers (e.g. SkinManager with requireSecure=false vs TabFaces with
-            // requireSecure=true) don't each fire their own HTTP request.
-            String altKey = buildProfileCacheKey(provider, profile.getId(), !requireSecure);
-            profileCache.putIfAbsent(altKey, fetched);
-        }
-        return fetched;
+        return lookupProfileFromProvider(provider, profile, requireSecure);
     }
 
     private ClientProvider resolveProviderForProfile(UUID profileId) {
-        if (profileId == null) {
+        if (profileId == null || accountDAO == null || providerDAO == null) {
             return null;
         }
 
@@ -580,6 +675,81 @@ public class SessionBridge {
         return null;
     }
 
+    private MenuProfileLookupContext resolveMenuProfileLookup(UUID profileId) {
+        PingProfileContext pingContext = resolvePingProfileContext(profileId);
+        if (pingContext == null) {
+            return null;
+        }
+
+        return createLookupContextFromCapabilities(pingContext.capabilities);
+    }
+
+    private List<ClientProvider> resolveTextureProviders(UUID profileId) {
+        if (Minecraft.getMinecraft().theWorld != null) {
+            return trustedProviders != null ? trustedProviders : Collections.emptyList();
+        }
+
+        LookupContext requestContext = activeLookupContext.get();
+        if (requestContext != null) {
+            return requestContext.trustedProviders != null ? requestContext.trustedProviders : Collections.emptyList();
+        }
+
+        MenuProfileLookupContext menuLookup = resolveMenuProfileLookup(profileId);
+        if (menuLookup != null && !menuLookup.getTrustedProviders()
+            .isEmpty()) {
+            return menuLookup.getTrustedProviders();
+        }
+
+        ClientProvider provider = resolveProviderForProfile(profileId);
+        if (provider != null) {
+            return Collections.singletonList(provider);
+        }
+
+        // Mojang fallback for profiles with no explicit provider context.
+        // Without this, textures signed by Mojang would fail verification
+        // in menu/tooltip contexts (e.g. vanilla servers in the server list).
+        if (launcherSessionAllowsMojangFallback) {
+            ClientProvider mojang = providerDAO.findByName(MOJANG_PROVIDER_NAME);
+            if (mojang != null) {
+                return Collections.singletonList(mojang);
+            }
+        }
+
+        return Collections.emptyList();
+    }
+
+    private MenuProfileLookupContext createLookupContextFromCapabilities(ServerCapabilities capabilities) {
+        return createLookupContextFromCapabilities(capabilities, true);
+    }
+
+    private MenuProfileLookupContext createLookupContextFromCapabilities(ServerCapabilities capabilities,
+        boolean allowVanillaFallback) {
+        List<ClientProvider> trusted = new ArrayList<>(resolveTrustedProvidersFromCapabilities(capabilities));
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+        for (ClientProvider provider : trusted) {
+            seen.add(providerIdentity(provider));
+        }
+
+        String sessionBase = resolveConnectedSessionServerBase(capabilities);
+        if (sessionBase != null) {
+            return new MenuProfileLookupContext(sessionBase, null, trusted, false);
+        }
+
+        boolean allowVanilla = allowVanillaFallback && (capabilities == null || !capabilities.isWawelAuthAdvertised())
+            && launcherSessionAllowsMojangFallback;
+        if (allowVanilla && providerDAO != null) {
+            addTrustedProvider(trusted, seen, providerDAO.findByName(MOJANG_PROVIDER_NAME));
+        }
+
+        if (trusted.size() == 1) {
+            ClientProvider provider = trusted.get(0);
+            boolean allowSingleProviderVanilla = allowVanilla && isMojangProvider(provider);
+            return new MenuProfileLookupContext(null, provider, trusted, allowSingleProviderVanilla);
+        }
+
+        return new MenuProfileLookupContext(null, null, trusted, allowVanilla);
+    }
+
     // =========================================================================
     // Auto-import launcher session
     // =========================================================================
@@ -596,10 +766,7 @@ public class SessionBridge {
             String token = session.getToken();
 
             // Skip invalid/dev sessions
-            if (token == null || token.isEmpty()
-                || "NotValid".equals(token)
-                || "0".equals(token)
-                || "FML".equals(token)) {
+            if (!isUsableLauncherSession(session)) {
                 WawelAuth.debug("Launcher session token is not valid, skipping auto-import");
                 return;
             }
@@ -721,8 +888,65 @@ public class SessionBridge {
         return "anon:" + System.identityHashCode(provider);
     }
 
+    private List<ClientProvider> resolveTrustedProvidersFromCapabilities(ServerCapabilities capabilities) {
+        if (capabilities == null) {
+            return Collections.emptyList();
+        }
+
+        List<ClientProvider> resolved = new ArrayList<>();
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+
+        Set<String> acceptedAuthUrls = new HashSet<>();
+        Set<String> acceptedAuthHosts = new HashSet<>();
+        for (String url : capabilities.getAcceptedAuthServerUrls()) {
+            String normalized = WawelPingPayload.normalizeUrl(url);
+            if (normalized != null) {
+                acceptedAuthUrls.add(normalized);
+                String host = extractHost(normalized);
+                if (host != null) {
+                    acceptedAuthHosts.add(host);
+                }
+            }
+        }
+
+        Set<String> acceptedProviderNames = new HashSet<>();
+        for (String providerName : capabilities.getAcceptedProviderNames()) {
+            if (providerName != null && !providerName.trim()
+                .isEmpty()) {
+                acceptedProviderNames.add(
+                    providerName.trim()
+                        .toLowerCase());
+            }
+        }
+
+        String localFingerprint = normalizeFingerprint(capabilities.getLocalAuthPublicKeyFingerprint());
+
+        if (providerDAO != null) {
+            for (ClientProvider provider : providerDAO.listAll()) {
+                String providerAuthUrl = WawelPingPayload.normalizeUrl(provider.getAuthServerUrl());
+                String providerFingerprint = normalizeFingerprint(provider.getPublicKeyFingerprint());
+                String providerName = provider.getName();
+                boolean matchedByHost = matchesAnyAcceptedHost(acceptedAuthHosts, extractHost(providerAuthUrl))
+                    || matchesAnyAcceptedHost(acceptedAuthHosts, extractHost(provider.getSessionServerUrl()))
+                    || matchesAnyAcceptedHost(acceptedAuthHosts, extractHost(provider.getApiRoot()));
+                boolean matchedByName = providerName != null && acceptedProviderNames.contains(
+                    providerName.trim()
+                        .toLowerCase());
+
+                if ((providerAuthUrl != null && acceptedAuthUrls.contains(providerAuthUrl)) || matchedByHost
+                    || (localFingerprint != null && localFingerprint.equals(providerFingerprint))
+                    || matchedByName) {
+                    addTrustedProvider(resolved, seen, provider);
+                }
+            }
+        }
+
+        addTrustedProvider(resolved, seen, buildEphemeralLocalProvider(capabilities));
+        return resolved.isEmpty() ? Collections.emptyList() : resolved;
+    }
+
     private static String resolveConnectedSessionServerBase(ServerCapabilities capabilities) {
-        if (capabilities == null || !capabilities.isWawelAuthAdvertised()) {
+        if (capabilities == null || !capabilities.isWawelAuthAdvertised() || !capabilities.isLocalAuthSupported()) {
             return null;
         }
         String apiRoot = WawelPingPayload.normalizeUrl(capabilities.getLocalAuthApiRoot());
@@ -882,10 +1106,111 @@ public class SessionBridge {
         }
     }
 
+    private static boolean isMojangProvider(ClientProvider provider) {
+        return provider != null && MOJANG_PROVIDER_NAME.equals(provider.getName());
+    }
+
+    private static boolean isUsableLauncherSession(Session session) {
+        if (session == null) {
+            return false;
+        }
+
+        String token = session.getToken();
+        return token != null && !token.isEmpty()
+            && !"NotValid".equals(token)
+            && !"0".equals(token)
+            && !"FML".equals(token);
+    }
+
     private static String normalizeFingerprint(String fingerprint) {
         if (fingerprint == null) return null;
         String trimmed = fingerprint.trim();
         return trimmed.isEmpty() ? null : trimmed.toLowerCase();
+    }
+
+    private PingProfileContext resolvePingProfileContext(UUID profileId) {
+        return resolvePingProfileContext(profileId, System.currentTimeMillis());
+    }
+
+    private PingProfileContext resolvePingProfileContext(UUID profileId, long nowMs) {
+        if (profileId == null) {
+            return null;
+        }
+
+        PingProfileContext context = pingProfileContexts.get(profileId);
+        if (context == null) {
+            return null;
+        }
+        if (nowMs - context.capturedAtMs > PING_PROFILE_CONTEXT_TTL_MS) {
+            pingProfileContexts.remove(profileId, context);
+            return null;
+        }
+        return context;
+    }
+
+    private void purgeExpiredPingProfileContexts(long nowMs) {
+        pingProfileContexts.entrySet()
+            .removeIf(entry -> nowMs - entry.getValue().capturedAtMs > PING_PROFILE_CONTEXT_TTL_MS);
+    }
+
+    private GameProfile lookupProfileFromMenuContext(LookupContext lookup, GameProfile profile, boolean requireSecure) {
+        if (lookup == null) {
+            return null;
+        }
+
+        if (lookup.sessionBase != null) {
+            return lookupProfileFromSessionBase(lookup.sessionBase, profile, requireSecure);
+        }
+
+        if (lookup.provider != null) {
+            return lookupProfileFromProvider(lookup.provider, profile, requireSecure);
+        }
+
+        return null;
+    }
+
+    private GameProfile lookupProfileFromSessionBase(String sessionBase, GameProfile profile, boolean requireSecure) {
+        String cacheKey = buildProfileCacheKey("server:" + sessionBase, profile.getId(), requireSecure);
+        GameProfile cached = profileCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        if (Minecraft.getMinecraft()
+            .func_152345_ab()) {
+            queueProfileFetchFromSessionBase(sessionBase, profile, requireSecure, cacheKey);
+            return profile;
+        }
+
+        GameProfile fetched = fetchProfileFromSessionServer(sessionBase, profile, requireSecure);
+        if (hasProperties(fetched)) {
+            String altKey = buildProfileCacheKey("server:" + sessionBase, profile.getId(), !requireSecure);
+            cacheFetchedProfile(cacheKey, altKey, fetched, requireSecure);
+            return fetched;
+        }
+
+        return null;
+    }
+
+    private GameProfile lookupProfileFromProvider(ClientProvider provider, GameProfile profile, boolean requireSecure) {
+        String cacheKey = buildProfileCacheKey(provider, profile.getId(), requireSecure);
+        GameProfile cached = profileCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        if (Minecraft.getMinecraft()
+            .func_152345_ab()) { // Minecraft.isCallingFromMinecraftThread
+            queueProfileFetch(provider, profile, requireSecure, cacheKey);
+            return profile;
+        }
+
+        GameProfile fetched = fetchProfileFromProvider(provider, profile, requireSecure);
+        if (hasProperties(fetched)) {
+            String altKey = buildProfileCacheKey(provider, profile.getId(), !requireSecure);
+            cacheFetchedProfile(cacheKey, altKey, fetched, requireSecure);
+        }
+        return fetched;
     }
 
     private void queueProfileFetch(ClientProvider provider, GameProfile profile, boolean requireSecure,
@@ -894,8 +1219,6 @@ public class SessionBridge {
             return;
         }
 
-        // Snapshot provider name to avoid caching stale results after server switches.
-        final String providerName = provider.getName();
         final UUID profileId = profile.getId();
         final String profileName = profile.getName();
 
@@ -904,12 +1227,8 @@ public class SessionBridge {
                 GameProfile probe = new GameProfile(profileId, profileName);
                 GameProfile fetched = fetchProfileFromProvider(provider, probe, requireSecure);
                 if (hasProperties(fetched)) {
-                    ClientProvider current = this.activeProvider;
-                    if (current != null && providerName.equals(current.getName())) {
-                        profileCache.put(cacheKey, fetched);
-                        String altKey = buildProfileCacheKey(provider, profileId, !requireSecure);
-                        profileCache.putIfAbsent(altKey, fetched);
-                    }
+                    String altKey = buildProfileCacheKey(provider, profileId, !requireSecure);
+                    cacheFetchedProfile(cacheKey, altKey, fetched, requireSecure);
                 }
             } catch (Exception e) {
                 WawelAuth.debug("Background profile fetch failed: " + e.getMessage());
@@ -934,15 +1253,8 @@ public class SessionBridge {
                 GameProfile probe = new GameProfile(profileId, profileName);
                 GameProfile fetched = fetchProfileFromSessionServer(sessionBaseSnapshot, probe, requireSecure);
                 if (hasProperties(fetched)) {
-                    String current = this.connectedSessionServerBase;
-                    if (current != null && current.equals(sessionBaseSnapshot)) {
-                        profileCache.put(cacheKey, fetched);
-                        String altKey = buildProfileCacheKey(
-                            "server:" + sessionBaseSnapshot,
-                            profileId,
-                            !requireSecure);
-                        profileCache.putIfAbsent(altKey, fetched);
-                    }
+                    String altKey = buildProfileCacheKey("server:" + sessionBaseSnapshot, profileId, !requireSecure);
+                    cacheFetchedProfile(cacheKey, altKey, fetched, requireSecure);
                 }
             } catch (Exception e) {
                 WawelAuth.debug("Background server profile fetch failed: " + e.getMessage());
@@ -969,9 +1281,79 @@ public class SessionBridge {
         return sourceKey + "|" + UuidUtil.toUnsigned(profileId) + "|" + (requireSecure ? "S" : "U");
     }
 
+    static void putFetchedProfileInCache(java.util.Map<String, GameProfile> cache, String cacheKey, String altKey,
+        GameProfile fetched, boolean requireSecure) {
+        if (cache == null || cacheKey == null || !hasProperties(fetched)) {
+            return;
+        }
+
+        cache.put(cacheKey, fetched);
+
+        // Signed properties are safe to reuse for unsigned lookups.
+        // Unsigned properties must never satisfy secure callers.
+        if (requireSecure && altKey != null) {
+            cache.putIfAbsent(altKey, fetched);
+        }
+    }
+
+    private void cacheFetchedProfile(String cacheKey, String altKey, GameProfile fetched, boolean requireSecure) {
+        putFetchedProfileInCache(profileCache, cacheKey, altKey, fetched, requireSecure);
+    }
+
     private static boolean hasProperties(GameProfile profile) {
         return profile != null && !profile.getProperties()
             .isEmpty();
+    }
+
+    private static final class PingProfileContext {
+
+        private final ServerCapabilities capabilities;
+        private final long capturedAtMs;
+
+        private PingProfileContext(ServerCapabilities capabilities, long capturedAtMs) {
+            this.capabilities = capabilities;
+            this.capturedAtMs = capturedAtMs;
+        }
+    }
+
+    public static class LookupContext {
+
+        private final String sessionBase;
+        private final ClientProvider provider;
+        private final List<ClientProvider> trustedProviders;
+        private final boolean allowVanillaFallback;
+
+        private LookupContext(String sessionBase, ClientProvider provider, List<ClientProvider> trustedProviders,
+            boolean allowVanillaFallback) {
+            this.sessionBase = sessionBase;
+            this.provider = provider;
+            this.trustedProviders = trustedProviders != null ? trustedProviders : Collections.emptyList();
+            this.allowVanillaFallback = allowVanillaFallback;
+        }
+
+        public String getSessionBase() {
+            return sessionBase;
+        }
+
+        public ClientProvider getProvider() {
+            return provider;
+        }
+
+        public List<ClientProvider> getTrustedProviders() {
+            return trustedProviders;
+        }
+
+        public boolean isVanillaFallbackAllowed() {
+            return allowVanillaFallback;
+        }
+    }
+
+    private static final class MenuProfileLookupContext extends LookupContext {
+
+        private MenuProfileLookupContext(String sessionBase, ClientProvider provider,
+            List<ClientProvider> trustedProviders, boolean allowVanillaFallback) {
+            super(sessionBase, provider, trustedProviders, allowVanillaFallback);
+        }
     }
 
     private GameProfile fetchProfileFromProvider(ClientProvider provider, GameProfile profile, boolean requireSecure) {
@@ -991,7 +1373,7 @@ public class SessionBridge {
                 return null; // Mojang: fall through to vanilla (same endpoint)
             }
             // Non-Mojang: re-throw so the exception propagates through the mixin
-            // (prevents vanilla fallthrough) and callers like TabFaces see null → retry.
+            // (prevents vanilla fallthrough) and callers see failure → retry.
             throw new RuntimeException("Provider profile fetch failed: " + provider.getName(), e);
         }
     }
