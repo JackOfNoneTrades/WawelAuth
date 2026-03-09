@@ -2,7 +2,9 @@ package org.fentanylsolutions.wawelauth.client.render.skinlayers;
 
 import java.awt.image.BufferedImage;
 import java.util.List;
-import java.util.WeakHashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.AbstractClientPlayer;
@@ -11,10 +13,12 @@ import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.api.SkinRequest;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelBuilder;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelCube;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelSurfaceBuilder;
 import org.fentanylsolutions.wawelauth.mixins.early.minecraft.AccessorThreadDownloadImageData;
+import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
 import com.mojang.authlib.GameProfile;
 
@@ -25,7 +29,7 @@ import com.mojang.authlib.GameProfile;
 public class SkinLayers3DSetup {
 
     /** Cache for skull meshes keyed by GameProfile. */
-    private static final WeakHashMap<GameProfile, SkullMeshCache> skullCache = new WeakHashMap<GameProfile, SkullMeshCache>();
+    public static final Map<UUID, SkullMeshCache> skullCache = new ConcurrentHashMap<>();
 
     /**
      * Create or update 3D skin layer meshes for a player.
@@ -37,10 +41,13 @@ public class SkinLayers3DSetup {
      */
     public static SkinLayers3DState createOrUpdate(AbstractClientPlayer player, SkinLayers3DState existing,
         boolean slim) {
-        ResourceLocation skinLocation = player.getLocationSkin();
-        if (skinLocation == null) {
-            return null;
-        }
+
+        WawelClient client = WawelClient.instance();
+        if (client == null) return null;
+
+        ResourceLocation skinLocation = client.getSkinResolver()
+            .getSkin(player.getUniqueID(), player.getDisplayName(), SkinRequest.DEFAULT);
+        if (skinLocation == null) return null;
 
         // Check if skin hasn't changed and slim matches
         if (existing != null && existing.initialized
@@ -123,7 +130,7 @@ public class SkinLayers3DSetup {
     public static SkinLayers3DMesh getOrCreateSkullMesh(GameProfile profile, ResourceLocation skinLocation) {
         if (profile == null || skinLocation == null) return null;
 
-        SkullMeshCache cached = skullCache.get(profile);
+        SkullMeshCache cached = skullCache.get(profile.getId());
         if (cached != null) {
             if (skinLocation.equals(cached.skinLocation)) {
                 return cached.mesh;
@@ -142,7 +149,7 @@ public class SkinLayers3DSetup {
         try {
             SkinLayers3DSkinData skinData = new SkinLayers3DSkinData(skinImage);
             SkinLayers3DMesh mesh = buildMesh(skinData, 8, 8, 8, 32, 0, false, 0.6f);
-            skullCache.put(profile, new SkullMeshCache(skinLocation, mesh));
+            skullCache.put(profile.getId(), new SkullMeshCache(skinLocation, mesh));
             return mesh;
         } catch (Exception e) {
             WawelAuth.LOG.error("Failed to build 3D skull hat mesh", e);
@@ -178,7 +185,7 @@ public class SkinLayers3DSetup {
         return null;
     }
 
-    private static class SkullMeshCache {
+    public static class SkullMeshCache {
 
         final ResourceLocation skinLocation;
         final SkinLayers3DMesh mesh;

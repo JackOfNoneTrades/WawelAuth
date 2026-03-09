@@ -1,17 +1,15 @@
 package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 
-import java.util.Map;
-
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.model.ModelSkeletonHead;
 import net.minecraft.client.renderer.tileentity.TileEntitySkullRenderer;
-import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
 
+import org.fentanylsolutions.wawelauth.api.SkinRequest;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DMesh;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,9 +20,8 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.llamalad7.mixinextras.sugar.Local;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
 
 /**
  * Renders 3D hat layer on player skull blocks/items.
@@ -61,7 +58,7 @@ public class MixinTileEntitySkullRenderer {
         if (!SkinLayers3DConfig.enabled || !SkinLayers3DConfig.enableSkulls) return;
         if (skullType != 3 || profile == null) return; // 3 = player skull
 
-        // Get the player's skin texture location (same lookup vanilla uses)
+        // Get the player's skin texture location
         ResourceLocation skinLocation = wawelauth$getSkinForProfile(profile);
         if (skinLocation == null) return;
 
@@ -87,19 +84,28 @@ public class MixinTileEntitySkullRenderer {
         GL11.glDisable(GL11.GL_BLEND);
     }
 
+    @Inject(
+        method = "func_152674_a",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/tileentity/TileEntitySkullRenderer;bindTexture(Lnet/minecraft/util/ResourceLocation;)V",
+            ordinal = 3,
+            shift = At.Shift.BEFORE))
+    private void wawelauth$replaceSkin(float x, float y, float z, int facing, float rotation, int skullType,
+        GameProfile profile, CallbackInfo ci, @Local LocalRef<ResourceLocation> resourcelocation) {
+        resourcelocation.set(wawelauth$getSkinForProfile(profile));
+    }
+
     /**
-     * Resolve the skin ResourceLocation for a GameProfile, matching the vanilla
-     * skull renderer's lookup path through the SkinManager.
+     * Resolve the skin ResourceLocation for a GameProfile.
      */
     @Unique
-    @SuppressWarnings("unchecked")
     private static ResourceLocation wawelauth$getSkinForProfile(GameProfile profile) {
-        SkinManager skinManager = Minecraft.getMinecraft()
-            .func_152342_ad();
-        Map<Type, MinecraftProfileTexture> textures = skinManager.func_152788_a(profile);
-        if (textures.containsKey(Type.SKIN)) {
-            return skinManager.func_152792_a(textures.get(Type.SKIN), Type.SKIN);
-        }
-        return null;
+        WawelClient client = WawelClient.instance();
+        if (client == null) return null;
+
+        return client.getSkinResolver()
+            .getSkin(profile.getId(), profile.getName(), SkinRequest.DEFAULT);
     }
+
 }
