@@ -1,13 +1,8 @@
 package org.fentanylsolutions.wawelauth.core;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.fentanylsolutions.fentlib.core.FentMixins;
 import org.fentanylsolutions.fentlib.util.MiscUtil;
 import org.fentanylsolutions.fentlib.util.MixinUtil;
-
-import cpw.mods.fml.common.Loader;
 
 public class Mixins extends FentMixins {
 
@@ -149,6 +144,19 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.LATE)
             .side(MiscUtil.Side.CLIENT)
             .build();
+
+        registry.mixin("MixinDynmapForgePlayer")
+            .modid("dynmap")
+            .extraModid("gtnh-web-map")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinDynmapLoadPlayerImages")
+            .modid("dynmap")
+            .extraModid("gtnh-web-map")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
     }
 
     public static java.util.List<String> getEarlyMixinsForLoader() {
@@ -156,33 +164,6 @@ public class Mixins extends FentMixins {
     }
 
     public static java.util.List<String> getLateMixinsForLoader(java.util.Set<String> loadedCoreMods) {
-        List<String> mixins = new ArrayList<>(INSTANCE.getLateMixins(loadedCoreMods));
-        if (shouldLoadDynmapMixins(loadedCoreMods)) {
-            mixins.add("dynmap.MixinDynmapForgePlayer");
-            mixins.add("dynmap.MixinDynmapLoadPlayerImages");
-        }
-        return mixins;
-    }
-
-    private static boolean shouldLoadDynmapMixins(java.util.Set<String> loadedCoreMods) {
-        if (!MiscUtil.isServer()) {
-            return false;
-        }
-
-        if (loadedCoreMods != null && (loadedCoreMods.contains("gtnh-web-map") || loadedCoreMods.contains("dynmap")
-            || loadedCoreMods.contains("org.dynmap.forge.DynmapPlugin"))) {
-            return true;
-        }
-
-        if (Loader.isModLoaded("gtnh-web-map") || Loader.isModLoaded("dynmap")) {
-            return true;
-        }
-
-        try {
-            Class.forName("org.dynmap.PlayerFaces", false, Mixins.class.getClassLoader());
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
+        return INSTANCE.getLateMixins(loadedCoreMods);
     }
 }
