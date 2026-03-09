@@ -73,7 +73,8 @@ public class MixinTileEntitySkullRenderer {
         float scale = 1.0F / 16.0F;
         float voxelSize = SkinLayers3DConfig.skullVoxelSize;
 
-        // Enable alpha blending for semi-transparent pixels
+        // Save and restore GL state to prevent leaking blend/color into subsequent rendering
+        GL11.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -81,7 +82,7 @@ public class MixinTileEntitySkullRenderer {
         hatMesh.setRotation(head.rotateAngleX, head.rotateAngleY, head.rotateAngleZ);
         hatMesh.render(scale, voxelSize);
 
-        GL11.glDisable(GL11.GL_BLEND);
+        GL11.glPopAttrib();
     }
 
     @Inject(

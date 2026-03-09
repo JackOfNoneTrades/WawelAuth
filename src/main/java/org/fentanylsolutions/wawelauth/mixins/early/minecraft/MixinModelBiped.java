@@ -256,6 +256,8 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
 
         SkinLayers3DState state3d = this.wawelauth$skinLayers3D;
         if (SkinLayers3DConfig.enabled && state3d != null && state3d.initialized) {
+            org.lwjgl.opengl.GL11
+                .glPushAttrib(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT | org.lwjgl.opengl.GL11.GL_CURRENT_BIT);
             org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_BLEND);
             org.lwjgl.opengl.GL11
                 .glBlendFunc(org.lwjgl.opengl.GL11.GL_SRC_ALPHA, org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA);
@@ -265,7 +267,7 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
                 scale,
                 SkinLayers3DConfig.enableRightSleeve,
                 LAYER_PART_RIGHT_ARM);
-            org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_BLEND);
+            org.lwjgl.opengl.GL11.glPopAttrib();
         } else if (this.wawelauth$rightArmWear != null) {
             this.wawelauth$rightArmWear.render(scale);
         }
@@ -346,7 +348,9 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     private void wawelauth$renderAllOverlays(float scaleFactor) {
         SkinLayers3DState state3d = this.wawelauth$skinLayers3D;
         if (SkinLayers3DConfig.enabled && state3d != null && state3d.initialized) {
-            // Enable alpha blending for semi-transparent overlay pixels
+            // Save GL state to prevent leaking blend/color into subsequent rendering (e.g. boss bars)
+            org.lwjgl.opengl.GL11
+                .glPushAttrib(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT | org.lwjgl.opengl.GL11.GL_CURRENT_BIT);
             org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_BLEND);
             org.lwjgl.opengl.GL11
                 .glBlendFunc(org.lwjgl.opengl.GL11.GL_SRC_ALPHA, org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA);
@@ -389,7 +393,7 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
                 SkinLayers3DConfig.enableLeftPants,
                 LAYER_PART_LEFT_LEG);
 
-            org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_BLEND);
+            org.lwjgl.opengl.GL11.glPopAttrib();
         } else {
             // Fall back to standard 2D overlay rendering.
             // Note: bipedHeadwear is NOT rendered here: vanilla ModelBiped.render() already handles it.
