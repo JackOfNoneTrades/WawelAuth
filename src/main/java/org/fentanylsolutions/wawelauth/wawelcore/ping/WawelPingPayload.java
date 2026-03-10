@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
@@ -33,6 +34,13 @@ public final class WawelPingPayload {
     public static final String KEY_LOCAL_AUTH_PUBLIC_KEY_FINGERPRINT = "localAuthPublicKeyFingerprint";
     public static final String KEY_LOCAL_AUTH_PUBLIC_KEY_BASE64 = "localAuthPublicKeyBase64";
     public static final String KEY_LOCAL_AUTH_SKIN_DOMAINS = "localAuthSkinDomains";
+    public static final String KEY_ACCEPTED_PROVIDER_DESCRIPTORS = "acceptedProviderDescriptors";
+    public static final String KEY_PROVIDER_NAME = "name";
+    public static final String KEY_PROVIDER_API_ROOT = "apiRoot";
+    public static final String KEY_PROVIDER_AUTH_SERVER_URL = "authServerUrl";
+    public static final String KEY_PROVIDER_SESSION_SERVER_URL = "sessionServerUrl";
+    public static final String KEY_PROVIDER_SERVICES_URL = "servicesUrl";
+    public static final String KEY_PROVIDER_SKIN_DOMAINS = "skinDomains";
 
     private WawelPingPayload() {}
 
@@ -49,6 +57,7 @@ public final class WawelPingPayload {
             payload.addProperty(KEY_LOCAL_AUTH_SUPPORTED, false);
             payload.add(KEY_ACCEPTED_AUTH_SERVER_URLS, new JsonArray());
             payload.add(KEY_LOCAL_AUTH_SKIN_DOMAINS, new JsonArray());
+            payload.add(KEY_ACCEPTED_PROVIDER_DESCRIPTORS, new JsonArray());
             return payload;
         }
 
@@ -74,6 +83,7 @@ public final class WawelPingPayload {
         }
 
         LinkedHashSet<String> authServerUrls = new LinkedHashSet<>();
+        JsonArray providerDescriptors = new JsonArray();
 
         if (yggdrasilEnabled) {
             if (apiRoot != null) {
@@ -88,9 +98,15 @@ public final class WawelPingPayload {
             if (accountUrl != null) {
                 authServerUrls.add(accountUrl);
             }
+
+            JsonObject descriptor = buildAcceptedProviderDescriptor(fallback);
+            if (descriptor != null) {
+                providerDescriptors.add(descriptor);
+            }
         }
 
         payload.add(KEY_ACCEPTED_AUTH_SERVER_URLS, toJsonArray(authServerUrls));
+        payload.add(KEY_ACCEPTED_PROVIDER_DESCRIPTORS, providerDescriptors);
         return payload;
     }
 
@@ -170,6 +186,90 @@ public final class WawelPingPayload {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private static JsonObject buildAcceptedProviderDescriptor(FallbackServer fallback) {
+        if (fallback == null) {
+            return null;
+        }
+
+        String authUrl = resolveFallbackAuthUrl(fallback);
+        String sessionUrl = normalizeUrl(fallback.getSessionServerUrl());
+        String servicesUrl = normalizeUrl(fallback.getServicesUrl());
+        String apiRoot = deriveApiRoot(authUrl, sessionUrl, servicesUrl);
+        Set<String> skinDomains = collectFallbackSkinDomains(fallback, authUrl, sessionUrl, servicesUrl);
+
+        if (authUrl == null && sessionUrl == null && servicesUrl == null && apiRoot == null && skinDomains.isEmpty()) {
+            return null;
+        }
+
+        JsonObject descriptor = new JsonObject();
+        String name = trimToNull(fallback.getName());
+        if (name != null) {
+            descriptor.addProperty(KEY_PROVIDER_NAME, name);
+        }
+        if (apiRoot != null) {
+            descriptor.addProperty(KEY_PROVIDER_API_ROOT, apiRoot);
+        }
+        if (authUrl != null) {
+            descriptor.addProperty(KEY_PROVIDER_AUTH_SERVER_URL, authUrl);
+        }
+        if (sessionUrl != null) {
+            descriptor.addProperty(KEY_PROVIDER_SESSION_SERVER_URL, sessionUrl);
+        }
+        if (servicesUrl != null) {
+            descriptor.addProperty(KEY_PROVIDER_SERVICES_URL, servicesUrl);
+        }
+        descriptor.add(KEY_PROVIDER_SKIN_DOMAINS, toJsonArray(skinDomains));
+        return descriptor;
+    }
+
+    private static Set<String> collectFallbackSkinDomains(FallbackServer fallback, String authUrl, String sessionUrl,
+        String servicesUrl) {
+        LinkedHashSet<String> domains = new LinkedHashSet<>();
+        if (fallback != null) {
+            for (String domain : fallback.getSkinDomains()) {
+                String normalized = trimToNull(domain);
+                if (normalized != null) {
+                    domains.add(normalized);
+                }
+            }
+        }
+        addHost(domains, authUrl);
+        addHost(domains, sessionUrl);
+        addHost(domains, servicesUrl);
+        return domains;
+    }
+
+    private static void addHost(Set<String> domains, String rawUrl) {
+        String host = extractHost(rawUrl);
+        if (host != null) {
+            domains.add(host);
+        }
+    }
+
+    private static String extractHost(String rawUrl) {
+        if (rawUrl == null) return null;
+        try {
+            URI uri = URI.create(rawUrl);
+            String host = uri.getHost();
+            return host == null ? null : host.toLowerCase();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String deriveApiRoot(String authUrl, String sessionUrl, String servicesUrl) {
+        if (servicesUrl != null) {
+            return servicesUrl;
+        }
+        if (authUrl != null && authUrl.endsWith("/authserver")) {
+            return authUrl.substring(0, authUrl.length() - "/authserver".length());
+        }
+        if (sessionUrl != null && sessionUrl.endsWith("/sessionserver")) {
+            return sessionUrl.substring(0, sessionUrl.length() - "/sessionserver".length());
+        }
+        return null;
     }
 
     private static JsonArray toJsonArray(Iterable<String> values) {

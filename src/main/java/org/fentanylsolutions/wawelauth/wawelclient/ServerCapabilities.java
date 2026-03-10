@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.fentanylsolutions.wawelauth.wawelcore.ping.WawelPingPayload;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 /**
@@ -22,13 +24,14 @@ public final class ServerCapabilities {
     private final List<String> localAuthSkinDomains;
     private final List<String> acceptedProviderNames;
     private final List<String> acceptedAuthServerUrls;
+    private final List<AcceptedProviderDescriptor> acceptedProviders;
     private final long updatedAtMs;
     private final String rawPayloadJson;
 
     private ServerCapabilities(boolean wawelAuthAdvertised, boolean localAuthSupported, String localAuthApiRoot,
         String localAuthPublicKeyFingerprint, String localAuthPublicKeyBase64, List<String> localAuthSkinDomains,
-        List<String> acceptedProviderNames, List<String> acceptedAuthServerUrls, long updatedAtMs,
-        String rawPayloadJson) {
+        List<String> acceptedProviderNames, List<String> acceptedAuthServerUrls,
+        List<AcceptedProviderDescriptor> acceptedProviders, long updatedAtMs, String rawPayloadJson) {
         this.wawelAuthAdvertised = wawelAuthAdvertised;
         this.localAuthSupported = localAuthSupported;
         this.localAuthApiRoot = localAuthApiRoot;
@@ -37,6 +40,7 @@ public final class ServerCapabilities {
         this.localAuthSkinDomains = localAuthSkinDomains;
         this.acceptedProviderNames = acceptedProviderNames;
         this.acceptedAuthServerUrls = acceptedAuthServerUrls;
+        this.acceptedProviders = acceptedProviders;
         this.updatedAtMs = updatedAtMs;
         this.rawPayloadJson = rawPayloadJson;
     }
@@ -48,6 +52,7 @@ public final class ServerCapabilities {
             null,
             null,
             null,
+            Collections.emptyList(),
             Collections.emptyList(),
             Collections.emptyList(),
             Collections.emptyList(),
@@ -66,6 +71,7 @@ public final class ServerCapabilities {
             null,
             null,
             null,
+            Collections.emptyList(),
             Collections.emptyList(),
             Collections.emptyList(),
             Collections.emptyList(),
@@ -95,6 +101,7 @@ public final class ServerCapabilities {
             getString(payload, WawelPingPayload.KEY_LOCAL_AUTH_PUBLIC_KEY_BASE64));
         List<String> localSkinDomains = toUnmodifiableCopy(
             WawelPingPayload.parseStringArray(payload, WawelPingPayload.KEY_LOCAL_AUTH_SKIN_DOMAINS));
+        List<AcceptedProviderDescriptor> acceptedProviders = parseAcceptedProviders(payload);
 
         boolean localDescriptorComplete = localApiRoot != null && localFingerprint != null;
         if (!localDescriptorComplete) {
@@ -110,6 +117,7 @@ public final class ServerCapabilities {
             localSkinDomains,
             names,
             urls,
+            acceptedProviders,
             nowMs,
             payload == null ? null : payload.toString());
     }
@@ -151,6 +159,10 @@ public final class ServerCapabilities {
 
     public List<String> getAcceptedAuthServerUrls() {
         return acceptedAuthServerUrls;
+    }
+
+    public List<AcceptedProviderDescriptor> getAcceptedProviders() {
+        return acceptedProviders;
     }
 
     public long getUpdatedAtMs() {
@@ -197,5 +209,79 @@ public final class ServerCapabilities {
     private static String normalizeFingerprint(String value) {
         String normalized = normalizeString(value);
         return normalized == null ? null : normalized.toLowerCase();
+    }
+
+    private static List<AcceptedProviderDescriptor> parseAcceptedProviders(JsonObject payload) {
+        if (payload == null || !payload.has(WawelPingPayload.KEY_ACCEPTED_PROVIDER_DESCRIPTORS)
+            || !payload.get(WawelPingPayload.KEY_ACCEPTED_PROVIDER_DESCRIPTORS)
+                .isJsonArray()) {
+            return Collections.emptyList();
+        }
+
+        JsonArray array = payload.getAsJsonArray(WawelPingPayload.KEY_ACCEPTED_PROVIDER_DESCRIPTORS);
+        List<AcceptedProviderDescriptor> providers = new ArrayList<>();
+        for (JsonElement element : array) {
+            if (element == null || !element.isJsonObject()) {
+                continue;
+            }
+
+            JsonObject obj = element.getAsJsonObject();
+            List<String> skinDomains = toUnmodifiableCopy(
+                WawelPingPayload.parseStringArray(obj, WawelPingPayload.KEY_PROVIDER_SKIN_DOMAINS));
+            providers.add(
+                new AcceptedProviderDescriptor(
+                    normalizeString(getString(obj, WawelPingPayload.KEY_PROVIDER_NAME)),
+                    WawelPingPayload.normalizeUrl(getString(obj, WawelPingPayload.KEY_PROVIDER_API_ROOT)),
+                    WawelPingPayload.normalizeUrl(getString(obj, WawelPingPayload.KEY_PROVIDER_AUTH_SERVER_URL)),
+                    WawelPingPayload.normalizeUrl(getString(obj, WawelPingPayload.KEY_PROVIDER_SESSION_SERVER_URL)),
+                    WawelPingPayload.normalizeUrl(getString(obj, WawelPingPayload.KEY_PROVIDER_SERVICES_URL)),
+                    skinDomains));
+        }
+
+        return providers.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(providers);
+    }
+
+    public static final class AcceptedProviderDescriptor {
+
+        private final String name;
+        private final String apiRoot;
+        private final String authServerUrl;
+        private final String sessionServerUrl;
+        private final String servicesUrl;
+        private final List<String> skinDomains;
+
+        private AcceptedProviderDescriptor(String name, String apiRoot, String authServerUrl, String sessionServerUrl,
+            String servicesUrl, List<String> skinDomains) {
+            this.name = name;
+            this.apiRoot = apiRoot;
+            this.authServerUrl = authServerUrl;
+            this.sessionServerUrl = sessionServerUrl;
+            this.servicesUrl = servicesUrl;
+            this.skinDomains = skinDomains != null ? skinDomains : Collections.emptyList();
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getApiRoot() {
+            return apiRoot;
+        }
+
+        public String getAuthServerUrl() {
+            return authServerUrl;
+        }
+
+        public String getSessionServerUrl() {
+            return sessionServerUrl;
+        }
+
+        public String getServicesUrl() {
+            return servicesUrl;
+        }
+
+        public List<String> getSkinDomains() {
+            return skinDomains;
+        }
     }
 }

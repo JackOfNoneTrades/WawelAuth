@@ -50,12 +50,14 @@ public class MixinNetHandlerPlayClientJoinSync {
         }
 
         WawelAuth.LOG.info(
-            "[JoinSync] Received {} from {} (advertised={}, localAuth={}, authUrls={}, skinDomains={})",
+            "[JoinSync] Received {} from {} (advertised={}, localAuth={}, authUrls={}, fallbackProviders={}, skinDomains={})",
             WawelCapabilitySyncPayload.CHANNEL,
             serverLabel,
             capabilities.isWawelAuthAdvertised(),
             capabilities.isLocalAuthSupported(),
             capabilities.getAcceptedAuthServerUrls()
+                .size(),
+            capabilities.getAcceptedProviders()
                 .size(),
             capabilities.getLocalAuthSkinDomains()
                 .size());

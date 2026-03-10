@@ -968,6 +968,9 @@ public class SessionBridge {
         }
 
         addTrustedProvider(resolved, seen, buildEphemeralLocalProvider(capabilities));
+        for (ClientProvider provider : buildEphemeralAcceptedProviders(capabilities)) {
+            addTrustedProvider(resolved, seen, provider);
+        }
         return resolved.isEmpty() ? Collections.emptyList() : resolved;
     }
 
@@ -1076,6 +1079,59 @@ public class SessionBridge {
         }
 
         return provider;
+    }
+
+    private static List<ClientProvider> buildEphemeralAcceptedProviders(ServerCapabilities capabilities) {
+        if (capabilities == null || capabilities.getAcceptedProviders()
+            .isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ClientProvider> providers = new ArrayList<>();
+        String localAuthUrl = null;
+        String localApiRoot = WawelPingPayload.normalizeUrl(capabilities.getLocalAuthApiRoot());
+        if (localApiRoot != null) {
+            localAuthUrl = localApiRoot + "/authserver";
+        }
+
+        for (ServerCapabilities.AcceptedProviderDescriptor descriptor : capabilities.getAcceptedProviders()) {
+            if (descriptor == null) {
+                continue;
+            }
+
+            String authUrl = WawelPingPayload.normalizeUrl(descriptor.getAuthServerUrl());
+            if (authUrl != null && authUrl.equals(localAuthUrl)) {
+                continue;
+            }
+
+            ClientProvider provider = new ClientProvider();
+            provider.setApiRoot(WawelPingPayload.normalizeUrl(descriptor.getApiRoot()));
+            provider.setAuthServerUrl(authUrl);
+            provider.setSessionServerUrl(WawelPingPayload.normalizeUrl(descriptor.getSessionServerUrl()));
+            provider.setServicesUrl(WawelPingPayload.normalizeUrl(descriptor.getServicesUrl()));
+            provider.setManualEntry(false);
+
+            List<String> skinDomains = descriptor.getSkinDomains();
+            if (skinDomains != null && !skinDomains.isEmpty()) {
+                JsonArray arr = new JsonArray();
+                for (String domain : skinDomains) {
+                    if (domain == null) {
+                        continue;
+                    }
+                    String trimmed = domain.trim();
+                    if (!trimmed.isEmpty()) {
+                        arr.add(new JsonPrimitive(trimmed));
+                    }
+                }
+                if (arr.size() > 0) {
+                    provider.setSkinDomains(arr.toString());
+                }
+            }
+
+            providers.add(provider);
+        }
+
+        return providers;
     }
 
     private static List<PublicKey> parsePublicKeys(List<ClientProvider> providers) {
