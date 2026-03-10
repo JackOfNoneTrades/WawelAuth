@@ -58,7 +58,7 @@ public class FaceWidget extends Widget<FaceWidget> {
                     .getSkin(profileUuid, displayName, SkinRequest.DEFAULT);
             }
         } else {
-            skin = WawelSkinResolver.STEVE;
+            skin = WawelSkinResolver.getDefaultSkin();
         }
 
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);

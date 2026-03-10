@@ -70,12 +70,12 @@ public abstract class MixinPlayerHeadIcon extends ImageIcon {
     private ResourceLocation wawelauth$resolveSkin() {
         UUID profileUuid = wawelauth$resolveProfileUuid();
         if (profileUuid == null) {
-            return WawelSkinResolver.STEVE;
+            return WawelSkinResolver.getDefaultSkin();
         }
 
         WawelClient client = WawelClient.instance();
         if (client == null) {
-            return WawelSkinResolver.STEVE;
+            return WawelSkinResolver.getDefaultSkin();
         }
 
         return client.getSkinResolver()

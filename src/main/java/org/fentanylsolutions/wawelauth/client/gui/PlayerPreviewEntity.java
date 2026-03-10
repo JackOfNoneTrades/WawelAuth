@@ -32,7 +32,6 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class PlayerPreviewEntity extends EntityOtherPlayerMP implements ISkinModelOverride {
 
-    private static final ResourceLocation STEVE_SKIN = WawelSkinResolver.STEVE;
     private static final AtomicLong REQUEST_COUNTER = new AtomicLong(0);
     private static final AtomicLong ENTITY_COUNTER = new AtomicLong(0);
 
@@ -280,7 +279,11 @@ public class PlayerPreviewEntity extends EntityOtherPlayerMP implements ISkinMod
         }
 
         IImageBuffer buffer = useSkinBuffer ? new ImageBufferDownload() : null;
-        ThreadDownloadImageData texture = new ThreadDownloadImageData(null, url, STEVE_SKIN, buffer);
+        ThreadDownloadImageData texture = new ThreadDownloadImageData(
+            null,
+            url,
+            WawelSkinResolver.getDefaultSkin(),
+            buffer);
 
         texMgr.loadTexture(location, texture);
         WawelAuth.debug("Loading texture from " + url + " at " + location);

@@ -271,7 +271,7 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
     private ResourceLocation wawelauth$resolveTooltipSkin() {
         WawelClient client = WawelClient.instance();
         if (client == null || this.wawelauth$tooltipProfileUuid == null) {
-            return WawelSkinResolver.STEVE;
+            return WawelSkinResolver.getDefaultSkin();
         }
 
         String displayName = this.wawelauth$tooltipDisplayName != null ? this.wawelauth$tooltipDisplayName : "?";

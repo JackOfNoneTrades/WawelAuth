@@ -26,6 +26,7 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.client.render.SkinTextureState;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
@@ -75,7 +76,12 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class WawelSkinResolver {
 
-    public static final ResourceLocation STEVE = new ResourceLocation("wawelauth", "textures/steve_64.png");
+    public static final ResourceLocation LEGACY_STEVE = new ResourceLocation("textures/entity/steve.png");
+    public static final ResourceLocation MODERN_STEVE = new ResourceLocation("wawelauth", "textures/steve_64.png");
+
+    public static ResourceLocation getDefaultSkin() {
+        return SkinLayers3DConfig.modernSkinSupport ? MODERN_STEVE : LEGACY_STEVE;
+    }
 
     // =========================================================================
     // Static face drawing API
@@ -114,7 +120,7 @@ public class WawelSkinResolver {
      * @param alpha  opacity (0.0 = transparent, 1.0 = opaque)
      */
     public static void drawFace(ResourceLocation skin, float x, float y, int width, int height, float alpha) {
-        if (skin == null) skin = STEVE;
+        if (skin == null) skin = getDefaultSkin();
 
         Minecraft.getMinecraft()
             .getTextureManager()
@@ -214,7 +220,7 @@ public class WawelSkinResolver {
      * @return a {@link ResourceLocation} ready for rendering, never null
      */
     public ResourceLocation getSkin(UUID profileId, String displayName, SkinRequest request) {
-        if (profileId == null) return STEVE;
+        if (profileId == null) return getDefaultSkin();
         return getSkinInternal(new LookupHint(buildCacheKey("auto", profileId), null), profileId, displayName, request);
     }
 
@@ -225,7 +231,7 @@ public class WawelSkinResolver {
      * provider that happens to share the same UUID.
      */
     public ResourceLocation getSkin(UUID profileId, String displayName, String providerName, SkinRequest request) {
-        if (profileId == null) return STEVE;
+        if (profileId == null) return getDefaultSkin();
         SessionBridge.LookupContext lookupContext = sessionBridge.createProviderLookupContext(providerName, false);
         return getSkinInternal(
             new LookupHint(buildCacheKey(buildProviderScope(providerName), profileId), lookupContext),
@@ -247,7 +253,7 @@ public class WawelSkinResolver {
      * @return a {@link ResourceLocation} ready for rendering, never null
      */
     public ResourceLocation getSkin(UUID profileId, String displayName, ServerData serverEntry, SkinRequest request) {
-        if (profileId == null) return STEVE;
+        if (profileId == null) return getDefaultSkin();
 
         ServerCapabilities caps = null;
         if (serverEntry instanceof IServerDataExt) {
@@ -297,7 +303,7 @@ public class WawelSkinResolver {
      */
     public ResourceLocation getSkin(UUID profileId, String displayName, PublicKey providerKey, String sessionServerBase,
         Iterable<String> skinDomains, SkinRequest request) {
-        if (profileId == null) return STEVE;
+        if (profileId == null) return getDefaultSkin();
 
         ClientProvider explicitProvider = buildEphemeralProvider(providerKey, sessionServerBase, skinDomains);
         SessionBridge.LookupContext lookupContext = sessionBridge.createProviderLookupContext(explicitProvider, false);
@@ -362,17 +368,17 @@ public class WawelSkinResolver {
                     if (!entry.isExpired() && hasUsableRegisteredTexture(entry.skinLocation)) {
                         return entry.skinLocation;
                     }
-                    entry.skinLocation = STEVE;
+                    entry.skinLocation = getDefaultSkin();
                     entry.state = FetchState.PENDING;
                     break;
                 case FETCHING:
-                    return entry.skinLocation != null ? entry.skinLocation : STEVE;
+                    return entry.skinLocation != null ? entry.skinLocation : getDefaultSkin();
                 case PLACEHOLDER:
                 case FAILED:
                     if (entry.shouldRetry()) {
                         entry.state = FetchState.PENDING;
                     } else {
-                        return STEVE;
+                        return getDefaultSkin();
                     }
                     break;
                 default:
@@ -393,7 +399,7 @@ public class WawelSkinResolver {
             submitFetch(entry);
         }
 
-        return entry.skinLocation != null ? entry.skinLocation : STEVE;
+        return entry.skinLocation != null ? entry.skinLocation : getDefaultSkin();
     }
 
     private void submitFetch(SkinEntry entry) {
@@ -428,7 +434,7 @@ public class WawelSkinResolver {
 
         if (!allowVanilla && !sessionBridge.hasProviderForProfile(profileId, lookupContext)) {
             entry.state = FetchState.PLACEHOLDER;
-            entry.skinLocation = STEVE;
+            entry.skinLocation = getDefaultSkin();
             entry.lastAttemptMs = System.currentTimeMillis();
             return;
         }
@@ -466,7 +472,7 @@ public class WawelSkinResolver {
         if (textures == null || !textures.containsKey(MinecraftProfileTexture.Type.SKIN)) {
             // Profile exists but has no skin texture
             entry.state = FetchState.PLACEHOLDER;
-            entry.skinLocation = STEVE;
+            entry.skinLocation = getDefaultSkin();
             entry.lastAttemptMs = System.currentTimeMillis();
             return;
         }
@@ -501,7 +507,7 @@ public class WawelSkinResolver {
         entry.lastAttemptMs = System.currentTimeMillis();
         entry.state = entry.retryCount >= MAX_RETRIES ? FetchState.FAILED : FetchState.PLACEHOLDER;
         if (entry.skinLocation == null) {
-            entry.skinLocation = STEVE;
+            entry.skinLocation = getDefaultSkin();
         }
     }
 
