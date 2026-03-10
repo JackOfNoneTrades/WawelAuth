@@ -3,6 +3,7 @@ package org.fentanylsolutions.wawelauth.wawelserver;
 import java.util.UUID;
 
 import org.fentanylsolutions.wawelauth.Config;
+import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.data.PendingSession;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
@@ -19,6 +20,8 @@ import com.google.gson.JsonObject;
  * Implements the join/hasJoined session handshake endpoints.
  */
 public class SessionService {
+
+    private static final String WAWELAUTH_CLIENT_MARKER = "wawelauth_client";
 
     private final TokenDAO tokenDAO;
     private final ProfileDAO profileDAO;
@@ -152,6 +155,11 @@ public class SessionService {
         if (profile == null) {
             JsonObject fallback = fallbackProxyService.resolveProfileByUuid(uuidStr, unsignedParam);
             if (fallback != null) {
+                boolean signed = "false".equalsIgnoreCase(unsignedParam);
+                if (signed && isWawelAuthClientProfileRequest(ctx)) {
+                    WawelAuth.debug("Re-signing fallback profile " + uuidStr + " for WawelAuth client request");
+                    return profileService.resignTexturesProperty(fallback);
+                }
                 return fallback;
             }
             throw NetException.notFound("Profile not found.");
@@ -162,5 +170,13 @@ public class SessionService {
         boolean signed = "false".equalsIgnoreCase(unsignedParam);
 
         return profileService.buildFullProfile(profile, signed);
+    }
+
+    private static boolean isWawelAuthClientProfileRequest(RequestContext ctx) {
+        if (ctx == null) {
+            return false;
+        }
+        String marker = ctx.getQueryParam(WAWELAUTH_CLIENT_MARKER);
+        return "1".equals(marker) || "true".equalsIgnoreCase(marker);
     }
 }

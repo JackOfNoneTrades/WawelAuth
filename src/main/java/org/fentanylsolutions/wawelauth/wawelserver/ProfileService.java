@@ -17,6 +17,8 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 /**
@@ -82,6 +84,52 @@ public class ProfileService {
         result.put("id", UuidUtil.toUnsigned(profile.getUuid()));
         result.put("name", profile.getName());
         return result;
+    }
+
+    /**
+     * Re-signs the textures property of an existing profile JSON object using
+     * the local WawelAuth key. Used only for WawelAuth-aware clients when the
+     * source profile came from a fallback provider.
+     */
+    public JsonObject resignTexturesProperty(JsonObject profile) {
+        if (profile == null || !profile.has("properties")
+            || !profile.get("properties")
+                .isJsonArray()) {
+            return profile;
+        }
+
+        JsonArray properties = profile.getAsJsonArray("properties");
+        for (JsonElement element : properties) {
+            if (element == null || !element.isJsonObject()) {
+                continue;
+            }
+
+            JsonObject property = element.getAsJsonObject();
+            if (!property.has("name") || !property.has("value")) {
+                continue;
+            }
+
+            String name;
+            String value;
+            try {
+                name = property.get("name")
+                    .getAsString();
+                value = property.get("value")
+                    .getAsString();
+            } catch (Exception e) {
+                continue;
+            }
+
+            if (!"textures".equals(name) || value == null || value.isEmpty()) {
+                continue;
+            }
+
+            ProfileProperty signedProperty = new ProfileProperty("textures", value);
+            signer.signProperty(signedProperty);
+            property.addProperty("signature", signedProperty.getSignature());
+        }
+
+        return profile;
     }
 
     private ProfileProperty buildTexturesProperty(WawelProfile profile, boolean signed) {

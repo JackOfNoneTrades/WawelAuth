@@ -44,6 +44,23 @@ import com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService;
 @Mixin(value = YggdrasilMinecraftSessionService.class, remap = false)
 public class MixinYggdrasilMinecraftSessionService {
 
+    @Inject(method = "getTextures", at = @At("HEAD"))
+    private void wawelauth$refreshProfileBeforeTextureVerify(GameProfile profile, boolean requireSecure,
+        CallbackInfoReturnable<Map<MinecraftProfileTexture.Type, MinecraftProfileTexture>> cir) {
+        if (profile == null || profile.getId() == null) {
+            return;
+        }
+
+        WawelClient client = WawelClient.instance();
+        if (client == null) {
+            return;
+        }
+
+        GameProfile filled = client.getSessionBridge()
+            .fillProfileFromProvider(profile, requireSecure);
+        copyFetchedProperties(profile, filled);
+    }
+
     /**
      * Redirect Property.isSignatureValid(PublicKey) in getTextures().
      *
@@ -125,20 +142,26 @@ public class MixinYggdrasilMinecraftSessionService {
         GameProfile filled = client.getSessionBridge()
             .fillProfileFromProvider(profile, requireSecure);
         if (filled != null) {
-            // Vanilla fillProfileProperties modifies the original profile and
-            // returns it. Other code (e.g. the player entity) holds a reference
-            // to the original object. Copy fetched properties into it so that
-            // SkinModelHelper.resolveFromProfileProperty() and similar lookups
-            // see the textures property on the original reference.
-            if (filled != profile) {
-                profile.getProperties()
-                    .clear();
-                profile.getProperties()
-                    .putAll(filled.getProperties());
-            }
+            copyFetchedProperties(profile, filled);
             cir.setReturnValue(profile);
         }
         // null → no active provider, fall through to vanilla (Mojang)
+    }
+
+    private static void copyFetchedProperties(GameProfile profile, GameProfile filled) {
+        if (profile == null || filled == null || filled == profile) {
+            return;
+        }
+
+        // Vanilla fillProfileProperties modifies the original profile and
+        // returns it. Other code (e.g. the player entity) holds a reference
+        // to the original object. Copy fetched properties into it so that
+        // SkinModelHelper.resolveFromProfileProperty() and similar lookups
+        // see the textures property on the original reference.
+        profile.getProperties()
+            .clear();
+        profile.getProperties()
+            .putAll(filled.getProperties());
     }
 
     /**

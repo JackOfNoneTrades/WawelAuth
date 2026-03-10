@@ -1487,9 +1487,7 @@ public class SessionBridge {
             if (base == null) return null;
 
             String url = base + "/session/minecraft/profile/" + uuid;
-            if (requireSecure) {
-                url += "?unsigned=false";
-            }
+            url += requireSecure ? "?unsigned=false&wawelauth_client=1" : "?wawelauth_client=1";
 
             JsonObject response = httpClient.getJson(url);
             return buildProfileFromJson(profile, response);
