@@ -75,7 +75,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class WawelSkinResolver {
 
-    public static final ResourceLocation STEVE = new ResourceLocation("textures/entity/steve.png");
+    public static final ResourceLocation STEVE = new ResourceLocation("wawelauth", "textures/steve_64.png");
 
     // =========================================================================
     // Static face drawing API

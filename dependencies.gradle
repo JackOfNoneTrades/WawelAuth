@@ -53,6 +53,7 @@ dependencies {
     compileOnly("org.jetbrains:annotations:26.1.0")
     compileOnly("com.github.GTNewHorizons:GTNH-Web-Map:0.3.46:dev")
     compileOnly("com.github.GTNewHorizons:ServerUtilities:2.2.18:dev")
+    compileOnly(rfg.deobf("curse.maven:better-questing-238856:2950244"))
 
     // Shadow
 

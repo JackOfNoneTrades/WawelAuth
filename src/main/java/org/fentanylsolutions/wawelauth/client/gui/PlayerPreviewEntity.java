@@ -18,6 +18,7 @@ import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.api.WawelSkinResolver;
 import org.fentanylsolutions.wawelauth.client.render.ISkinModelOverride;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
@@ -31,7 +32,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class PlayerPreviewEntity extends EntityOtherPlayerMP implements ISkinModelOverride {
 
-    private static final ResourceLocation STEVE_SKIN = new ResourceLocation("textures/entity/steve.png");
+    private static final ResourceLocation STEVE_SKIN = WawelSkinResolver.STEVE;
     private static final AtomicLong REQUEST_COUNTER = new AtomicLong(0);
     private static final AtomicLong ENTITY_COUNTER = new AtomicLong(0);
 
