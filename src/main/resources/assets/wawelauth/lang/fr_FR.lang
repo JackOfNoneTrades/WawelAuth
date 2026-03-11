@@ -5,6 +5,7 @@ wawelauth.gui.multiplayer.open_folder=Ouvrir le dossier Wawel Auth
 
 wawelauth.gui.common.account=compte
 wawelauth.gui.common.api_root=Racine API : %s
+wawelauth.gui.common.api_root_label=Racine API : 
 wawelauth.gui.common.cancel=Annuler
 wawelauth.gui.common.client_not_running=Le module client n'est pas en cours d'exécution.
 wawelauth.gui.common.close=Fermer
@@ -113,9 +114,11 @@ wawelauth.gui.server_picker.tooltip.provider=Fournisseur : %s
 wawelauth.gui.server_tooltip.account_fallback=compte #%s
 wawelauth.gui.server_tooltip.account_selected=Wawel Auth : %s
 wawelauth.gui.server_tooltip.available_providers=Fournisseurs disponibles :
+wawelauth.gui.server_tooltip.local_auth=Auth locale : 
 wawelauth.gui.server_tooltip.no_account=Wawel Auth : aucun compte sélectionné
 wawelauth.gui.server_tooltip.provider_tag=Wawel Auth [%s]
 wawelauth.gui.server_tooltip.shift_local_auth=Maj-clic pour gérer l'auth locale
+wawelauth.gui.server_tooltip.uuid=UUID : %s
 
 wawelauth.gui.account_manager.accounts=Comptes
 wawelauth.gui.account_manager.cape=Cape
