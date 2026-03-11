@@ -467,6 +467,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 .heightRel(1.0f)
                 .child(leftSidebar)
                 .child(rightPanel));
+        mainPanel.child(
+            ButtonWidget.panelCloseButton()
+                .tooltip(tooltip -> tooltip.addLine(GuiText.key("wawelauth.gui.common.close"))));
 
         clearTextureSelection();
         rebuildProviderList();
