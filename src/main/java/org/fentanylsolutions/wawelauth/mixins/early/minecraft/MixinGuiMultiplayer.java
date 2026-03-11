@@ -213,10 +213,12 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
             return;
         }
 
-        int textWidth = 0;
-        for (String line : textLines) {
-            textWidth = Math.max(textWidth, this.fontRendererObj.getStringWidth(line));
+        int firstLineWidth = this.fontRendererObj.getStringWidth(textLines.get(0));
+        int detailWidth = 0;
+        for (int i = 1; i < textLines.size(); i++) {
+            detailWidth = Math.max(detailWidth, this.fontRendererObj.getStringWidth(textLines.get(i)));
         }
+        int totalWidth = Math.max(detailWidth, firstLineWidth + WAWELAUTH_TOOLTIP_FACE_AREA_WIDTH);
 
         int tooltipX = mouseX + 12;
         int tooltipY = mouseY - 12;
@@ -225,7 +227,6 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
             tooltipHeight += 2 + (textLines.size() - 1) * 10;
         }
 
-        int totalWidth = textWidth + WAWELAUTH_TOOLTIP_FACE_AREA_WIDTH;
         if (tooltipX + totalWidth > this.width) {
             tooltipX -= 28 + totalWidth;
         }
@@ -308,18 +309,21 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
             borderEnd,
             borderEnd);
 
+        int faceX = tooltipX;
+        int headerTextX = faceX + WAWELAUTH_TOOLTIP_FACE_AREA_WIDTH;
+        int detailTextX = tooltipX;
         WawelSkinResolver.drawFace(
             wawelauth$resolveTooltipSkin(),
-            tooltipX,
+            faceX,
             tooltipY,
             WAWELAUTH_TOOLTIP_FACE_SIZE,
             WAWELAUTH_TOOLTIP_FACE_SIZE,
             1.0F);
 
-        int textX = tooltipX + WAWELAUTH_TOOLTIP_FACE_AREA_WIDTH;
         int lineY = tooltipY;
         for (int i = 0; i < textLines.size(); i++) {
-            this.fontRendererObj.drawStringWithShadow(textLines.get(i), textX, lineY, -1);
+            int lineX = i == 0 ? headerTextX : detailTextX;
+            this.fontRendererObj.drawStringWithShadow(textLines.get(i), lineX, lineY, -1);
             if (i == 0) {
                 lineY += 2;
             }
