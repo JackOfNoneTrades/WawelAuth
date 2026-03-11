@@ -436,7 +436,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                                 "wawelauth.gui.account_manager.reauth")
                             .onMousePressed(mouseButton -> {
                                 if (selectedAccount == null) return true;
-                                openLoginDialog(selectedAccount.getProviderName());
+                                openLoginDialog(selectedAccount.getProviderName(), selectedAccount.getProfileName());
                                 return true;
                             }))
                     .child(new Widget<>().size(4, 16))
@@ -1345,7 +1345,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         return dialog;
     }
 
-    private void openLoginDialog(String providerName) {
+    private void openLoginDialog(String providerName, String username) {
         if (providerName == null || providerName.trim()
             .isEmpty()) {
             return;
@@ -1354,7 +1354,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             this.loginDialog.openMicrosoft(providerName);
             return;
         }
-        this.loginDialog.open(providerName);
+        this.loginDialog.open(providerName, username);
+    }
+
+    private void openLoginDialog(String providerName) {
+        this.openLoginDialog(providerName, null);
     }
 
     private void openRegisterDialog(String providerName) {

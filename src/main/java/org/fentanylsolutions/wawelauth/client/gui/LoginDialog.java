@@ -12,6 +12,7 @@ import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.value.StringValue;
 import com.cleanroommc.modularui.widget.Widget;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.Dialog;
@@ -30,6 +31,7 @@ public final class LoginDialog {
     private String providerName;
     private boolean forceMicrosoftLogin;
     private String initialMessage;
+    private String initialUsername;
 
     private LoginDialog(ModularPanel parentPanel, Consumer<ClientAccount> onResult) {
         this.onResult = onResult;
@@ -43,6 +45,7 @@ public final class LoginDialog {
 
             TabTextFieldWidget usernameField = new TabTextFieldWidget();
             usernameField.hintText(GuiText.tr("wawelauth.gui.common.username"));
+            usernameField.value(new StringValue(this.initialUsername != null ? this.initialUsername : ""));
             PasswordInputWidget passwordField = new PasswordInputWidget()
                 .hintText(GuiText.tr("wawelauth.gui.common.password"));
 
@@ -227,18 +230,24 @@ public final class LoginDialog {
         return new LoginDialog(parentPanel, onResult);
     }
 
-    public void open(String providerName) {
+    public void open(String providerName, String username) {
         this.providerName = providerName;
         this.forceMicrosoftLogin = false;
         this.initialMessage = null;
+        this.initialUsername = username != null ? username.trim() : null;
         this.panelHandler.deleteCachedPanel();
         this.panelHandler.openPanel();
+    }
+
+    public void open(String providerName) {
+        this.open(providerName, null);
     }
 
     public void openAfterRegister(String providerName) {
         this.providerName = providerName;
         this.forceMicrosoftLogin = false;
         this.initialMessage = GuiText.tr("wawelauth.gui.login.status.after_register");
+        this.initialUsername = null;
         this.panelHandler.deleteCachedPanel();
         this.panelHandler.openPanel();
     }
@@ -247,6 +256,7 @@ public final class LoginDialog {
         this.providerName = providerName;
         this.forceMicrosoftLogin = true;
         this.initialMessage = null;
+        this.initialUsername = null;
         this.panelHandler.deleteCachedPanel();
         this.panelHandler.openPanel();
     }
