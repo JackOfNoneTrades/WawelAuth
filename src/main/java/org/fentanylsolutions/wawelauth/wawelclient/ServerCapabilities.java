@@ -79,6 +79,32 @@ public final class ServerCapabilities {
             null);
     }
 
+    /**
+     * Synthetic capability snapshot reconstructed from persisted local-auth
+     * metadata on a server entry. This is used only for offline/local UI flows.
+     */
+    public static ServerCapabilities persistedLocalAuth(String apiRoot, String fingerprint, String publicKeyBase64) {
+        String normalizedApiRoot = WawelPingPayload.normalizeUrl(apiRoot);
+        String normalizedFingerprint = normalizeFingerprint(fingerprint);
+        String normalizedPublicKeyBase64 = normalizeString(publicKeyBase64);
+        if (normalizedApiRoot == null || normalizedFingerprint == null) {
+            return empty();
+        }
+
+        return new ServerCapabilities(
+            false,
+            true,
+            normalizedApiRoot,
+            normalizedFingerprint,
+            normalizedPublicKeyBase64,
+            Collections.emptyList(),
+            Collections.emptyList(),
+            Collections.emptyList(),
+            Collections.emptyList(),
+            0L,
+            null);
+    }
+
     public static ServerCapabilities fromPayload(JsonObject payload, long nowMs) {
         // Backward-compatible: older servers may still send provider names.
         List<String> names = toUnmodifiableCopy(WawelPingPayload.parseStringArray(payload, "acceptedProviderNames"));

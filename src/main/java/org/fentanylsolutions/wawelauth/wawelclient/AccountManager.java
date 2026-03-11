@@ -860,6 +860,10 @@ public class AccountManager {
 
         } catch (YggdrasilRequestException e) {
             WawelAuth.debug("Validate failed for account " + account.getId() + ": " + e.getMessage());
+            if (!isAuthFailureStatus(e.getHttpStatus())) {
+                markUnverified(account, e.getMessage());
+                return AccountStatus.UNVERIFIED;
+            }
             // Fall through to refresh
         } catch (IOException e) {
             // Network error: offline degradation
@@ -923,8 +927,12 @@ public class AccountManager {
             return AccountStatus.REFRESHED;
 
         } catch (YggdrasilRequestException e) {
-            // Both validate and refresh failed: token is expired
             WawelAuth.debug("Refresh failed for account " + account.getId() + ": " + e.getMessage());
+            if (!isAuthFailureStatus(e.getHttpStatus())) {
+                markUnverified(account, e.getMessage());
+                return AccountStatus.UNVERIFIED;
+            }
+            // Both validate and refresh failed with auth-failure status: token is expired
             markStatus(account, AccountStatus.EXPIRED, e.getMessage());
             WawelAuth.LOG.warn(
                 "Account '{}' on '{}' expired: re-authentication required",

@@ -86,10 +86,12 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         ModularPanel panel = ModularPanel.defaultPanel("wawelauth_server_picker", 200, 226);
 
         ServerCapabilities capabilities = ext.getWawelCapabilities();
+        ServerCapabilities localAuthCapabilities = ServerBindingPersistence
+            .getEffectiveLocalAuthCapabilities(targetServerData);
         boolean wawelAuthServer = capabilities != null && capabilities.isWawelAuthAdvertised();
-        boolean localAuthAvailable = capabilities != null && capabilities.isLocalAuthSupported()
-            && notBlank(capabilities.getLocalAuthApiRoot())
-            && notBlank(capabilities.getLocalAuthPublicKeyFingerprint());
+        boolean localAuthAvailable = localAuthCapabilities != null && localAuthCapabilities.isLocalAuthSupported()
+            && notBlank(localAuthCapabilities.getLocalAuthApiRoot())
+            && notBlank(localAuthCapabilities.getLocalAuthPublicKeyFingerprint());
         String[] trustedLocalProviderName = { null };
 
         LoginDialog loginDialog = LoginDialog.attach(panel, account -> {
@@ -97,6 +99,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             trustedLocalProviderName[0] = account.getProviderName();
             ext.setWawelAccountId(account.getId());
             ext.setWawelProviderName(account.getProviderName());
+            ServerBindingPersistence.markServerBindingOrigin(targetServerData);
             ServerBindingPersistence.persistServerSelection(targetServerData);
             String successMessage = GuiText.tr(
                 "wawelauth.gui.server_picker.status.bound",
@@ -181,7 +184,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             loginLocalBtn.onMousePressed(mouseButton -> {
                 openLocalAuthAction(
                     targetServerData,
-                    capabilities,
+                    localAuthCapabilities,
                     panel,
                     trustedLocalProviderName,
                     loginDialog,
@@ -199,7 +202,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             registerLocalBtn.onMousePressed(mouseButton -> {
                 openLocalAuthAction(
                     targetServerData,
-                    capabilities,
+                    localAuthCapabilities,
                     panel,
                     trustedLocalProviderName,
                     loginDialog,
@@ -297,6 +300,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         entry.onMousePressed(mouseButton -> {
             ext.setWawelAccountId(account.getId());
             ext.setWawelProviderName(account.getProviderName());
+            ServerBindingPersistence.markServerBindingOrigin(targetServerData);
             ServerBindingPersistence.persistServerSelection(targetServerData);
             panel.closeIfOpen();
             return true;

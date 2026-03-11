@@ -22,6 +22,18 @@ public class MixinServerData implements IServerDataExt {
     private String wawelProviderName;
 
     @Unique
+    private String wawelLocalAuthFingerprint;
+
+    @Unique
+    private String wawelLocalAuthApiRoot;
+
+    @Unique
+    private String wawelLocalAuthPublicKeyBase64;
+
+    @Unique
+    private String wawelOriginalServerIp;
+
+    @Unique
     private ServerCapabilities wawelCapabilities = ServerCapabilities.empty();
 
     @Override
@@ -45,6 +57,46 @@ public class MixinServerData implements IServerDataExt {
     }
 
     @Override
+    public String getWawelLocalAuthFingerprint() {
+        return wawelLocalAuthFingerprint;
+    }
+
+    @Override
+    public void setWawelLocalAuthFingerprint(String fingerprint) {
+        this.wawelLocalAuthFingerprint = fingerprint;
+    }
+
+    @Override
+    public String getWawelLocalAuthApiRoot() {
+        return wawelLocalAuthApiRoot;
+    }
+
+    @Override
+    public void setWawelLocalAuthApiRoot(String apiRoot) {
+        this.wawelLocalAuthApiRoot = apiRoot;
+    }
+
+    @Override
+    public String getWawelLocalAuthPublicKeyBase64() {
+        return wawelLocalAuthPublicKeyBase64;
+    }
+
+    @Override
+    public void setWawelLocalAuthPublicKeyBase64(String publicKeyBase64) {
+        this.wawelLocalAuthPublicKeyBase64 = publicKeyBase64;
+    }
+
+    @Override
+    public String getWawelOriginalServerIp() {
+        return wawelOriginalServerIp;
+    }
+
+    @Override
+    public void setWawelOriginalServerIp(String originalServerIp) {
+        this.wawelOriginalServerIp = originalServerIp;
+    }
+
+    @Override
     public ServerCapabilities getWawelCapabilities() {
         return wawelCapabilities;
     }
@@ -63,6 +115,18 @@ public class MixinServerData implements IServerDataExt {
         if (wawelProviderName != null) {
             nbt.setString("wawelProviderName", wawelProviderName);
         }
+        if (wawelLocalAuthFingerprint != null) {
+            nbt.setString("wawelLocalAuthFingerprint", wawelLocalAuthFingerprint);
+        }
+        if (wawelLocalAuthApiRoot != null) {
+            nbt.setString("wawelLocalAuthApiRoot", wawelLocalAuthApiRoot);
+        }
+        if (wawelLocalAuthPublicKeyBase64 != null) {
+            nbt.setString("wawelLocalAuthPublicKeyBase64", wawelLocalAuthPublicKeyBase64);
+        }
+        if (wawelOriginalServerIp != null) {
+            nbt.setString("wawelOriginalServerIp", wawelOriginalServerIp);
+        }
     }
 
     @Inject(method = "getServerDataFromNBTCompound", at = @At("RETURN"))
@@ -74,6 +138,18 @@ public class MixinServerData implements IServerDataExt {
         if (nbt.hasKey("wawelProviderName")) {
             ext.setWawelProviderName(nbt.getString("wawelProviderName"));
         }
+        if (nbt.hasKey("wawelLocalAuthFingerprint")) {
+            ext.setWawelLocalAuthFingerprint(nbt.getString("wawelLocalAuthFingerprint"));
+        }
+        if (nbt.hasKey("wawelLocalAuthApiRoot")) {
+            ext.setWawelLocalAuthApiRoot(nbt.getString("wawelLocalAuthApiRoot"));
+        }
+        if (nbt.hasKey("wawelLocalAuthPublicKeyBase64")) {
+            ext.setWawelLocalAuthPublicKeyBase64(nbt.getString("wawelLocalAuthPublicKeyBase64"));
+        }
+        if (nbt.hasKey("wawelOriginalServerIp")) {
+            ext.setWawelOriginalServerIp(nbt.getString("wawelOriginalServerIp"));
+        }
     }
 
     @Inject(method = "func_152583_a", at = @At("RETURN")) // ServerData.copyFrom
@@ -81,6 +157,10 @@ public class MixinServerData implements IServerDataExt {
         IServerDataExt otherExt = (IServerDataExt) other;
         this.wawelAccountId = otherExt.getWawelAccountId();
         this.wawelProviderName = otherExt.getWawelProviderName();
+        this.wawelLocalAuthFingerprint = otherExt.getWawelLocalAuthFingerprint();
+        this.wawelLocalAuthApiRoot = otherExt.getWawelLocalAuthApiRoot();
+        this.wawelLocalAuthPublicKeyBase64 = otherExt.getWawelLocalAuthPublicKeyBase64();
+        this.wawelOriginalServerIp = otherExt.getWawelOriginalServerIp();
         this.wawelCapabilities = otherExt.getWawelCapabilities();
     }
 }

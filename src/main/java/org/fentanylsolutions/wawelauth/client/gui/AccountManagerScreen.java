@@ -24,7 +24,6 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
@@ -134,9 +133,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     public static void openForLocalAuth(ServerData serverData) {
         pendingFocusedServerData = serverData;
-        pendingFocusedCapabilities = serverData instanceof IServerDataExt
-            ? ((IServerDataExt) serverData).getWawelCapabilities()
-            : null;
+        pendingFocusedCapabilities = ServerBindingPersistence.getEffectiveLocalAuthCapabilities(serverData);
         ClientGUI.open(new AccountManagerScreen());
     }
 

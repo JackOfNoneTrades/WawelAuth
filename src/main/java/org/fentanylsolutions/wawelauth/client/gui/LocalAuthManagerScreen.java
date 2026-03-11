@@ -77,7 +77,7 @@ public class LocalAuthManagerScreen extends ParentAwareModularScreen {
         }
 
         IServerDataExt ext = (IServerDataExt) targetServerData;
-        ServerCapabilities caps = ext.getWawelCapabilities();
+        ServerCapabilities caps = ServerBindingPersistence.getEffectiveLocalAuthCapabilities(targetServerData);
         final boolean localSupported = hasLocalAuthMetadata(caps);
         final String serverName = targetServerData.serverName != null ? targetServerData.serverName
             : GuiText.tr("wawelauth.gui.common.server");
@@ -206,6 +206,7 @@ public class LocalAuthManagerScreen extends ParentAwareModularScreen {
         managedProviderName = account.getProviderName();
         ext.setWawelAccountId(account.getId());
         ext.setWawelProviderName(account.getProviderName());
+        ServerBindingPersistence.markServerBindingOrigin(targetServerData);
         ServerBindingPersistence.persistServerSelection(targetServerData);
         statusText = GuiText.tr("wawelauth.gui.local_auth.status.logged_in", nvl(account.getProfileName(), "?"));
     }

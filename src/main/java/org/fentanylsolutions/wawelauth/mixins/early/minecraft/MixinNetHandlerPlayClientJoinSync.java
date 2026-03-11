@@ -7,6 +7,7 @@ import net.minecraft.network.play.server.S3FPacketCustomPayload;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
+import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
@@ -41,6 +42,7 @@ public class MixinNetHandlerPlayClientJoinSync {
 
         if (serverData instanceof IServerDataExt ext) {
             ext.setWawelCapabilities(capabilities);
+            ServerBindingPersistence.persistLocalAuthMetadata(serverData, capabilities);
         }
 
         WawelClient client = WawelClient.instance();

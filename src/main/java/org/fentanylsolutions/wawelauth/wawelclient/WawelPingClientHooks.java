@@ -30,10 +30,12 @@ public final class WawelPingClientHooks {
             if (wawelElement != null && wawelElement.isJsonObject()) {
                 JsonObject payload = wawelElement.getAsJsonObject();
                 ext.setWawelCapabilities(ServerCapabilities.fromPayload(payload, now));
+                ServerBindingPersistence.persistLocalAuthMetadata(serverData, ext.getWawelCapabilities());
                 WawelAuth.debug("Ping capabilities updated for " + serverData.serverIP + " from WawelAuth payload");
             } else {
                 // No payload from this server -> auth provider set is unknown.
                 ext.setWawelCapabilities(ServerCapabilities.unadvertised(now));
+                ServerBindingPersistence.persistLocalAuthMetadata(serverData, ext.getWawelCapabilities());
                 WawelAuth.debug("Ping capabilities updated for " + serverData.serverIP + " as unadvertised/unknown");
             }
 

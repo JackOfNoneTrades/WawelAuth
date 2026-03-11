@@ -5,8 +5,12 @@ import java.util.List;
 import java.util.UUID;
 
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiListExtended;
 import net.minecraft.client.gui.GuiMultiplayer;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.ServerListEntryNormal;
+import net.minecraft.client.gui.ServerSelectionList;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.util.ResourceLocation;
 
@@ -22,6 +26,7 @@ import org.fentanylsolutions.wawelauth.client.gui.IServerTooltipFaceHost;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -32,6 +37,12 @@ import com.cleanroommc.modularui.factory.ClientGUI;
 
 @Mixin(GuiMultiplayer.class)
 public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTooltipFaceHost {
+
+    @Shadow
+    private ServerSelectionList field_146803_h;
+
+    @Shadow
+    private ServerData field_146811_z;
 
     @Unique
     private static final int WAWELAUTH_ACCOUNTS_BUTTON_ID = 200;
@@ -53,6 +64,10 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
     private String wawelauth$tooltipDisplayName;
     @Unique
     private String wawelauth$tooltipProviderName;
+    @Unique
+    private ServerData wawelauth$pendingRemovedServerData;
+    @Unique
+    private boolean wawelauth$pendingEditedServerRetarget;
 
     @Inject(method = "initGui", at = @At("RETURN"))
     private void wawelauth$onInitGui(CallbackInfo ci) {
@@ -61,7 +76,9 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
 
         WawelClient client = WawelClient.instance();
         if (client != null) {
+            ServerBindingPersistence.clearRetargetedServerBindings(client);
             ServerBindingPersistence.clearMissingAccountBindings(client.getAccountManager());
+            ServerBindingPersistence.clearOrphanedLocalProviders(client);
         }
     }
 
@@ -123,6 +140,56 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
                     mouseY,
                     this.fontRendererObj);
             }
+        }
+    }
+
+    @Inject(
+        method = "confirmClicked",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ServerList;removeServerData(I)V"))
+    private void wawelauth$captureServerBeforeDelete(boolean result, int id, CallbackInfo ci) {
+        int selectedIndex = field_146803_h.func_148193_k();
+        GuiListExtended.IGuiListEntry entry = selectedIndex < 0 ? null : field_146803_h.getListEntry(selectedIndex);
+        if (entry instanceof ServerListEntryNormal) {
+            wawelauth$pendingRemovedServerData = ((ServerListEntryNormal) entry).func_148296_a();
+        }
+    }
+
+    @Inject(
+        method = "confirmClicked",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/multiplayer/ServerData;func_152583_a(Lnet/minecraft/client/multiplayer/ServerData;)V"))
+    private void wawelauth$resetBindingWhenServerRetargeted(boolean result, int id, CallbackInfo ci) {
+        int selectedIndex = field_146803_h.func_148193_k();
+        GuiListExtended.IGuiListEntry entry = selectedIndex < 0 ? null : field_146803_h.getListEntry(selectedIndex);
+        if (!(entry instanceof ServerListEntryNormal) || field_146811_z == null) {
+            return;
+        }
+
+        ServerData existing = ((ServerListEntryNormal) entry).func_148296_a();
+        if (!ServerBindingPersistence.isRetargetedServerAddress(existing, field_146811_z.serverIP)) {
+            return;
+        }
+
+        ServerBindingPersistence.clearBindingState(field_146811_z, true);
+        wawelauth$pendingEditedServerRetarget = true;
+    }
+
+    @Inject(method = "confirmClicked", at = @At("RETURN"))
+    private void wawelauth$cleanupAfterServerDelete(boolean result, int id, CallbackInfo ci) {
+        if (wawelauth$pendingRemovedServerData == null && !wawelauth$pendingEditedServerRetarget) {
+            return;
+        }
+
+        try {
+            WawelClient client = WawelClient.instance();
+            if (client != null) {
+                ServerBindingPersistence.clearRetargetedServerBindings(client);
+                ServerBindingPersistence.clearOrphanedLocalProviders(client);
+            }
+        } finally {
+            wawelauth$pendingRemovedServerData = null;
+            wawelauth$pendingEditedServerRetarget = false;
         }
     }
 
