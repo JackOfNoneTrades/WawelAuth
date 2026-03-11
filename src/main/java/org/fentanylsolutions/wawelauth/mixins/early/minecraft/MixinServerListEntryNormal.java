@@ -265,35 +265,38 @@ public class MixinServerListEntryNormal {
             boolean suppressNoPingProviderRow = !localAuthAvailable && noPingData
                 && authApiRoot == null
                 && !notBlank(rawProviderName);
+            boolean microsoftProvider = !localAuthAvailable && ProviderDisplayName.isMicrosoftProvider(rawProviderName);
+            boolean serverAuthUnknown = !localAuthAvailable
+                && (noPingData || (caps != null && !caps.isWawelAuthAdvertised()));
 
             if (unknownProvider) {
                 authLines.add(EnumChatFormatting.GRAY + GuiText.tr("wawelauth.gui.server_tooltip.unknown_provider"));
             } else {
                 if (authDisplayName != null && !suppressNoPingProviderRow) {
                     authLines.add(
-                        localAuthAvailable
-                            ? EnumChatFormatting.GRAY + GuiText.tr("wawelauth.gui.server_tooltip.local_auth")
-                                + EnumChatFormatting.GOLD
-                                + authDisplayName
-                            : EnumChatFormatting.GRAY
-                                + GuiText.tr("wawelauth.gui.server_tooltip.provider_tag", authDisplayName));
+                        EnumChatFormatting.GRAY
+                            + GuiText.tr(
+                                serverAuthUnknown ? "wawelauth.gui.server_tooltip.account_auth_label"
+                                    : "wawelauth.gui.server_tooltip.auth_label")
+                            + EnumChatFormatting.GOLD
+                            + authDisplayName);
                 }
-                if (authApiRoot != null) {
+                if (authApiRoot != null && !microsoftProvider) {
                     authLines.add(
                         EnumChatFormatting.GRAY + GuiText.tr("wawelauth.gui.common.api_root_label")
                             + EnumChatFormatting.GOLD
                             + authApiRoot);
                 }
-                if (!availableProviders.isEmpty() || providersUnknown) {
+                if (!microsoftProvider && !availableProviders.isEmpty()) {
                     authLines
                         .add(EnumChatFormatting.GRAY + GuiText.tr("wawelauth.gui.server_tooltip.available_providers"));
-                    if (providersUnknown) {
-                        authLines.add(EnumChatFormatting.GRAY + "- " + GuiText.tr("wawelauth.gui.common.unknown"));
-                    } else {
-                        for (String providerHost : availableProviders) {
-                            authLines.add(EnumChatFormatting.AQUA + "- " + providerHost);
-                        }
+                    for (String providerHost : availableProviders) {
+                        authLines.add(EnumChatFormatting.AQUA + "- " + providerHost);
                     }
+                }
+                if (serverAuthUnknown) {
+                    authLines
+                        .add(EnumChatFormatting.GRAY + GuiText.tr("wawelauth.gui.server_tooltip.server_auth_unknown"));
                 }
             }
             if (localAuthAvailable) {

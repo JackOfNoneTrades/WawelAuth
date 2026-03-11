@@ -113,10 +113,11 @@ wawelauth.gui.server_picker.tooltip.provider=Fournisseur : %s
 
 wawelauth.gui.server_tooltip.account_fallback=compte #%s
 wawelauth.gui.server_tooltip.account_selected=Wawel Auth : %s
+wawelauth.gui.server_tooltip.account_auth_label=Auth du compte : 
+wawelauth.gui.server_tooltip.auth_label=Auth : 
 wawelauth.gui.server_tooltip.available_providers=Fournisseurs disponibles :
-wawelauth.gui.server_tooltip.local_auth=Auth locale : 
 wawelauth.gui.server_tooltip.no_account=Wawel Auth : aucun compte sélectionné
-wawelauth.gui.server_tooltip.provider_tag=Wawel Auth [%s]
+wawelauth.gui.server_tooltip.server_auth_unknown=Fournisseur d'auth du serveur inconnu
 wawelauth.gui.server_tooltip.shift_local_auth=Maj-clic pour gérer l'auth locale
 wawelauth.gui.server_tooltip.unselect_account=Désélectionner le compte
 wawelauth.gui.server_tooltip.unknown_provider=Fournisseur inconnu
