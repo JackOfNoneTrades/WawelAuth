@@ -66,12 +66,12 @@ final class JdkProxyHttpClient {
                 .getBytes(StandardCharsets.UTF_8),
             settings,
             true);
-        return parseJsonResponse(response.statusCode, response.body);
+        return parseJsonResponse(response.statusCode, response.bodyAsString());
     }
 
     JsonObject getJson(String url, ProviderProxySettings settings) throws IOException, YggdrasilRequestException {
         ResponseData response = execute("GET", url, mapOf("Accept", "application/json"), null, settings, true);
-        return parseJsonResponse(response.statusCode, response.body);
+        return parseJsonResponse(response.statusCode, response.bodyAsString());
     }
 
     JsonObject deleteWithAuth(String url, String bearerToken, ProviderProxySettings settings)
@@ -84,7 +84,7 @@ final class JdkProxyHttpClient {
             null,
             settings,
             true);
-        return parseJsonResponse(response.statusCode, response.body);
+        return parseJsonResponse(response.statusCode, response.bodyAsString());
     }
 
     JsonObject sendMultipart(String method, String url, String bearerToken, String fileField, File file,
@@ -114,7 +114,7 @@ final class JdkProxyHttpClient {
             payload,
             settings,
             true);
-        return parseJsonResponse(response.statusCode, response.body);
+        return parseJsonResponse(response.statusCode, response.bodyAsString());
     }
 
     String resolveApiRoot(String userUrl, ProviderProxySettings settings) throws IOException {
@@ -147,6 +147,14 @@ final class JdkProxyHttpClient {
 
     int probeReachability(String url, ProviderProxySettings settings) throws IOException {
         return execute("GET", url, mapOf("Accept", "*/*"), null, settings, true).statusCode;
+    }
+
+    byte[] downloadBytes(String url, ProviderProxySettings settings) throws IOException {
+        ResponseData response = execute("GET", url, mapOf("Accept", "*/*"), null, settings, true);
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+            throw new IOException("HTTP " + response.statusCode + " from " + url);
+        }
+        return response.bodyBytes;
     }
 
     private ResponseData execute(String method, String url, Map<String, String> headers, byte[] body,
@@ -238,7 +246,11 @@ final class JdkProxyHttpClient {
                 .invoke(response);
 
             WawelAuth.debug("HTTP response " + status + ": " + truncate(responseBody, 200));
-            return new ResponseData(status, responseBody, aliLocation, finalUri != null ? finalUri.toString() : null);
+            return new ResponseData(
+                status,
+                responseBytes != null ? responseBytes : new byte[0],
+                aliLocation,
+                finalUri != null ? finalUri.toString() : null);
         } catch (ClassNotFoundException e) {
             throw new IOException("JDK HttpClient is not available on this JVM.", e);
         } catch (InvocationTargetException e) {
@@ -543,15 +555,19 @@ final class JdkProxyHttpClient {
     private static final class ResponseData {
 
         private final int statusCode;
-        private final String body;
+        private final byte[] bodyBytes;
         private final String aliLocation;
         private final String finalUrl;
 
-        private ResponseData(int statusCode, String body, String aliLocation, String finalUrl) {
+        private ResponseData(int statusCode, byte[] bodyBytes, String aliLocation, String finalUrl) {
             this.statusCode = statusCode;
-            this.body = body;
+            this.bodyBytes = bodyBytes;
             this.aliLocation = aliLocation;
             this.finalUrl = finalUrl;
+        }
+
+        private String bodyAsString() {
+            return new String(bodyBytes, StandardCharsets.UTF_8);
         }
     }
 }

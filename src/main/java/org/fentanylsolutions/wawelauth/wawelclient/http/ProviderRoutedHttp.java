@@ -17,6 +17,8 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxySettings;
  */
 public final class ProviderRoutedHttp {
 
+    private static final int MAX_BINARY_RESPONSE_BYTES = 16 * 1024 * 1024;
+
     private ProviderRoutedHttp() {}
 
     public static RoutedConnection openConnection(String url, ClientProvider provider, int connectTimeoutMs,
@@ -71,6 +73,25 @@ public final class ProviderRoutedHttp {
 
     public static byte[] downloadBytes(String url, ProviderProxySettings settings, String providerName,
         int connectTimeoutMs, int readTimeoutMs, String userAgent, String purpose) throws IOException {
+        JdkProxyHttpClient jdkProxyHttpClient = new JdkProxyHttpClient(
+            connectTimeoutMs,
+            readTimeoutMs,
+            MAX_BINARY_RESPONSE_BYTES,
+            userAgent);
+        if (shouldUseProviderProxy(settings) && jdkProxyHttpClient.supports(settings)) {
+            String label = providerName != null && !providerName.trim()
+                .isEmpty() ? providerName : "direct";
+            WawelAuth.debug(
+                purpose + " "
+                    + url
+                    + " [provider="
+                    + label
+                    + ", proxy="
+                    + ProviderProxySupport.describeProxySettings(settings)
+                    + ", transport=jdk-http-client]");
+            return jdkProxyHttpClient.downloadBytes(url, settings);
+        }
+
         try (RoutedConnection routed = openConnection(
             url,
             settings,

@@ -1,9 +1,9 @@
 package org.fentanylsolutions.wawelauth.client.render;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.imageio.ImageIO;
@@ -118,29 +118,22 @@ public class ProviderThreadDownloadImageData extends SimpleTexture {
 
             @Override
             public void run() {
-                try (ProviderRoutedHttp.RoutedConnection routed = ProviderRoutedHttp.openConnection(
-                    imageUrl,
-                    proxySettings,
-                    providerName,
-                    10_000,
-                    15_000,
-                    "WawelAuth",
-                    "Texture download")) {
-                    HttpURLConnection connection = routed.getConnection();
-                    connection.setDoInput(true);
-                    connection.setDoOutput(false);
-                    connection.connect();
-
-                    if (connection.getResponseCode() / 100 != 2) {
-                        return;
-                    }
+                try {
+                    byte[] imageBytes = ProviderRoutedHttp.downloadBytes(
+                        imageUrl,
+                        proxySettings,
+                        providerName,
+                        10_000,
+                        15_000,
+                        "WawelAuth",
+                        "Texture download");
 
                     BufferedImage downloadedImage;
                     if (cacheFile != null) {
-                        FileUtils.copyInputStreamToFile(connection.getInputStream(), cacheFile);
+                        FileUtils.writeByteArrayToFile(cacheFile, imageBytes);
                         downloadedImage = ImageIO.read(cacheFile);
                     } else {
-                        downloadedImage = ImageIO.read(connection.getInputStream());
+                        downloadedImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
                     }
 
                     if (imageBuffer != null) {
