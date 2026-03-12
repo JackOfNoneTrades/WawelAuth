@@ -95,9 +95,8 @@ public class MixinRenderPlayer {
         if (!ext.wawelauth$isModern()) {
             ext.wawelauth$initModern();
         }
-        if (player instanceof AbstractClientPlayer) {
-            AbstractClientPlayer clientPlayer = (AbstractClientPlayer) player;
-            SkinModel model = SkinModelHelper.getSkinModel(clientPlayer);
+        if (player instanceof AbstractClientPlayer clientPlayer) {
+			SkinModel model = SkinModelHelper.getSkinModel(clientPlayer);
             boolean slim = model == SkinModel.SLIM;
             ext.wawelauth$setSlim(slim);
 

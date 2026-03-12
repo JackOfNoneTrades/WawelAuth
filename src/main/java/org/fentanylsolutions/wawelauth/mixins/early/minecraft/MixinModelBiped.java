@@ -9,6 +9,7 @@ import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DMesh;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DState;
+import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -281,18 +282,14 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
 
         SkinLayers3DState state3d = this.wawelauth$skinLayers3D;
         if (SkinLayers3DConfig.enabled && state3d != null && state3d.initialized) {
-            org.lwjgl.opengl.GL11
-                .glPushAttrib(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT | org.lwjgl.opengl.GL11.GL_CURRENT_BIT);
-            org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_BLEND);
-            org.lwjgl.opengl.GL11
-                .glBlendFunc(org.lwjgl.opengl.GL11.GL_SRC_ALPHA, org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             wawelauth$render3DOrFlat(
                 state3d.rightSleeveMesh,
                 this.wawelauth$rightArmWear,
                 scale,
                 SkinLayers3DConfig.enableRightSleeve,
                 LAYER_PART_RIGHT_ARM);
-            org.lwjgl.opengl.GL11.glPopAttrib();
         } else if (this.wawelauth$rightArmWear != null) {
             this.wawelauth$rightArmWear.render(scale);
         }
@@ -344,11 +341,11 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
         this.bipedHeadwear.showModel = this.wawelauth$savedHeadwearShowModel;
 
         if (this.isChild) {
-            org.lwjgl.opengl.GL11.glPushMatrix();
-            org.lwjgl.opengl.GL11.glScalef(1.0F / 2.0F, 1.0F / 2.0F, 1.0F / 2.0F);
-            org.lwjgl.opengl.GL11.glTranslatef(0.0F, 24.0F * scaleFactor, 0.0F);
+            GL11.glPushMatrix();
+            GL11.glScalef(1.0F / 2.0F, 1.0F / 2.0F, 1.0F / 2.0F);
+            GL11.glTranslatef(0.0F, 24.0F * scaleFactor, 0.0F);
             wawelauth$renderAllOverlays(scaleFactor);
-            org.lwjgl.opengl.GL11.glPopMatrix();
+            GL11.glPopMatrix();
         } else {
             wawelauth$renderAllOverlays(scaleFactor);
         }
@@ -373,12 +370,8 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     private void wawelauth$renderAllOverlays(float scaleFactor) {
         SkinLayers3DState state3d = this.wawelauth$skinLayers3D;
         if (SkinLayers3DConfig.enabled && state3d != null && state3d.initialized) {
-            // Save GL state to prevent leaking blend/color into subsequent rendering (e.g. boss bars)
-            org.lwjgl.opengl.GL11
-                .glPushAttrib(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT | org.lwjgl.opengl.GL11.GL_CURRENT_BIT);
-            org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_BLEND);
-            org.lwjgl.opengl.GL11
-                .glBlendFunc(org.lwjgl.opengl.GL11.GL_SRC_ALPHA, org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
             // Render 3D meshes where available, fall back to 2D for disabled parts
             wawelauth$render3DOrFlat(
@@ -417,8 +410,6 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
                 scaleFactor,
                 SkinLayers3DConfig.enableLeftPants,
                 LAYER_PART_LEFT_LEG);
-
-            org.lwjgl.opengl.GL11.glPopAttrib();
         } else {
             // Fall back to standard 2D overlay rendering.
             // Note: bipedHeadwear is NOT rendered here: vanilla ModelBiped.render() already handles it.

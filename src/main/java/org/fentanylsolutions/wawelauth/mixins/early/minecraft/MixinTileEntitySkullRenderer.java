@@ -72,17 +72,13 @@ public class MixinTileEntitySkullRenderer {
 
         float scale = 1.0F / 16.0F;
         float voxelSize = SkinLayers3DConfig.skullVoxelSize;
-
-        // Save and restore GL state to prevent leaking blend/color into subsequent rendering
-        GL11.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT);
+        
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
         hatMesh.setPosition(0, 0, 0);
         hatMesh.setRotation(head.rotateAngleX, head.rotateAngleY, head.rotateAngleZ);
         hatMesh.render(scale, voxelSize);
-
-        GL11.glPopAttrib();
     }
 
     @Inject(
@@ -94,7 +90,9 @@ public class MixinTileEntitySkullRenderer {
             shift = At.Shift.BEFORE))
     private void wawelauth$replaceSkin(float x, float y, float z, int facing, float rotation, int skullType,
         GameProfile profile, CallbackInfo ci, @Local LocalRef<ResourceLocation> resourcelocation) {
-        resourcelocation.set(wawelauth$getSkinForProfile(profile));
+        ResourceLocation skinLocation = wawelauth$getSkinForProfile(profile);
+        if (skinLocation == null) return;
+        resourcelocation.set(skinLocation);
     }
 
     /**
@@ -103,7 +101,7 @@ public class MixinTileEntitySkullRenderer {
     @Unique
     private static ResourceLocation wawelauth$getSkinForProfile(GameProfile profile) {
         WawelClient client = WawelClient.instance();
-        if (client == null) return null;
+        if (client == null || profile == null) return null;
 
         return client.getSkinResolver()
             .getSkin(profile.getId(), profile.getName(), SkinRequest.DEFAULT);

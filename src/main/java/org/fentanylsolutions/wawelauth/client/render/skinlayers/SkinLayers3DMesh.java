@@ -2,6 +2,7 @@ package org.fentanylsolutions.wawelauth.client.render.skinlayers;
 
 import java.util.List;
 
+import net.minecraft.client.renderer.Tessellator;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelCube;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelModelPart;
 import org.lwjgl.opengl.GL11;
@@ -21,10 +22,6 @@ public class SkinLayers3DMesh extends VoxelModelPart {
     /**
      * Compile the polygon data into a GL display list. Must be called on the render
      * thread after construction.
-     *
-     * Uses direct GL immediate mode (glBegin/glEnd) instead of the Tessellator to
-     * avoid stale Tessellator state (e.g. hasBrightness from terrain rendering)
-     * leaking glActiveTexture switches into the display list.
      */
     public void compileDisplayList() {
         if (displayList != -1) {
@@ -32,16 +29,22 @@ public class SkinLayers3DMesh extends VoxelModelPart {
         }
         displayList = GL11.glGenLists(1);
         GL11.glNewList(displayList, GL11.GL_COMPILE);
-        GL11.glBegin(GL11.GL_QUADS);
+        Tessellator tess = Tessellator.instance;
+        tess.startDrawingQuads();
         for (int id = 0; id < polygonData.length; id += polyDataSize) {
-            GL11.glNormal3f(polygonData[id], polygonData[id + 1], polygonData[id + 2]);
+            tess.setNormal(polygonData[id], polygonData[id + 1], polygonData[id + 2]);
             for (int v = 0; v < 4; v++) {
                 int base = id + 3 + (v * 5);
-                GL11.glTexCoord2f(polygonData[base + 3], polygonData[base + 4]);
-                GL11.glVertex3f(polygonData[base], polygonData[base + 1], polygonData[base + 2]);
+                tess.addVertexWithUV(
+                        polygonData[base],
+                        polygonData[base + 1],
+                        polygonData[base + 2],
+                        polygonData[base + 3],
+                        polygonData[base + 4]
+                );
             }
         }
-        GL11.glEnd();
+        tess.draw();
         GL11.glEndList();
     }
 
