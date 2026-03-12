@@ -3,6 +3,7 @@ package org.fentanylsolutions.wawelauth.wawelclient.http;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.Authenticator;
+import java.net.Authenticator.RequestorType;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -226,19 +227,17 @@ public final class ProviderProxySupport {
 
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
-                if (getRequestorType() != RequestorType.PROXY) {
+                if (!shouldAnswerProxyAuthentication(
+                    ACTIVE_PROXY_SETTINGS.get(),
+                    getRequestorType(),
+                    getRequestingProtocol(),
+                    getRequestingHost(),
+                    getRequestingSite(),
+                    getRequestingPort())) {
                     return null;
                 }
 
                 ProviderProxySettings settings = ACTIVE_PROXY_SETTINGS.get();
-                if (settings == null || !settings.isEnabled() || !settings.hasCredentials()) {
-                    return null;
-                }
-
-                if (!matchesProxyRequest(settings, getRequestingHost(), getRequestingSite(), getRequestingPort())) {
-                    return null;
-                }
-
                 String username = settings.getUsername() != null ? settings.getUsername() : "";
                 char[] password = (settings.getPassword() != null ? settings.getPassword() : "").toCharArray();
                 return new PasswordAuthentication(username, password);
@@ -352,6 +351,27 @@ public final class ProviderProxySupport {
             && settings.isEnabled()
             && settings.hasCredentials()
             && settings.getType() == ProviderProxyType.HTTP;
+    }
+
+    private static boolean shouldAnswerProxyAuthentication(ProviderProxySettings settings, RequestorType requestorType,
+        String requestingProtocol, String requestingHost, InetAddress requestingSite, int requestingPort) {
+        if (settings == null || !settings.isEnabled() || !settings.hasCredentials()) {
+            return false;
+        }
+
+        if (requestorType != RequestorType.PROXY && !isSocksAuthenticationRequest(requestingProtocol)) {
+            return false;
+        }
+
+        return matchesProxyRequest(settings, requestingHost, requestingSite, requestingPort);
+    }
+
+    private static boolean isSocksAuthenticationRequest(String requestingProtocol) {
+        if (requestingProtocol == null) {
+            return false;
+        }
+        return requestingProtocol.toUpperCase(Locale.ROOT)
+            .startsWith("SOCKS");
     }
 
     private static boolean hostMatches(String configuredHost, String requestingHost) {
