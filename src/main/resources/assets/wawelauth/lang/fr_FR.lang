@@ -113,6 +113,14 @@ wawelauth.gui.local_auth.status.trust_first=Faites confiance et créez un fourni
 wawelauth.gui.local_auth.trust_refresh=Confiance / Rafraîchir
 
 wawelauth.gui.server_picker.manage_local_auth=Gérer l'auth locale...
+wawelauth.gui.server_picker.server_proxy=Proxy serveur...
+wawelauth.gui.server_picker.proxy_server_line=Serveur : %s
+wawelauth.gui.server_picker.proxy_target_line=Cible : %s
+wawelauth.gui.server_picker.proxy_status_server=Serveur de jeu : %s
+wawelauth.gui.server_picker.proxy_testing_server=Test de connexion au serveur via le proxy...
+wawelauth.gui.server_picker.proxy_status_ok=Accessible.
+wawelauth.gui.server_picker.proxy_server_ok=%s joint.
+wawelauth.gui.server_picker.proxy_socks_only=Le proxy du serveur de jeu prend uniquement SOCKS en charge.
 wawelauth.gui.server_picker.status.bound=Lié à ce serveur en tant que %s
 wawelauth.gui.server_picker.title=Sélectionner un compte pour %s
 wawelauth.gui.server_picker.tooltip.account=Compte : %s

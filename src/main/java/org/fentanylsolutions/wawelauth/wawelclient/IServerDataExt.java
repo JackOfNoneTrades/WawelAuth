@@ -1,5 +1,7 @@
 package org.fentanylsolutions.wawelauth.wawelclient;
 
+import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxySettings;
+
 /**
  * Duck typing interface implemented by MixinServerData.
  * Extends ServerData with per-server WawelAuth account selection.
@@ -38,6 +40,11 @@ public interface IServerDataExt {
     String getWawelOriginalServerIp();
 
     void setWawelOriginalServerIp(String originalServerIp);
+
+    /** Persisted gameplay/server-connection proxy settings for this server entry. */
+    ProviderProxySettings getWawelServerProxySettings();
+
+    void setWawelServerProxySettings(ProviderProxySettings settings);
 
     /**
      * Latest capability negotiation result from server ping.

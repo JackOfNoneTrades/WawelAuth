@@ -5,6 +5,8 @@ import net.minecraft.nbt.NBTTagCompound;
 
 import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
+import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxySettings;
+import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxyType;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -32,6 +34,24 @@ public class MixinServerData implements IServerDataExt {
 
     @Unique
     private String wawelOriginalServerIp;
+
+    @Unique
+    private boolean wawelServerProxyEnabled;
+
+    @Unique
+    private ProviderProxyType wawelServerProxyType = ProviderProxyType.SOCKS;
+
+    @Unique
+    private String wawelServerProxyHost;
+
+    @Unique
+    private Integer wawelServerProxyPort;
+
+    @Unique
+    private String wawelServerProxyUsername;
+
+    @Unique
+    private String wawelServerProxyPassword;
 
     @Unique
     private ServerCapabilities wawelCapabilities = ServerCapabilities.empty();
@@ -97,6 +117,38 @@ public class MixinServerData implements IServerDataExt {
     }
 
     @Override
+    public ProviderProxySettings getWawelServerProxySettings() {
+        ProviderProxySettings settings = new ProviderProxySettings();
+        settings.setEnabled(wawelServerProxyEnabled);
+        settings.setType(wawelServerProxyType != null ? wawelServerProxyType : ProviderProxyType.SOCKS);
+        settings.setHost(wawelServerProxyHost);
+        settings.setPort(wawelServerProxyPort);
+        settings.setUsername(wawelServerProxyUsername);
+        settings.setPassword(wawelServerProxyPassword);
+        return settings;
+    }
+
+    @Override
+    public void setWawelServerProxySettings(ProviderProxySettings settings) {
+        if (settings == null) {
+            wawelServerProxyEnabled = false;
+            wawelServerProxyType = ProviderProxyType.SOCKS;
+            wawelServerProxyHost = null;
+            wawelServerProxyPort = null;
+            wawelServerProxyUsername = null;
+            wawelServerProxyPassword = null;
+            return;
+        }
+
+        wawelServerProxyEnabled = settings.isEnabled();
+        wawelServerProxyType = settings.getType() != null ? settings.getType() : ProviderProxyType.SOCKS;
+        wawelServerProxyHost = settings.getHost();
+        wawelServerProxyPort = settings.getPort();
+        wawelServerProxyUsername = settings.getUsername();
+        wawelServerProxyPassword = settings.getPassword();
+    }
+
+    @Override
     public ServerCapabilities getWawelCapabilities() {
         return wawelCapabilities;
     }
@@ -127,6 +179,24 @@ public class MixinServerData implements IServerDataExt {
         if (wawelOriginalServerIp != null) {
             nbt.setString("wawelOriginalServerIp", wawelOriginalServerIp);
         }
+        if (wawelServerProxyEnabled) {
+            nbt.setBoolean("wawelServerProxyEnabled", true);
+        }
+        if (wawelServerProxyType != null) {
+            nbt.setString("wawelServerProxyType", wawelServerProxyType.name());
+        }
+        if (wawelServerProxyHost != null) {
+            nbt.setString("wawelServerProxyHost", wawelServerProxyHost);
+        }
+        if (wawelServerProxyPort != null) {
+            nbt.setInteger("wawelServerProxyPort", wawelServerProxyPort.intValue());
+        }
+        if (wawelServerProxyUsername != null) {
+            nbt.setString("wawelServerProxyUsername", wawelServerProxyUsername);
+        }
+        if (wawelServerProxyPassword != null) {
+            nbt.setString("wawelServerProxyPassword", wawelServerProxyPassword);
+        }
     }
 
     @Inject(method = "getServerDataFromNBTCompound", at = @At("RETURN"))
@@ -150,6 +220,36 @@ public class MixinServerData implements IServerDataExt {
         if (nbt.hasKey("wawelOriginalServerIp")) {
             ext.setWawelOriginalServerIp(nbt.getString("wawelOriginalServerIp"));
         }
+        if (nbt.hasKey("wawelServerProxyEnabled") || nbt.hasKey("wawelServerProxyType")
+            || nbt.hasKey("wawelServerProxyHost")
+            || nbt.hasKey("wawelServerProxyPort")
+            || nbt.hasKey("wawelServerProxyUsername")
+            || nbt.hasKey("wawelServerProxyPassword")) {
+            ProviderProxySettings settings = new ProviderProxySettings();
+            settings.setEnabled(nbt.getBoolean("wawelServerProxyEnabled"));
+            if (nbt.hasKey("wawelServerProxyType")) {
+                try {
+                    settings.setType(ProviderProxyType.valueOf(nbt.getString("wawelServerProxyType")));
+                } catch (Exception ignored) {
+                    settings.setType(ProviderProxyType.SOCKS);
+                }
+            } else {
+                settings.setType(ProviderProxyType.SOCKS);
+            }
+            if (nbt.hasKey("wawelServerProxyHost")) {
+                settings.setHost(nbt.getString("wawelServerProxyHost"));
+            }
+            if (nbt.hasKey("wawelServerProxyPort")) {
+                settings.setPort(Integer.valueOf(nbt.getInteger("wawelServerProxyPort")));
+            }
+            if (nbt.hasKey("wawelServerProxyUsername")) {
+                settings.setUsername(nbt.getString("wawelServerProxyUsername"));
+            }
+            if (nbt.hasKey("wawelServerProxyPassword")) {
+                settings.setPassword(nbt.getString("wawelServerProxyPassword"));
+            }
+            ext.setWawelServerProxySettings(settings);
+        }
     }
 
     @Inject(method = "func_152583_a", at = @At("RETURN")) // ServerData.copyFrom
@@ -161,6 +261,7 @@ public class MixinServerData implements IServerDataExt {
         this.wawelLocalAuthApiRoot = otherExt.getWawelLocalAuthApiRoot();
         this.wawelLocalAuthPublicKeyBase64 = otherExt.getWawelLocalAuthPublicKeyBase64();
         this.wawelOriginalServerIp = otherExt.getWawelOriginalServerIp();
+        this.setWawelServerProxySettings(otherExt.getWawelServerProxySettings());
         this.wawelCapabilities = otherExt.getWawelCapabilities();
     }
 }

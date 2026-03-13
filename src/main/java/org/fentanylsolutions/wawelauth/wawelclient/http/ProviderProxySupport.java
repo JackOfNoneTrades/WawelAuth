@@ -13,6 +13,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -35,6 +36,8 @@ public final class ProviderProxySupport {
         + "-Djdk.http.auth.proxying.disabledSchemes=).";
     private static final AtomicBoolean AUTHENTICATOR_INSTALLED = new AtomicBoolean(false);
     private static final ThreadLocal<ProviderProxySettings> ACTIVE_PROXY_SETTINGS = new ThreadLocal<>();
+    private static final List<ProviderProxySettings> ACTIVE_GLOBAL_PROXY_SETTINGS = Collections
+        .synchronizedList(new ArrayList<ProviderProxySettings>());
     private static final ReentrantLock LEGACY_HTTP_PROXY_AUTH_LOCK = new ReentrantLock();
     private static final boolean MODERN_HTTP_CLIENT_AVAILABLE = detectModernHttpClient();
     private static final boolean LEGACY_BASIC_PROXY_AUTH_AVAILABLE;
@@ -227,17 +230,15 @@ public final class ProviderProxySupport {
 
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
-                if (!shouldAnswerProxyAuthentication(
-                    ACTIVE_PROXY_SETTINGS.get(),
+                ProviderProxySettings settings = resolveActiveAuthenticationSettings(
                     getRequestorType(),
                     getRequestingProtocol(),
                     getRequestingHost(),
                     getRequestingSite(),
-                    getRequestingPort())) {
+                    getRequestingPort());
+                if (settings == null) {
                     return null;
                 }
-
-                ProviderProxySettings settings = ACTIVE_PROXY_SETTINGS.get();
                 String username = settings.getUsername() != null ? settings.getUsername() : "";
                 char[] password = (settings.getPassword() != null ? settings.getPassword() : "").toCharArray();
                 return new PasswordAuthentication(username, password);
@@ -353,6 +354,36 @@ public final class ProviderProxySupport {
             && settings.getType() == ProviderProxyType.HTTP;
     }
 
+    private static ProviderProxySettings resolveActiveAuthenticationSettings(RequestorType requestorType,
+        String requestingProtocol, String requestingHost, InetAddress requestingSite, int requestingPort) {
+        ProviderProxySettings threadSettings = ACTIVE_PROXY_SETTINGS.get();
+        if (shouldAnswerProxyAuthentication(
+            threadSettings,
+            requestorType,
+            requestingProtocol,
+            requestingHost,
+            requestingSite,
+            requestingPort)) {
+            return threadSettings;
+        }
+
+        synchronized (ACTIVE_GLOBAL_PROXY_SETTINGS) {
+            for (int i = ACTIVE_GLOBAL_PROXY_SETTINGS.size() - 1; i >= 0; i--) {
+                ProviderProxySettings settings = ACTIVE_GLOBAL_PROXY_SETTINGS.get(i);
+                if (shouldAnswerProxyAuthentication(
+                    settings,
+                    requestorType,
+                    requestingProtocol,
+                    requestingHost,
+                    requestingSite,
+                    requestingPort)) {
+                    return settings;
+                }
+            }
+        }
+        return null;
+    }
+
     private static boolean shouldAnswerProxyAuthentication(ProviderProxySettings settings, RequestorType requestorType,
         String requestingProtocol, String requestingHost, InetAddress requestingSite, int requestingPort) {
         if (settings == null || !settings.isEnabled() || !settings.hasCredentials()) {
@@ -381,10 +412,12 @@ public final class ProviderProxySupport {
     public static final class AuthContext implements AutoCloseable {
 
         private final ProviderProxySettings previous;
+        private final ProviderProxySettings current;
         private final boolean locked;
 
         private AuthContext(ProviderProxySettings settings) {
             this.previous = ACTIVE_PROXY_SETTINGS.get();
+            this.current = settings;
             this.locked = shouldSerializeLegacyProxyAuth(settings);
             if (locked) {
                 LEGACY_HTTP_PROXY_AUTH_LOCK.lock();
@@ -392,6 +425,7 @@ public final class ProviderProxySupport {
 
             if (settings != null && settings.isEnabled() && settings.hasCredentials()) {
                 ACTIVE_PROXY_SETTINGS.set(settings);
+                ACTIVE_GLOBAL_PROXY_SETTINGS.add(settings);
                 resetLegacyProxyAuthStateIfNeeded(settings);
             } else {
                 ACTIVE_PROXY_SETTINGS.remove();
@@ -404,6 +438,16 @@ public final class ProviderProxySupport {
                 ACTIVE_PROXY_SETTINGS.set(previous);
             } else {
                 ACTIVE_PROXY_SETTINGS.remove();
+            }
+            if (current != null && current.isEnabled() && current.hasCredentials()) {
+                synchronized (ACTIVE_GLOBAL_PROXY_SETTINGS) {
+                    for (int i = ACTIVE_GLOBAL_PROXY_SETTINGS.size() - 1; i >= 0; i--) {
+                        if (ACTIVE_GLOBAL_PROXY_SETTINGS.get(i) == current) {
+                            ACTIVE_GLOBAL_PROXY_SETTINGS.remove(i);
+                            break;
+                        }
+                    }
+                }
             }
             if (locked) {
                 LEGACY_HTTP_PROXY_AUTH_LOCK.unlock();
