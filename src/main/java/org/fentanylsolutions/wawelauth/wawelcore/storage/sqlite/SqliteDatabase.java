@@ -193,11 +193,22 @@ public class SqliteDatabase {
                     height INTEGER NOT NULL
                 )""");
 
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS admin_player_list_provider_bindings (
+                    list_type TEXT NOT NULL,
+                    profile_uuid TEXT NOT NULL,
+                    provider_key TEXT NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    PRIMARY KEY (list_type, profile_uuid)
+                )""");
+
             // Indexes for FK lookups
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_profiles_owner ON profiles(owner_uuid)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_tokens_user ON tokens(user_uuid)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_tokens_profile ON tokens(profile_uuid)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_tokens_state ON tokens(state)");
+            stmt.execute(
+                "CREATE INDEX IF NOT EXISTS idx_admin_player_list_bindings_profile ON admin_player_list_provider_bindings(profile_uuid)");
 
             // Schema migrations: add columns if they don't exist yet.
             // SQLite has no IF NOT EXISTS for ALTER TABLE ADD COLUMN,

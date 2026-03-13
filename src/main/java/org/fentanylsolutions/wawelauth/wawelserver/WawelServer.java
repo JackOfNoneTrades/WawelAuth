@@ -7,12 +7,14 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.KeyManager;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.PropertySigner;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.AdminPlayerListProviderBindingDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.InviteDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.ProfileDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.SessionDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.TokenDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.UserDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.memory.InMemorySessionDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteAdminPlayerListProviderBindingDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteDatabase;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteInviteDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteProfileDAO;
@@ -35,6 +37,7 @@ public class WawelServer {
     private final ProfileDAO profileDAO;
     private final TokenDAO tokenDAO;
     private final InviteDAO inviteDAO;
+    private final AdminPlayerListProviderBindingDAO adminPlayerListProviderBindingDAO;
 
     private WawelServer(File stateDir) {
         WawelAuth.LOG.info("Starting Wawel Auth server module...");
@@ -72,6 +75,7 @@ public class WawelServer {
         tokenDAO = new SqliteTokenDAO(database);
         profileDAO = new SqliteProfileDAO(database);
         inviteDAO = new SqliteInviteDAO(database);
+        adminPlayerListProviderBindingDAO = new SqliteAdminPlayerListProviderBindingDAO(database);
         SessionDAO sessionDAO = new InMemorySessionDAO(
             config.getTokens()
                 .getSessionTimeoutMs(),
@@ -97,7 +101,8 @@ public class WawelServer {
             userDAO,
             profileDAO,
             tokenDAO,
-            inviteDAO);
+            inviteDAO,
+            adminPlayerListProviderBindingDAO);
 
         // Router
         router = new HttpRouter();
@@ -169,6 +174,10 @@ public class WawelServer {
 
     public InviteDAO getInviteDAO() {
         return inviteDAO;
+    }
+
+    public AdminPlayerListProviderBindingDAO getAdminPlayerListProviderBindingDAO() {
+        return adminPlayerListProviderBindingDAO;
     }
 
     /**

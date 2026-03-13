@@ -389,6 +389,12 @@ tbody tr:hover {
     min-width: 0;
 }
 
+.profile-avatar {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+}
+
 .profile-entry-row .uuid-code,
 .profile-entry-row input {
     flex: 1 1 auto;

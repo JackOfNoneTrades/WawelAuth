@@ -23,6 +23,7 @@
 
     const el = {};
     const BLANK_AVATAR = "data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=";
+    const AVATAR_CACHE_BUCKET_MS = 30 * 1000;
     // Glyphs from Nerd Fonts v3.4.0 css/nerd-fonts-generated.css.
     const NERD_FONT_ICON_CODEPOINTS = {
         key: 0xf030b,
@@ -803,6 +804,7 @@
             const profileName = String((profile && profile.name) || "");
             const profileUuid = String((profile && profile.uuid) || "");
             const offlineUuid = String((profile && profile.offlineUuid) || "");
+            const avatarUrl = profile && profile.avatarUrl ? String(profile.avatarUrl) : null;
             const draft = Object.prototype.hasOwnProperty.call(state.profileUuidDrafts, profileUuid)
                 ? state.profileUuidDrafts[profileUuid]
                 : null;
@@ -813,6 +815,7 @@
 
             return `<div class="profile-entry">
                 <div class="profile-entry-row">
+                    ${avatarHtml(avatarUrl, "profile-avatar")}
                     ${editing
                         ? `<input type="text" class="profile-uuid-input" data-action="profile-uuid-input" data-profile-uuid="${escapeAttr(profileUuid)}" data-current-uuid="${escapeAttr(profileUuid)}" value="${escapeAttr(draftValue)}" autocomplete="off" spellcheck="false">`
                         : `<code class="uuid-code profile-uuid-code" title="${escapeAttr(profileUuid)}">${escapeHtml(profileUuid || "-")}</code>`
@@ -1231,7 +1234,7 @@
     function withCacheBuster(url) {
         if (!url) return BLANK_AVATAR;
         const separator = url.indexOf("?") >= 0 ? "&" : "?";
-        return `${url}${separator}ts=${Date.now()}`;
+        return `${url}${separator}ts=${Math.floor(Date.now() / AVATAR_CACHE_BUCKET_MS)}`;
     }
 
     async function resolveProfileByProvider(provider, username) {
@@ -1493,10 +1496,15 @@
     }
 
     function avatarCellHtml(avatarUrl) {
+        return avatarHtml(avatarUrl, "");
+    }
+
+    function avatarHtml(avatarUrl, extraClass) {
+        const className = `avatar-2d${extraClass ? ` ${extraClass}` : ""}${avatarUrl ? "" : " placeholder"}`;
         if (avatarUrl) {
-            return `<img class="avatar-2d" src="${escapeAttr(withCacheBuster(avatarUrl))}" alt="">`;
+            return `<img class="${className}" src="${escapeAttr(withCacheBuster(avatarUrl))}" alt="">`;
         }
-        return `<img class="avatar-2d placeholder" src="${BLANK_AVATAR}" alt="">`;
+        return `<img class="${className}" src="${BLANK_AVATAR}" alt="">`;
     }
 
     async function requestJson(path, options, withAuth) {
