@@ -27,12 +27,12 @@
     // Glyphs from Nerd Fonts v3.4.0 css/nerd-fonts-generated.css.
     const NERD_FONT_ICON_CODEPOINTS = {
         key: 0xf030b,
-        image: 0xf0976,
+        image: 0xf1418,
         trash: 0xf09e7,
         edit: 0xf090c,
         save: 0xf0818,
         close: 0xf0156,
-        offline: 0xf0be7
+        offline: 0xf0c9c
     };
 
     document.addEventListener("DOMContentLoaded", () => {
