@@ -59,8 +59,9 @@ public class SqliteInviteDAO implements InviteDAO {
 
     @Override
     public boolean consume(String code) {
-        // Atomic: decrement uses_remaining only if > 0, or leave alone if -1 (unlimited).
-        // Returns true if a row was affected (invite was valid and consumed).
+        // Atomic under the database lock: decrement uses_remaining only if > 0,
+        // or leave alone if -1 (unlimited). If the invite reaches 0, delete it
+        // immediately so exhausted tokens do not linger in admin listings.
         return db.query(conn -> {
             try (PreparedStatement ps = conn.prepareStatement(
                 "UPDATE invites SET uses_remaining = CASE " + "WHEN uses_remaining = -1 THEN -1 "
@@ -68,8 +69,18 @@ public class SqliteInviteDAO implements InviteDAO {
                     + "END "
                     + "WHERE code = ? AND (uses_remaining > 0 OR uses_remaining = -1)")) {
                 ps.setString(1, code);
-                return ps.executeUpdate() > 0;
+                boolean consumed = ps.executeUpdate() > 0;
+                if (!consumed) {
+                    return false;
+                }
             }
+
+            try (PreparedStatement cleanup = conn
+                .prepareStatement("DELETE FROM invites WHERE code = ? AND uses_remaining = 0")) {
+                cleanup.setString(1, code);
+                cleanup.executeUpdate();
+            }
+            return true;
         });
     }
 

@@ -23,6 +23,7 @@ public interface InviteDAO {
     /**
      * Atomically consume one use of an invite.
      * Decrements usesRemaining if > 0, or succeeds without decrement if -1 (unlimited).
+     * If the invite reaches 0 remaining uses, it should be deleted immediately.
      * Returns true if the invite was valid and consumed, false if not found or exhausted.
      *
      * Implementations must be atomic (e.g. UPDATE ... WHERE uses_remaining > 0 OR uses_remaining = -1)
