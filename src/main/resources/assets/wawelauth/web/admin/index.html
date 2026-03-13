@@ -11,13 +11,29 @@
     <div class="bg-blur bg-blur-b"></div>
 
     <main class="page">
-        <header class="hero card">
-            <img class="hero-logo" src="/admin/logo-dragon-outline.png" alt="Wawel Auth logo">
-            <div>
-                <h1>Wawel Auth Admin</h1>
-                <p class="sub" id="serverLine">Waiting for server metadata...</p>
+        <div class="masthead-row">
+            <header class="hero card">
+                <img class="hero-logo" src="/admin/logo-dragon-outline.png" alt="Wawel Auth logo">
+                <div>
+                    <h1>Wawel Auth Admin</h1>
+                    <p class="sub" id="serverLine">Waiting for server metadata...</p>
+                </div>
+            </header>
+
+            <div id="toolbarCard" class="toolbar card section hidden">
+                <div class="toolbar-left">
+                    <button id="refreshBtn" type="button" class="toolbar-btn">
+                        <span class="nf-icon toolbar-btn-icon" aria-hidden="true">&#xf0450;</span>
+                        <span>Refresh</span>
+                    </button>
+                    <button id="logoutBtn" type="button" class="toolbar-btn danger">
+                        <span class="nf-icon toolbar-btn-icon" aria-hidden="true">&#xf05fd;</span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+                <span id="sessionLine" class="muted"></span>
             </div>
-        </header>
+        </div>
 
         <div id="banner" class="banner hidden"></div>
 
@@ -33,14 +49,6 @@
         </section>
 
         <section id="appCard" class="hidden">
-            <div class="toolbar card section">
-                <div class="toolbar-left">
-                    <button id="refreshBtn" type="button">Refresh</button>
-                    <button id="logoutBtn" type="button">Logout</button>
-                </div>
-                <span id="sessionLine" class="muted"></span>
-            </div>
-
             <nav class="nav card section" id="navBar">
                 <button class="nav-btn active" type="button" data-view-target="dashboardView">Dashboard</button>
                 <button class="nav-btn" type="button" data-view-target="usersView">Users</button>
@@ -350,6 +358,10 @@
                 </section>
             </section>
         </section>
+
+        <footer id="siteFooter" class="site-footer hidden">
+            <span id="footerVersionLine">Wawel Auth version -</span>
+        </footer>
     </main>
 
     <script src="/admin/app.js"></script>

@@ -47,10 +47,13 @@
         el.banner = document.getElementById("banner");
         el.loginCard = document.getElementById("loginCard");
         el.appCard = document.getElementById("appCard");
+        el.toolbarCard = document.getElementById("toolbarCard");
         el.loginForm = document.getElementById("loginForm");
         el.tokenInput = document.getElementById("tokenInput");
         el.loginBtn = document.getElementById("loginBtn");
         el.transportHint = document.getElementById("transportHint");
+        el.siteFooter = document.getElementById("siteFooter");
+        el.footerVersionLine = document.getElementById("footerVersionLine");
 
         el.refreshBtn = document.getElementById("refreshBtn");
         el.logoutBtn = document.getElementById("logoutBtn");
@@ -178,10 +181,7 @@
         try {
             const data = await requestJson("/api/wawelauth/admin/bootstrap", { method: "GET" }, false);
             state.bootstrap = data;
-
-            const serverName = data.serverName || "Unknown Server";
-            const apiRoot = data.apiRoot || "(unset apiRoot)";
-            el.serverLine.textContent = `${serverName} · ${apiRoot}`;
+            applyBootstrapMetadata(data);
 
             if (data.requireEncryption) {
                 el.transportHint.classList.remove("hidden");
@@ -265,6 +265,7 @@
     function enterAppMode() {
         el.loginCard.classList.add("hidden");
         el.appCard.classList.remove("hidden");
+        el.toolbarCard.classList.remove("hidden");
         setActiveView("dashboardView");
         startSessionTimer();
         updateSessionLine();
@@ -286,6 +287,7 @@
         clearPersistedSession();
 
         el.appCard.classList.add("hidden");
+        el.toolbarCard.classList.add("hidden");
         el.loginCard.classList.remove("hidden");
         disableLogin(false);
         updateSessionLine();
@@ -350,7 +352,8 @@
         }
 
         try {
-            const [statsResp, usersResp, invitesResp, sessionResp, providersResp, whitelistResp, opsResp] = await Promise.all([
+            const [bootstrapResp, statsResp, usersResp, invitesResp, sessionResp, providersResp, whitelistResp, opsResp] = await Promise.all([
+                requestJson("/api/wawelauth/admin/bootstrap", { method: "GET" }, false),
                 requestJson("/api/wawelauth/admin/stats", { method: "GET" }, true),
                 requestJson("/api/wawelauth/admin/users", { method: "GET" }, true),
                 requestJson("/api/wawelauth/admin/invites", { method: "GET" }, true),
@@ -360,6 +363,8 @@
                 requestJson("/api/wawelauth/admin/ops", { method: "GET" }, true)
             ]);
 
+            state.bootstrap = bootstrapResp || state.bootstrap;
+            applyBootstrapMetadata(state.bootstrap);
             state.sessionExpiresAt = Number(sessionResp.expiresAt) || state.sessionExpiresAt;
             updateSessionLine();
             renderStats(statsResp || {});
@@ -450,15 +455,36 @@
 
             populateConfigForm(response || {});
             state.configLoaded = true;
-
-            const serverName = (response && response.serverName) || "Unknown Server";
-            const apiRoot = (response && response.apiRoot) || "(unset apiRoot)";
-            el.serverLine.textContent = `${serverName} · ${apiRoot}`;
+            state.bootstrap = Object.assign({}, state.bootstrap || {}, {
+                serverName: (response && response.serverName) || "",
+                apiRoot: (response && response.apiRoot) || "",
+                implementationName: (response && response.meta && response.meta.implementationName) || "",
+                registrationPolicy: (response && response.registration && response.registration.policy) || ""
+            });
+            applyBootstrapMetadata(state.bootstrap);
 
             showBanner("server.json saved.", "ok");
         } catch (err) {
             showBanner(`Failed to save config: ${err.message}`, "err");
         }
+    }
+
+    function applyBootstrapMetadata(data) {
+        if (!data) {
+            el.siteFooter.classList.add("hidden");
+            return;
+        }
+
+        const serverName = data.serverName || "Unknown Server";
+        const apiRoot = data.apiRoot || "(unset apiRoot)";
+        el.serverLine.textContent = `${serverName} · ${apiRoot}`;
+        renderFooter(data);
+    }
+
+    function renderFooter(data) {
+        const modVersion = String(data.modVersion || "-");
+        el.footerVersionLine.textContent = `Wawel Auth version ${modVersion}`;
+        el.siteFooter.classList.remove("hidden");
     }
 
     function normalizeServerProperties(entries) {

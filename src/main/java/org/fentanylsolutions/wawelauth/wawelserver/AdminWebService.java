@@ -105,6 +105,7 @@ public class AdminWebService {
     private final byte[] appJs;
     private final byte[] stylesCss;
     private final byte[] logoPng;
+    private final byte[] packFallbackPng;
     private final byte[] nerdSymbolsSubsetWoff2;
 
     public AdminWebService(ServerConfig serverConfig, KeyManager keyManager, UserDAO userDAO, ProfileDAO profileDAO,
@@ -120,6 +121,7 @@ public class AdminWebService {
         this.appJs = loadResourceBytes("/assets/wawelauth/web/admin/app.js");
         this.stylesCss = loadResourceBytes("/assets/wawelauth/web/admin/styles.css");
         this.logoPng = loadResourceBytes("/assets/wawelauth/Logo_Dragon_Outline.png");
+        this.packFallbackPng = loadResourceBytes("/assets/wawelauth/web/admin/pack-fallback.png");
         this.nerdSymbolsSubsetWoff2 = loadResourceBytes(
             "/assets/wawelauth/web/admin/fonts/nerd-fonts/SymbolsNerdFont-Subset.woff2");
 
@@ -139,6 +141,8 @@ public class AdminWebService {
         router.get("/admin/app.js", this::serveAppJs);
         router.get("/admin/styles.css", this::serveStylesCss);
         router.get("/admin/logo-dragon-outline.png", this::serveLogoPng);
+        router.get("/admin/server-icon.png", this::serveServerIconPng);
+        router.get("/admin/server-icon.gif", this::serveServerIconGif);
         router.get("/admin/fonts/nerd-fonts/SymbolsNerdFont-Subset.woff2", this::serveNerdSymbolsSubsetWoff2);
 
         router.get("/api/wawelauth/admin/bootstrap", this::bootstrap);
@@ -189,6 +193,19 @@ public class AdminWebService {
         return staticResponse(logoPng, "image/png");
     }
 
+    private Object serveServerIconPng(RequestContext ctx) {
+        byte[] iconBytes = readExistingFileBytes(resolveServerDirectoryFile("server-icon.png"));
+        return staticResponse(iconBytes != null ? iconBytes : packFallbackPng, "image/png");
+    }
+
+    private Object serveServerIconGif(RequestContext ctx) {
+        byte[] iconBytes = readExistingFileBytes(resolveServerDirectoryFile("server-icon.gif"));
+        if (iconBytes == null) {
+            throw NetException.notFound("Animated server icon not found.");
+        }
+        return staticResponse(iconBytes, "image/gif");
+    }
+
     private Object serveNerdSymbolsSubsetWoff2(RequestContext ctx) {
         return staticResponse(nerdSymbolsSubsetWoff2, "font/woff2");
     }
@@ -205,6 +222,21 @@ public class AdminWebService {
         out.put("publicKeyBase64", requireEncryption ? keyManager.getPublicKeyBase64() : null);
         out.put("serverName", serverConfig.getServerName());
         out.put("apiRoot", serverConfig.getApiRoot());
+        out.put(
+            "implementationName",
+            serverConfig.getMeta()
+                .getImplementationName());
+        out.put(
+            "modVersion",
+            serverConfig.getMeta()
+                .getImplementationVersion());
+        out.put(
+            "registrationPolicy",
+            serverConfig.getRegistration()
+                .getPolicy()
+                .name());
+        out.put("serverIconStaticAvailable", hasServerDirectoryFile("server-icon.png"));
+        out.put("serverIconAnimatedAvailable", hasServerDirectoryFile("server-icon.gif"));
         out.put(
             "sessionTtlMs",
             sanitizeSessionTtl(
@@ -1168,6 +1200,19 @@ public class AdminWebService {
             throw NetException.illegalArgument("Minecraft server is not running.");
         }
         return server.getFile("server.properties");
+    }
+
+    private File resolveServerDirectoryFile(String name) {
+        MinecraftServer server = MinecraftServer.getServer();
+        if (server == null) {
+            return null;
+        }
+        return server.getFile(name);
+    }
+
+    private boolean hasServerDirectoryFile(String name) {
+        File file = resolveServerDirectoryFile(name);
+        return file != null && file.isFile();
     }
 
     private BinaryResponse staticResponse(byte[] body, String contentType) {
@@ -2252,6 +2297,24 @@ public class AdminWebService {
             return out.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException("Failed to read classpath resource: " + path, e);
+        }
+    }
+
+    private static byte[] readExistingFileBytes(File file) {
+        if (file == null || !file.isFile()) {
+            return null;
+        }
+
+        try (InputStream in = new FileInputStream(file); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            return out.toByteArray();
+        } catch (IOException e) {
+            WawelAuth.LOG.warn("Failed to read admin asset {}: {}", file, e.getMessage());
+            return null;
         }
     }
 
