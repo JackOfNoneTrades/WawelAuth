@@ -12,16 +12,24 @@ import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
  */
 public final class TextureRequest {
 
-    /** Unsigned textures accepted, Mojang fallback allowed. */
+    /**
+     * Unsigned textures accepted, Mojang fallback allowed.
+     */
     public static final TextureRequest DEFAULT = new TextureRequest(false, true);
 
-    /** Signed textures required, Mojang fallback allowed. */
+    /**
+     * Signed textures required, Mojang fallback allowed.
+     */
     public static final TextureRequest SIGNED = new TextureRequest(true, true);
 
-    /** Signed textures required, no Mojang fallback. */
+    /**
+     * Signed textures required, no Mojang fallback.
+     */
     public static final TextureRequest STRICT = new TextureRequest(true, false);
 
-    /** Unsigned textures accepted, no Mojang fallback. */
+    /**
+     * Unsigned textures accepted, no Mojang fallback.
+     */
     public static final TextureRequest NO_FALLBACK = new TextureRequest(false, false);
 
     private final boolean requireSigned;

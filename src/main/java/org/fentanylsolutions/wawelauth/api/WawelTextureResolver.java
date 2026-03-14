@@ -58,9 +58,9 @@ import cpw.mods.fml.relauncher.SideOnly;
  * They return a placeholder immediately and fetch asynchronously.
  *
  * <h3>Usage</h3>
- * 
+ *
  * <pre>
- * 
+ *
  * {
  *     &#64;code
  *     WawelTextureResolver resolver = WawelClient.instance()
@@ -120,7 +120,7 @@ public class WawelTextureResolver {
 
     /**
      * Resolve a player skin using WawelAuth's own context.
-     *
+     * <p>
      * Resolution order:
      * <ol>
      * <li>Cache hit</li>
@@ -143,7 +143,7 @@ public class WawelTextureResolver {
 
     /**
      * Resolve a player skin using a specific configured provider.
-     *
+     * <p>
      * This is provider-scoped: it will not silently switch to another local
      * provider that happens to share the same UUID.
      */
@@ -159,7 +159,7 @@ public class WawelTextureResolver {
 
     /**
      * Resolve a player skin for a specific server entry.
-     *
+     * <p>
      * Uses the server's advertised auth capabilities (from its ping response)
      * to determine which provider to query for the profile and textures.
      *
@@ -194,7 +194,7 @@ public class WawelTextureResolver {
 
     /**
      * Resolve a player skin using an explicit provider public key.
-     *
+     * <p>
      * Use this when the caller already knows the auth provider's key and
      * session server, bypassing WawelAuth's automatic provider resolution.
      *
@@ -234,7 +234,7 @@ public class WawelTextureResolver {
 
     /**
      * Resolve a player cape using WawelAuth's own context.
-     *
+     * <p>
      * Resolution order:
      * <ol>
      * <li>Cache hit</li>
@@ -257,7 +257,7 @@ public class WawelTextureResolver {
 
     /**
      * Resolve a player cape using a specific configured provider.
-     *
+     * <p>
      * This is provider-scoped: it will not silently switch to another local
      * provider that happens to share the same UUID.
      */
@@ -273,7 +273,7 @@ public class WawelTextureResolver {
 
     /**
      * Resolve a player cape for a specific server entry.
-     *
+     * <p>
      * Uses the server's advertised auth capabilities (from its ping response)
      * to determine which provider to query for the profile and textures.
      *
@@ -308,7 +308,7 @@ public class WawelTextureResolver {
 
     /**
      * Resolve a player cape using an explicit provider public key.
-     *
+     * <p>
      * Use this when the caller already knows the auth provider's key and
      * session server, bypassing WawelAuth's automatic provider resolution.
      *
@@ -339,7 +339,7 @@ public class WawelTextureResolver {
 
         ClientProvider explicitProvider = buildEphemeralProvider(providerKey, sessionServerBase, skinDomains);
         SessionBridge.LookupContext lookupContext = sessionBridge.createProviderLookupContext(explicitProvider, false);
-        return getSkinInternal(
+        return getCapeInternal(
             new LookupHint(buildCacheKey(buildExplicitScope(sessionServerBase), profileId), lookupContext),
             profileId,
             displayName,
@@ -352,7 +352,7 @@ public class WawelTextureResolver {
 
     /**
      * Invalidate all cached entries for a player UUID.
-     * The next {@code getSkin} call will re-fetch from scratch.
+     * The next {@code getSkin} / {@code getCape} call will re-fetch from scratch.
      */
     public void invalidate(UUID profileId) {
         if (profileId == null) return;
@@ -364,7 +364,9 @@ public class WawelTextureResolver {
         sessionBridge.invalidateProfileCache(profileId);
     }
 
-    /** Invalidate all cached skin entries. */
+    /**
+     * Invalidate all cached entries.
+     */
     public void invalidateAll() {
         skinEntries.clear();
         capeEntries.clear();
@@ -374,7 +376,9 @@ public class WawelTextureResolver {
     // Lifecycle
     // =========================================================================
 
-    /** Sweep expired resolved entries. Call once per client tick. */
+    /**
+     * Sweep expired resolved entries. Call once per client tick.
+     */
     public void tick() {
         long now = System.currentTimeMillis();
         skinEntries.values()
@@ -387,7 +391,9 @@ public class WawelTextureResolver {
                     && now - entry.resolvedAtMs > SKIN_TTL_MS);
     }
 
-    /** Shut down the worker pool and clear all state. */
+    /**
+     * Shut down the worker pool and clear all state.
+     */
     public void shutdown() {
         executor.shutdownNow();
         skinEntries.clear();
