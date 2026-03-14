@@ -13,6 +13,7 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.SkinRequest;
+import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.ProviderThreadDownloadImageData;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelBuilder;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelCube;
@@ -218,6 +219,11 @@ public class SkinLayers3DSetup {
             .getTexture(skinLocation);
         if (texture instanceof ProviderThreadDownloadImageData providerImageData) {
             return providerImageData.bufferedImage;
+        }
+        // Offline/local skins are registered as DynamicTexture via LocalTextureLoader
+        BufferedImage cached = LocalTextureLoader.getCachedImage(skinLocation);
+        if (cached != null) {
+            return cached;
         }
         return null;
     }

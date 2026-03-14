@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -31,6 +32,8 @@ public final class LocalTextureLoader {
 
     private static final Set<UUID> OFFLINE_CAPE_LOADS = Collections
         .newSetFromMap(new ConcurrentHashMap<UUID, Boolean>());
+
+    private static final Map<ResourceLocation, BufferedImage> imageCache = new ConcurrentHashMap<>();
 
     private LocalTextureLoader() {}
 
@@ -61,7 +64,17 @@ public final class LocalTextureLoader {
         }
 
         textureManager.loadTexture(location, new DynamicTexture(image));
+        imageCache.put(location, image);
         return location;
+    }
+
+    /**
+     * Returns the BufferedImage previously registered for the given location,
+     * or null if not found. Used by SkinLayers3D to read pixel data from
+     * offline/local skins that are stored as DynamicTexture.
+     */
+    public static BufferedImage getCachedImage(ResourceLocation location) {
+        return location != null ? imageCache.get(location) : null;
     }
 
     public static boolean isGifPath(String path) {
