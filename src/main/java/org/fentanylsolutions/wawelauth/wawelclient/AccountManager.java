@@ -32,10 +32,10 @@ import com.google.gson.JsonObject;
 
 /**
  * Core service managing client-side accounts and their token lifecycle.
- *
+ * <p>
  * Handles: authenticate, validate, refresh, offline degradation,
  * background token refresh with exponential backoff.
- *
+ * <p>
  * All network-touching methods return {@link CompletableFuture} and run on
  * a background thread. Synchronous methods (local DB only) are safe to call
  * from any thread.
@@ -54,7 +54,9 @@ public class AccountManager {
     private final MicrosoftOAuthClient microsoftOAuthClient;
     private final ScheduledExecutorService scheduler;
 
-    /** In-memory account status cache. Render code reads from this, never from DB. */
+    /**
+     * In-memory account status cache. Render code reads from this, never from DB.
+     */
     private final ConcurrentHashMap<Long, AccountStatus> statusCache = new ConcurrentHashMap<>();
 
     public AccountManager(ClientAccountDAO accountDAO, ClientProviderDAO providerDAO, YggdrasilHttpClient httpClient) {
@@ -70,7 +72,9 @@ public class AccountManager {
         });
     }
 
-    /** Start background token refresh. Called once from WawelClient. */
+    /**
+     * Start background token refresh. Called once from WawelClient.
+     */
     public void startBackgroundRefresh() {
         // Immediate: validate all accounts
         scheduler.submit(this::validateAllAccounts);
@@ -79,7 +83,9 @@ public class AccountManager {
             .scheduleAtFixedRate(this::periodicCheck, CHECK_INTERVAL_SECONDS, CHECK_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
-    /** Stop background refresh. Called from WawelClient.stop(). */
+    /**
+     * Stop background refresh. Called from WawelClient.stop().
+     */
     public void shutdown() {
         scheduler.shutdown();
         try {
@@ -121,7 +127,7 @@ public class AccountManager {
 
     /**
      * Register a new account on a custom provider.
-     *
+     * <p>
      * This is a WawelAuth extension endpoint (not Yggdrasil standard):
      * POST /api/wawelauth/register
      */
@@ -140,7 +146,7 @@ public class AccountManager {
 
     /**
      * Change password for a WawelAuth-managed account.
-     *
+     * <p>
      * This is a WawelAuth extension endpoint:
      * POST /api/wawelauth/change-password
      */
@@ -163,7 +169,7 @@ public class AccountManager {
 
     /**
      * Delete a WawelAuth-managed account on the provider (self-service).
-     *
+     * <p>
      * This is a WawelAuth extension endpoint:
      * POST /api/wawelauth/delete-account
      */
@@ -186,7 +192,7 @@ public class AccountManager {
 
     /**
      * Probe whether a provider supports WawelAuth registration extension.
-     *
+     * <p>
      * Current rule: GET {services/api root}/ and require
      * meta.implementationName == "WawelAuth" (case-insensitive).
      */
@@ -385,7 +391,9 @@ public class AccountManager {
         return statusCache.get(id);
     }
 
-    /** Update the in-memory status cache entry. */
+    /**
+     * Update the in-memory status cache entry.
+     */
     public void cacheStatus(long id, AccountStatus status) {
         statusCache.put(id, status);
     }

@@ -10,12 +10,12 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 
 /**
  * Manages the SQLite database connection and schema initialization.
- *
+ * <p>
  * Uses a single shared connection with WAL mode. SQLite in WAL mode allows
  * concurrent reads alongside a single writer. The busy_timeout PRAGMA ensures
  * that concurrent writes wait (up to 5 seconds) instead of immediately failing,
  * which is sufficient for the expected load of a Minecraft server's auth traffic.
- *
+ * <p>
  * All access to the connection is serialized via {@code synchronized} methods
  * ({@link #query}, {@link #execute}, {@link #runInTransaction}). DAOs must
  * use these entry points instead of accessing the connection directly, which
@@ -23,14 +23,18 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
  */
 public class SqliteDatabase {
 
-    /** Callback that returns a value from a database operation. */
+    /**
+     * Callback that returns a value from a database operation.
+     */
     @FunctionalInterface
     public interface SqlFunction<T> {
 
         T apply(Connection conn) throws SQLException;
     }
 
-    /** Callback that performs a void database operation. */
+    /**
+     * Callback that performs a void database operation.
+     */
     @FunctionalInterface
     public interface SqlConsumer {
 
@@ -48,7 +52,9 @@ public class SqliteDatabase {
         this(dbFile.getAbsolutePath());
     }
 
-    /** Open the connection and initialize schema. */
+    /**
+     * Open the connection and initialize schema.
+     */
     public void initialize() {
         try {
             // Ensure parent directory exists
@@ -101,7 +107,7 @@ public class SqliteDatabase {
     /**
      * Executes the given action inside a BEGIN/COMMIT transaction.
      * If the action throws, the transaction is rolled back.
-     *
+     * <p>
      * Holds the connection lock for the entire transaction, so concurrent
      * threads cannot interleave their operations with this transaction.
      * The lock is reentrant, so DAO calls inside the action (which also

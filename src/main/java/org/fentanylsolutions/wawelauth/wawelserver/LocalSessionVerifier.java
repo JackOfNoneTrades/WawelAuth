@@ -40,7 +40,7 @@ import com.mojang.util.UUIDTypeAdapter;
 
 /**
  * Server-side login verification bridge.
- *
+ * <p>
  * When the WawelAuth server module is enabled, this verifier queries the local
  * /sessionserver/session/minecraft/hasJoined endpoint first.
  */
@@ -223,7 +223,7 @@ public final class LocalSessionVerifier {
         if (invokePlayerLookup(configManager, "getPlayerByUsername", normalizedTarget)) return true;
         if (invokePlayerLookup(configManager, "getPlayerForUsername", normalizedTarget)) return true;
         if (invokePlayerLookup(configManager, "func_72361_f", normalizedTarget)) return true; // getPlayerForUsername
-                                                                                              // (SRG)
+        // (SRG)
 
         try {
             Field listField = configManager.getClass()

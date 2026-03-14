@@ -5,7 +5,7 @@ import java.io.File;
 /**
  * Resolves the OS-specific configuration directory for WawelAuth's
  * client account database.
- *
+ * <p>
  * When local bootstrap config (local.json) has {@code useOsConfigDir=true},
  * the account database and other data configs are stored in a shared OS
  * location instead of inside the .minecraft directory, allowing multiple

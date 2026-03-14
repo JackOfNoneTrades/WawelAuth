@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.llamalad7.mixinextras.sugar.Local;
 
+@SuppressWarnings("UnresolvedMixinReference")
 @Pseudo
 @Mixin(targets = "com.hbm.main.ModEventHandlerClient", remap = false)
 public class MixinModEventHandlerClient {

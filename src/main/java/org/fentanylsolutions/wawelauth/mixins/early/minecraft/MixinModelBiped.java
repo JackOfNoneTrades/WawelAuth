@@ -22,11 +22,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Injects modern 64x64 skin support into vanilla ModelBiped.
- *
+ * <p>
  * Adds 5 overlay layers (body wear, arm wear, leg wear), dedicated left-limb UVs,
  * and slim (3px) arm variant support. The model instance remains vanilla ModelBiped:
  * only its internal ModelRenderer parts are rebuilt for 64x64 UV mapping.
- *
+ * <p>
  * Non-player ModelBiped instances (zombies, skeletons, armor) are unaffected:
  * modernEnabled stays false, and all injections are no-ops.
  */

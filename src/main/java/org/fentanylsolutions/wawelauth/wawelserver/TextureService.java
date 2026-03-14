@@ -52,11 +52,11 @@ public class TextureService {
 
     /**
      * PUT /api/user/profile/{uuid}/{textureType}
-     *
+     * <p>
      * Uploads a texture. Request is multipart/form-data with:
      * - "file": the PNG image
      * - "model": (optional, SKIN only) "slim" or "" for classic
-     *
+     * <p>
      * Authenticated via Bearer token.
      */
     public Object uploadTexture(RequestContext ctx) {
@@ -245,7 +245,7 @@ public class TextureService {
 
     /**
      * DELETE /api/user/profile/{uuid}/{textureType}
-     *
+     * <p>
      * Deletes a texture from a profile. Authenticated via Bearer token.
      */
     public Object deleteTexture(RequestContext ctx) {
@@ -431,7 +431,7 @@ public class TextureService {
      * [12..15] "IHDR"
      * [16..19] width (big-endian u32)
      * [20..23] height (big-endian u32)
-     *
+     * <p>
      * Returns {width, height} or null if the data is too short or IHDR is missing.
      */
     private static int[] readPngDimensions(byte[] data) {

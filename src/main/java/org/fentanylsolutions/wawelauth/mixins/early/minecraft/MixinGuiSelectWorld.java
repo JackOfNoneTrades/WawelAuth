@@ -9,8 +9,9 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
 
-import org.fentanylsolutions.wawelauth.api.TextureRequest;
+import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
+import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.gui.AuthButton;
 import org.fentanylsolutions.wawelauth.client.gui.ServerAccountPickerScreen;
 import org.fentanylsolutions.wawelauth.wawelclient.SingleplayerAccountPersistence;
@@ -134,7 +135,7 @@ public abstract class MixinGuiSelectWorld extends GuiScreen {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             RenderHelper.disableStandardItemLighting();
 
-            WawelTextureResolver
+            WawelFaceRendererClient
                 .drawFace(skin, x, y, WAWELAUTH_SINGLEPLAYER_HEAD_SIZE, WAWELAUTH_SINGLEPLAYER_HEAD_SIZE, 1.0F);
         } finally {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);

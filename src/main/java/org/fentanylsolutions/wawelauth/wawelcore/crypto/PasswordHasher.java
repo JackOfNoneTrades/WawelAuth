@@ -11,7 +11,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.util.HexUtil;
 
 /**
  * Password hashing using PBKDF2-HMAC-SHA256.
- *
+ * <p>
  * Built into Java 8, no external dependencies needed. Uses OWASP-recommended
  * parameters: 210,000 iterations, 256-bit output, 128-bit random salt.
  * Salt and hash are stored as hex strings in the database.
@@ -40,7 +40,7 @@ public class PasswordHasher {
 
     /**
      * Verify a password against a stored hash and salt.
-     *
+     * <p>
      * Uses constant-time comparison to prevent timing attacks.
      *
      * @param password   the plaintext password to check
@@ -94,7 +94,9 @@ public class PasswordHasher {
         return HexUtil.isValidHex(s);
     }
 
-    /** Result of hashing a password. */
+    /**
+     * Result of hashing a password.
+     */
     public static class HashResult {
 
         private final String hash;
@@ -105,12 +107,16 @@ public class PasswordHasher {
             this.salt = salt;
         }
 
-        /** Hex-encoded PBKDF2 hash. */
+        /**
+         * Hex-encoded PBKDF2 hash.
+         */
         public String getHash() {
             return hash;
         }
 
-        /** Hex-encoded random salt. */
+        /**
+         * Hex-encoded random salt.
+         */
         public String getSalt() {
             return salt;
         }

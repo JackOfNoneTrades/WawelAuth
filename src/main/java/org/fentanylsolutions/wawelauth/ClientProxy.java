@@ -4,11 +4,11 @@ import java.io.File;
 
 import net.minecraftforge.common.MinecraftForge;
 
-import org.fentanylsolutions.wawelauth.client.gui.AnimatedCapeClientHandler;
 import org.fentanylsolutions.wawelauth.client.gui.GuiTransitionScheduler;
-import org.fentanylsolutions.wawelauth.client.gui.SkinResolverClientHandler;
 import org.fentanylsolutions.wawelauth.client.gui.WawelAuthKeybind;
-import org.fentanylsolutions.wawelauth.client.render.NTMArmorCompat;
+import org.fentanylsolutions.wawelauth.client.render.SkinResolverClientHandler;
+import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeClientHandler;
+import org.fentanylsolutions.wawelauth.client.render.compat.NTMArmorCompat;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelPingClientHooks;
@@ -16,11 +16,12 @@ import org.fentanylsolutions.wawelauth.wawelcore.config.LocalConfig;
 
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 
 public class ClientProxy extends CommonProxy {
 
     @Override
-    public void preInit(cpw.mods.fml.common.event.FMLPreInitializationEvent event) {
+    public void preInit(FMLPreInitializationEvent event) {
         super.preInit(event);
 
         // Load skin rendering config before Minecraft client classes start using it.

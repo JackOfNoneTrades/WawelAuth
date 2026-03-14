@@ -25,6 +25,7 @@ import net.minecraft.server.MinecraftServer;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.api.WawelFaceRendererServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.RegistrationPolicy;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
@@ -40,7 +41,7 @@ import cpw.mods.fml.common.ModContainer;
 
 /**
  * Serves a public site from config/wawelauth/public-page.
- *
+ * <p>
  * Files are frozen at startup into an in-memory route map and only those exact
  * route keys are served. If no custom top-level index exists yet, the bundled
  * default public site is copied into that directory first.
@@ -919,7 +920,7 @@ public final class PublicPageService {
     }
 
     private static byte[] renderFacePng(byte[] skinBytes) {
-        return org.fentanylsolutions.wawelauth.api.WawelFaceRenderer.renderFacePng(skinBytes, 64);
+        return WawelFaceRendererServer.renderFacePng(skinBytes, 64);
     }
 
     private static BinaryResponse buildAvatarResponse(byte[] pngBytes) {

@@ -41,6 +41,7 @@ import net.minecraft.server.management.UserListWhitelist;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.api.WawelFaceRendererServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.JsonConfigIO;
 import org.fentanylsolutions.wawelauth.wawelcore.config.RegistrationPolicy;
@@ -72,10 +73,13 @@ import com.mojang.authlib.GameProfile;
 
 /**
  * Admin web UI and API endpoints.
- *
+ * <p>
  * Auth:
+ * <p>
  * - Admin secret comes from server.admin.tokenEnvVar (preferred) or server.admin.token.
+ * <p>
  * - POST /api/wawelauth/admin/login mints short-lived session tokens.
+ * <p>
  * - Non-HTTPS transport requires encrypted login payload (RSA-OAEP with server public key).
  */
 public class AdminWebService {
@@ -2163,7 +2167,7 @@ public class AdminWebService {
     }
 
     private static byte[] renderFacePng(byte[] skinBytes) {
-        return org.fentanylsolutions.wawelauth.api.WawelFaceRenderer.renderFacePng(skinBytes, 64);
+        return WawelFaceRendererServer.renderFacePng(skinBytes, 64);
     }
 
     private static JsonObject readOptionalObject(JsonObject parent, String field) {

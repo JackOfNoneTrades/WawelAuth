@@ -13,10 +13,10 @@ import org.fentanylsolutions.wawelauth.wawelclient.storage.sqlite.SqliteClientPr
 
 /**
  * Singleton composition root for the client account manager module.
- *
+ * <p>
  * Manages the client-side SQLite database, provider registry, account manager,
  * and background token refresh.
- *
+ * <p>
  * Lifecycle:
  * <ul>
  * <li>{@link #start(File)} called from {@code ClientProxy.init()} (client-side only)</li>

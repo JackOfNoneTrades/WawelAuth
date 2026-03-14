@@ -20,6 +20,7 @@ import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
 import org.fentanylsolutions.wawelauth.client.render.ISkinModelOverride;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.ProviderThreadDownloadImageData;
+import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTexture;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderRoutedHttp;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;

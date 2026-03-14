@@ -13,9 +13,9 @@ import org.fentanylsolutions.wawelauth.wawelnet.NetException;
 /**
  * Server-safe face cutout renderer for vanilla and HD skins.
  */
-public final class WawelFaceRenderer {
+public final class WawelFaceRendererServer {
 
-    private WawelFaceRenderer() {}
+    private WawelFaceRendererServer() {}
 
     public static byte[] renderFacePng(byte[] skinBytes, int outputSize) {
         try {

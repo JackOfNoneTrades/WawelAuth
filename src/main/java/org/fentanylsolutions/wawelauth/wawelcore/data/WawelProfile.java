@@ -5,13 +5,13 @@ import java.util.UUID;
 
 /**
  * A game profile (character) in the Yggdrasil system.
- *
+ * <p>
  * Maps to the Yggdrasil "profile" concept. A profile belongs to exactly one
  * {@link WawelUser} and represents a playable game identity with a unique UUID
  * and unique name.
- *
+ * <p>
  * Serialized profile form (Yggdrasil spec):
- * 
+ *
  * <pre>
  * {
  *   "id": "unsigned profile uuid",
@@ -21,20 +21,26 @@ import java.util.UUID;
  *   ]
  * }
  * </pre>
- *
+ * <p>
  * The properties array (including textures) is only present when the endpoint
  * requires it (e.g. hasJoined, profile query). Simple profile references
  * in authenticate/refresh responses only include id and name.
  */
 public class WawelProfile {
 
-    /** The profile UUID used in-game. Globally unique. */
+    /**
+     * The profile UUID used in-game. Globally unique.
+     */
     private UUID uuid;
 
-    /** Player name. Globally unique but may change. Do not use as persistent identity. */
+    /**
+     * Player name. Globally unique but may change. Do not use as persistent identity.
+     */
     private String name;
 
-    /** FK: UUID of the owning {@link WawelUser}. */
+    /**
+     * FK: UUID of the owning {@link WawelUser}.
+     */
     private UUID ownerUuid;
 
     /**
@@ -44,7 +50,9 @@ public class WawelProfile {
      */
     private UUID offlineUuid;
 
-    /** Skin arm model. CLASSIC (4px) or SLIM (3px). */
+    /**
+     * Skin arm model. CLASSIC (4px) or SLIM (3px).
+     */
     private SkinModel skinModel = SkinModel.CLASSIC;
 
     /**
@@ -65,10 +73,14 @@ public class WawelProfile {
      */
     private String elytraHash;
 
-    /** Whether the current cape is an animated GIF. */
+    /**
+     * Whether the current cape is an animated GIF.
+     */
     private boolean capeAnimated;
 
-    /** Epoch millis when this profile was created. */
+    /**
+     * Epoch millis when this profile was created.
+     */
     private long createdAt;
 
     /**
@@ -169,7 +181,9 @@ public class WawelProfile {
         this.uploadableTextures = uploadableTextures;
     }
 
-    /** Whether this profile can upload the given texture type. */
+    /**
+     * Whether this profile can upload the given texture type.
+     */
     public boolean canUpload(TextureType type) {
         return uploadableTextures != null && uploadableTextures.contains(type);
     }
@@ -190,7 +204,9 @@ public class WawelProfile {
         return sb.length() > 0 ? sb.toString() : null;
     }
 
-    /** Returns the texture hash for the given type, or null if not set. */
+    /**
+     * Returns the texture hash for the given type, or null if not set.
+     */
     public String getTextureHash(TextureType type) {
         switch (type) {
             case SKIN:
@@ -204,7 +220,9 @@ public class WawelProfile {
         }
     }
 
-    /** Sets the texture hash for the given type. Pass null to clear. */
+    /**
+     * Sets the texture hash for the given type. Pass null to clear.
+     */
     public void setTextureHash(TextureType type, String hash) {
         switch (type) {
             case SKIN:
@@ -231,7 +249,9 @@ public class WawelProfile {
         return UuidUtil.offlinePlayerUuid(playerName);
     }
 
-    /** Recompute and set offlineUuid from the current name. */
+    /**
+     * Recompute and set offlineUuid from the current name.
+     */
     public void updateOfflineUuid() {
         if (name != null) {
             this.offlineUuid = computeOfflineUuid(name);

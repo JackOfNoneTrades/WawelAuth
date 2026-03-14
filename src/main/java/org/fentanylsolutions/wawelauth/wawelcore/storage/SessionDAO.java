@@ -4,18 +4,21 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.PendingSession;
 
 /**
  * Data access interface for {@link PendingSession} entries.
- *
+ * <p>
  * Manages the short-lived join/hasJoined handshake state.
  * Implementations may be in-memory (recommended, since sessions are ephemeral
  * and expire in seconds) or persistent.
- *
+ * <p>
  * Used by:
+ * <p>
  * - POST /sessionserver/session/minecraft/join (create)
+ * <p>
  * - GET /sessionserver/session/minecraft/hasJoined (consume)
- *
+ * <p>
  * Sessions are one-time use: consumed by hasJoined and then deleted.
+ * <p>
  * Sessions expire after a configurable timeout (typically 15-30 seconds).
- *
+ * <p>
  * Sessions are keyed by serverId alone. Each connection attempt produces a unique
  * serverId (SHA-1 hash of server ID string + shared secret + server public key),
  * so there is at most one pending session per serverId at any time.
@@ -42,6 +45,8 @@ public interface SessionDAO {
      */
     PendingSession consume(String serverId, String profileName, String clientIp, long timeoutMs);
 
-    /** Remove all sessions older than the given timeout. Periodic cleanup. */
+    /**
+     * Remove all sessions older than the given timeout. Periodic cleanup.
+     */
     void purgeExpired(long timeoutMs);
 }

@@ -150,7 +150,7 @@ public final class WawelPingPayload {
 
     /**
      * Resolve the auth endpoint URL to advertise for a fallback entry.
-     *
+     * <p>
      * Rules:
      * 1. Prefer configured accountUrl.
      * 2. Treat legacy Mojang accountUrl (api.mojang.com) as authserver.mojang.com.

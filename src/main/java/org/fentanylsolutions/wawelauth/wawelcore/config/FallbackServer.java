@@ -5,7 +5,7 @@ import java.util.List;
 
 /**
  * Configuration for an upstream/fallback auth server.
- *
+ * <p>
  * When the local server cannot resolve a session or profile,
  * it queries fallback servers in order. This enables "vanilla-like"
  * behavior by configuring Mojang as the sole fallback.

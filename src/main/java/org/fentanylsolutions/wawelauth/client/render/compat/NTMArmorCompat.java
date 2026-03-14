@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.render;
+package org.fentanylsolutions.wawelauth.client.render.compat;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -9,6 +9,8 @@ import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.common.MinecraftForge;
+
+import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.eventhandler.EventPriority;

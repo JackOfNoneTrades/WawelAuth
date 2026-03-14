@@ -13,8 +13,9 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
 
-import org.fentanylsolutions.wawelauth.api.TextureRequest;
+import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
+import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.gui.AccountManagerScreen;
 import org.fentanylsolutions.wawelauth.client.gui.GuiText;
 import org.fentanylsolutions.wawelauth.client.gui.IServerTooltipFaceHost;
@@ -423,7 +424,7 @@ public class MixinServerListEntryNormal {
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 
-            WawelTextureResolver.drawFace(skin, x, y, ACCOUNT_HEAD_SIZE, ACCOUNT_HEAD_SIZE, 1.0F);
+            WawelFaceRendererClient.drawFace(skin, x, y, ACCOUNT_HEAD_SIZE, ACCOUNT_HEAD_SIZE, 1.0F);
         } finally {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             GL11.glPopAttrib();

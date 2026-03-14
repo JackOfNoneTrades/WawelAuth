@@ -7,13 +7,15 @@ import java.util.regex.Pattern;
 /**
  * Client-side configuration, stored as client.json in WawelAuth's active data
  * config directory (local or OS-shared depending on local.json).
- *
+ * <p>
  * Controls the client account manager behavior (provider defaults, upload
  * policy, etc).
  */
 public class ClientConfig {
 
-    /** Provider name to auto-select when none is chosen. Null = ask user. Consumed by wawelclient. */
+    /**
+     * Provider name to auto-select when none is chosen. Null = ask user. Consumed by wawelclient.
+     */
     private String defaultProvider = null;
 
     /**

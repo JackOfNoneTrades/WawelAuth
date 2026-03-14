@@ -7,7 +7,9 @@ import org.fentanylsolutions.wawelauth.wawelcore.config.JsonConfigIO;
 
 /**
  * Configuration for client-side skin rendering extras.
+ * <p>
  * Loaded from skinlayers.json in WawelAuth's local instance config directory.
+ * <p>
  * Field defaults match 3d-Skin-Layers upstream where applicable.
  */
 public class SkinLayers3DConfig {

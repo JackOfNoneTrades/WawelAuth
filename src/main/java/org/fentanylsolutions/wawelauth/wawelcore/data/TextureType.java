@@ -5,7 +5,7 @@ import java.util.Locale;
 /**
  * Texture types as defined by the Yggdrasil specification.
  * Used as keys in the "textures" map of a profile's textures property.
- *
+ * <p>
  * The spec defines SKIN and CAPE. ELYTRA is a non-standard extension
  * supported by some custom auth servers.
  */

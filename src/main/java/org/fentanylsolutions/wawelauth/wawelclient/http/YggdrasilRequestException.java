@@ -1,7 +1,8 @@
 package org.fentanylsolutions.wawelauth.wawelclient.http;
 
 /**
- * Thrown when a Yggdrasil server returns an HTTP error response.
+ * Thrown when an Yggdrasil server returns an HTTP error response.
+ * <p>
  * Contains the HTTP status code and the Yggdrasil error/errorMessage fields.
  */
 public class YggdrasilRequestException extends Exception {
@@ -21,12 +22,16 @@ public class YggdrasilRequestException extends Exception {
         return httpStatus;
     }
 
-    /** Yggdrasil error type, e.g. "ForbiddenOperationException". */
+    /**
+     * Yggdrasil error type, e.g. "ForbiddenOperationException".
+     */
     public String getError() {
         return error;
     }
 
-    /** Yggdrasil error message, e.g. "Invalid credentials." */
+    /**
+     * Yggdrasil error message, e.g. "Invalid credentials."
+     */
     public String getErrorMessage() {
         return errorMessage;
     }

@@ -10,8 +10,8 @@ import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.Minecraft;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.client.gui.AnimatedCapeTexture;
-import org.fentanylsolutions.wawelauth.client.gui.AnimatedCapeTracker;
+import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTexture;
+import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTracker;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderRoutedHttp;
@@ -32,7 +32,7 @@ import com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService;
 /**
  * Mixin into authlib's YggdrasilMinecraftSessionService.
  * remap = false because authlib classes are NOT obfuscated by MCP.
- *
+ * <p>
  * Injection points:
  * 1. Signature verification in getTextures(): try connection-trusted keys
  * 2. Domain whitelisting in getTextures(): check connection-trusted domains

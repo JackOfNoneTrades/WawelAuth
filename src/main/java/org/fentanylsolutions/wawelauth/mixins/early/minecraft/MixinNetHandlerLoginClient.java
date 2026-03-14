@@ -17,7 +17,7 @@ public class MixinNetHandlerLoginClient {
     /**
      * Redirect the joinServer() call in handleEncryptionRequest to always
      * route through SessionBridge.
-     *
+     * <p>
      * All authentication is handled by WawelAuth: there is no vanilla
      * fallback. An active account MUST be set before the connection reaches
      * this point (enforced by MixinGuiConnecting + Step 6 account selection).

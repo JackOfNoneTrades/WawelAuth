@@ -13,7 +13,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 
 /**
  * Schedules GUI transitions for the next client tick.
- *
+ * <p>
  * Minecraft.func_152344_a runs immediately when called on the client thread
  * in 1.7.10, so it cannot be used to "defer to next tick" from UI handlers.
  */

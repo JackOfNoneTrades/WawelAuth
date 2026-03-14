@@ -46,7 +46,7 @@ import com.mojang.authlib.properties.Property;
 /**
  * Coordinates between the WawelAuth client account system and
  * vanilla Minecraft's authentication/session infrastructure.
- *
+ * <p>
  * Handles: session swapping, joinServer redirection, connection-scoped
  * texture signature verification, skin domain whitelisting, profile
  * property fetching from custom providers, and auto-import of the
@@ -63,7 +63,9 @@ public class SessionBridge {
     private final AccountManager accountManager;
     private final ExecutorService profileFetchExecutor;
 
-    /** The launcher's original session, captured at construction. */
+    /**
+     * The launcher's original session, captured at construction.
+     */
     private final Session launcherSession;
 
     private volatile ClientAccount activeAccount;
@@ -168,7 +170,9 @@ public class SessionBridge {
             .debug("Activated account '" + account.getProfileName() + "' on provider '" + provider.getName() + "'");
     }
 
-    /** Clear active account state and restore the launcher's original session. */
+    /**
+     * Clear active account state and restore the launcher's original session.
+     */
     public void clearActiveAccount() {
         this.activeAccount = null;
         this.activeProvider = null;
@@ -310,7 +314,9 @@ public class SessionBridge {
         return resolvePingProfileContext(profileId, nowMs) != null;
     }
 
-    /** Stop background resources used by session/profile bridging. */
+    /**
+     * Stop background resources used by session/profile bridging.
+     */
     public void shutdown() {
         profileFetchExecutor.shutdownNow();
     }
@@ -319,7 +325,9 @@ public class SessionBridge {
         return activeAccount != null && activeProvider != null;
     }
 
-    /** Returns the reason the last {@link #activateAccount} call failed, or null. */
+    /**
+     * Returns the reason the last {@link #activateAccount} call failed, or null.
+     */
     public String getLastActivationError() {
         return lastActivationError;
     }
@@ -349,7 +357,7 @@ public class SessionBridge {
 
     /**
      * Build connection-trusted providers from live server capabilities.
-     *
+     * <p>
      * For unadvertised/vanilla servers, keep the pre-capability trust model:
      * active provider plus Mojang. For advertised WawelAuth servers, trust only
      * providers explicitly matched by the server's advertised policy.
@@ -362,11 +370,11 @@ public class SessionBridge {
 
     /**
      * Resolve a single account candidate based on runtime server capabilities.
-     *
+     * <p>
      * Returns:
      * - account id, if exactly one local account matches server-accepted auth endpoints
      * - -1, if none or multiple match
-     *
+     * <p>
      * Does not persist anything to ServerData/NBT.
      */
     public long findSingleMatchingAccountId(ServerCapabilities capabilities) {
@@ -501,14 +509,16 @@ public class SessionBridge {
     // Texture verification: connection-scoped
     // =========================================================================
 
-    /** Get all trusted public keys for the current connection. */
+    /**
+     * Get all trusted public keys for the current connection.
+     */
     public List<PublicKey> getTrustedPublicKeys() {
         return trustedKeys;
     }
 
     /**
      * Public keys used for texture signature verification.
-     *
+     * <p>
      * During an active server session, uses connection-trusted keys only.
      * Outside session context (menus/tooltips), uses a profile-scoped trust
      * source instead of trusting every configured provider globally.
@@ -519,7 +529,7 @@ public class SessionBridge {
 
     /**
      * Public keys used for texture signature verification for one profile.
-     *
+     * <p>
      * In-world: use connection-scoped keys.
      * Menus/UI: use only the profile's trusted source (ping-advertised auth or
      * locally known account provider), not all configured providers globally.
@@ -614,7 +624,7 @@ public class SessionBridge {
      * Uses connection-scoped auth while in-world. In menus/UI, can also use
      * ping-advertised server auth for sampled player profiles before falling
      * back to locally known account providers.
-     *
+     * <p>
      * Returns null only when no suitable provider can be determined
      * (caller should fall through to vanilla).
      */

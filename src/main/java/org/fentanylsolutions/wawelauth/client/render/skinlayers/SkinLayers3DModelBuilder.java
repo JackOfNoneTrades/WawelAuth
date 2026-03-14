@@ -9,7 +9,7 @@ import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelCube
 
 /**
  * 1.7.10 cube collector used by the voxel wrapper pipeline.
- *
+ * <p>
  * This builder follows the MIT snapshot wiring style from 3d-Skin-Layers and
  * adapts it to our custom-cube target.
  */

@@ -2,21 +2,21 @@ package org.fentanylsolutions.wawelauth.wawelcore.data;
 
 /**
  * A property attached to a serialized profile or user, as defined by the Yggdrasil spec.
- *
+ * <p>
  * Serialized form:
- * 
+ *
  * <pre>
  * {"name": "textures", "value": "base64...", "signature": "base64..."}
  * </pre>
- *
+ * <p>
  * Known profile property keys:
  * - "textures": base64-encoded {@link TextureData} JSON, may include signature
  * - "uploadableTextures": comma-separated list of allowed upload types ("skin", "skin,cape")
  * (authlib-injector extension)
- *
+ * <p>
  * Known user property keys:
  * - "preferredLanguage": e.g. "en", "zh_CN"
- *
+ * <p>
  * Signature is a base64-encoded SHA1withRSA signature over the property value,
  * using the server's private key. Only included when the endpoint requires it
  * (e.g. hasJoined, profile query with unsigned=false).
@@ -56,7 +56,9 @@ public class ProfileProperty {
         this.value = value;
     }
 
-    /** Base64-encoded SHA1withRSA signature over value. Null if unsigned. */
+    /**
+     * Base64-encoded SHA1withRSA signature over value. Null if unsigned.
+     */
     public String getSignature() {
         return signature;
     }

@@ -15,16 +15,16 @@ import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteUserDAO;
 /**
  * Concurrency test that proves "no orphan user" under simultaneous register
  * attempts. Reproduces the CommandWawelAuth register pattern:
- *
+ * <p>
  * 1. Check username not taken (outside transaction)
  * 2. Check profile name not taken (outside transaction)
  * 3. runInTransaction { create user; create profile; }
- *
+ * <p>
  * Spawns N threads that all race to register the same username. Asserts:
  * - Exactly 1 thread succeeds
  * - user count == profile count (no orphans)
  * - No duplicate usernames
- *
+ * <p>
  * Run from server console or startup:
  * TransactionConcurrencyTest.run(configDir)
  */

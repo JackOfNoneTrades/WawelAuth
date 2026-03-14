@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.gui;
+package org.fentanylsolutions.wawelauth.client.render;
 
 import java.util.UUID;
 
@@ -8,7 +8,6 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
-import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 

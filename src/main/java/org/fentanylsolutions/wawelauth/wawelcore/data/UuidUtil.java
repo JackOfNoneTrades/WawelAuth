@@ -5,9 +5,10 @@ import java.util.UUID;
 
 /**
  * UUID format utilities for Yggdrasil API compatibility.
- *
+ * <p>
  * The Yggdrasil spec uses "unsigned UUIDs": 32 hex characters with no dashes.
  * Java's UUID.toString() produces dashed format (8-4-4-4-12).
+ * <p>
  * These helpers convert between the two representations.
  */
 public final class UuidUtil {

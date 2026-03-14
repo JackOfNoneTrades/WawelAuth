@@ -5,6 +5,7 @@ import java.util.Map;
 
 /**
  * Wrapper for non-JSON responses (e.g. texture images).
+ * <p>
  * {@link HttpRequestHandler} writes the raw bytes with the given content type
  * and any extra headers.
  */

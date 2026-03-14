@@ -24,7 +24,7 @@ import com.google.gson.JsonObject;
 
 /**
  * Manages authentication providers.
- *
+ * <p>
  * Ensures the built-in Mojang provider always exists. Provides methods
  * to add custom providers (with ALI discovery) and remove them.
  */

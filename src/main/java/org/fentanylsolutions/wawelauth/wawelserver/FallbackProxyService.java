@@ -36,11 +36,15 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
  * Proxies configured fallback session servers for hasJoined/profile lookups.
- *
+ * <p>
  * Features:
+ * <p>
  * - Ordered fallback probing
+ * <p>
  * - Per-fallback TTL cache for profile lookups
+ * <p>
  * - Binary texture proxy with in-memory cache
+ * <p>
  * - Preserves upstream texture payloads/signatures (no local rewrite/re-sign)
  */
 public class FallbackProxyService {

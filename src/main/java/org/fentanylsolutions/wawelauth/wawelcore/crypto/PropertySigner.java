@@ -13,7 +13,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.ProfileProperty;
 
 /**
  * SHA1withRSA signing and verification of Yggdrasil profile property values.
- *
+ * <p>
  * Per the Yggdrasil spec, the signature is computed over the property value
  * (the base64-encoded JSON string for textures properties) and encoded as
  * base64 in the response. Uses PKCS#1 v1.5 signature scheme.

@@ -5,7 +5,7 @@ import java.awt.image.BufferedImage;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class WawelFaceRendererTest {
+public class WawelFaceRendererServerTest {
 
     @Test
     public void renderFaceUsesHdCoordinatesAndOverlay() {
@@ -13,7 +13,7 @@ public class WawelFaceRendererTest {
         fill(skin, 16, 16, 32, 32, 0xFFFF0000);
         fill(skin, 80, 16, 96, 32, 0xFF00FF00);
 
-        BufferedImage rendered = WawelFaceRenderer.renderFace(skin, 8);
+        BufferedImage rendered = WawelFaceRendererServer.renderFace(skin, 8);
 
         Assert.assertEquals(0xFF00FF00, rendered.getRGB(0, 0));
         Assert.assertEquals(0xFF00FF00, rendered.getRGB(7, 7));

@@ -13,7 +13,7 @@ import com.google.gson.JsonPrimitive;
 /**
  * Resolves/creates deterministic local-auth providers from live server
  * capability payloads.
- *
+ * <p>
  * Identity is tied to public-key fingerprint, not server address.
  */
 public final class LocalAuthProviderResolver {
@@ -26,7 +26,7 @@ public final class LocalAuthProviderResolver {
 
     /**
      * Resolve or create the managed local provider for this server identity.
-     *
+     * <p>
      * Existing providers are reused by matching public key, regardless of name.
      */
     public ClientProvider resolveOrCreate(ServerCapabilities capabilities) {

@@ -18,11 +18,11 @@ import com.google.gson.JsonSyntaxException;
 
 /**
  * Loads and saves JSON config files using GSON (bundled with Minecraft).
- *
+ * <p>
  * On load: if the file exists, deserializes it over a fresh default instance,
  * so missing fields keep their defaults. If the file doesn't exist or is
  * malformed, creates one with all defaults and returns that.
- *
+ * <p>
  * On save: serializes with pretty printing so users can hand-edit the file.
  * All IO uses UTF-8 encoding explicitly.
  */

@@ -23,6 +23,7 @@ import com.google.gson.JsonObject;
 
 /**
  * Builds spec-shaped profile responses with signed texture properties.
+ * <p>
  * Shared by session, profile query, and hasJoined endpoints.
  */
 public class ProfileService {

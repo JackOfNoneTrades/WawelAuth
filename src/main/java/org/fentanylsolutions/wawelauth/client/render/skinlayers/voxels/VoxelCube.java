@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * MIT-derived from 3d-Skin-Layers snapshot
  * (commit 4d5b1dd0bfb6d4b928958bcddae4a38142c8432d), adapted for 1.7.10.
- *
+ * <p>
  * Supports per-face hiding and per-corner clipping for seam overlap handling.
  */
 public class VoxelCube {

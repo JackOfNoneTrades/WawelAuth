@@ -12,7 +12,7 @@ import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.api.TextureRequest;
+import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.ProviderThreadDownloadImageData;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelBuilder;
@@ -24,6 +24,7 @@ import com.mojang.authlib.GameProfile;
 
 /**
  * Static utility that generates 3D meshes from a player's skin BufferedImage.
+ * <p>
  * Handles caching and change detection via ResourceLocation comparison.
  */
 public class SkinLayers3DSetup {

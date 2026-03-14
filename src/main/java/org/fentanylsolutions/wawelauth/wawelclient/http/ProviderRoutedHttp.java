@@ -12,7 +12,9 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxySettings;
 
 /**
  * Opens direct or provider-proxied connections for one explicitly chosen
- * provider. Callers that cannot infer the provider should pass null and
+ * provider.
+ * <p>
+ * Callers that cannot infer the provider should pass null and
  * use direct access.
  */
 public final class ProviderRoutedHttp {

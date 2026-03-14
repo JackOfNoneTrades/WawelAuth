@@ -10,12 +10,12 @@ import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteDatabase;
 
 /**
  * Client-side SQLite database for the account manager.
- *
+ * <p>
  * Extends {@link SqliteDatabase} to reuse connection management (WAL mode,
  * synchronized access, etc.) but overrides table creation to produce only
  * the client-specific schema (providers, accounts). Server tables are not
  * created.
- *
+ * <p>
  * Uses {@code PRAGMA user_version} for schema migrations from day one.
  */
 public class ClientDatabase extends SqliteDatabase {

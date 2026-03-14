@@ -40,7 +40,7 @@ public class SessionService {
 
     /**
      * POST /sessionserver/session/minecraft/join
-     *
+     * <p>
      * Client calls this when connecting to a server. Creates a pending session
      * that the game server will verify via hasJoined.
      */
@@ -98,7 +98,7 @@ public class SessionService {
 
     /**
      * GET /sessionserver/session/minecraft/hasJoined
-     *
+     * <p>
      * Game server calls this to verify a client's session.
      * Returns the full signed profile on success, or 204 on failure
      * (silent fail per spec: game server interprets non-200 as auth failure).
@@ -136,7 +136,7 @@ public class SessionService {
 
     /**
      * GET /sessionserver/session/minecraft/profile/{uuid}
-     *
+     * <p>
      * Profile query endpoint. Returns the full profile with textures.
      * Signed only when the "unsigned" query parameter is explicitly "false".
      */

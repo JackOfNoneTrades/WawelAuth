@@ -4,6 +4,7 @@ import net.minecraft.util.ResourceLocation;
 
 /**
  * Per-player state holding 3D meshes for each body part overlay.
+ * <p>
  * Stored on the ModelBiped via IModelBipedModernExt duck interface.
  */
 public class SkinLayers3DState {

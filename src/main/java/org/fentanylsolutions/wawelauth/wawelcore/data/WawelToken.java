@@ -4,34 +4,45 @@ import java.util.UUID;
 
 /**
  * An authentication token in the Yggdrasil system.
- *
+ * <p>
  * Represents a session between a client and the auth server. Created by the
  * authenticate endpoint, refreshed by the refresh endpoint.
- *
+ * <p>
  * Per the Yggdrasil spec:
+ * <p>
  * - accessToken is server-generated (typically a random UUID).
+ * <p>
  * - clientToken is client-provided and not unique across users.
+ * <p>
  * - A token may optionally be bound to a specific {@link WawelProfile}.
+ * <p>
  * - A user may hold multiple tokens; the server should cap the count
+ * <p>
  * (e.g. 10) and revoke oldest tokens when exceeding the limit.
- *
+ * <p>
  * Token states (per spec):
  * - Valid: usable for authentication.
  * - Invalid: permanently unusable (revoked or expired).
  * - Temporarily invalid: currently unusable but may become valid again
  * (e.g. after a profile rename, forcing clients to refresh).
- *
+ * <p>
  * The accessToken serves as the primary key.
  */
 public class WawelToken {
 
-    /** Server-generated token. Primary key. Typically a random UUID string. */
+    /**
+     * Server-generated token. Primary key. Typically a random UUID string.
+     */
     private String accessToken;
 
-    /** Client-provided token. Not unique: multiple tokens may share a clientToken. */
+    /**
+     * Client-provided token. Not unique: multiple tokens may share a clientToken.
+     */
     private String clientToken;
 
-    /** FK: UUID of the owning {@link WawelUser}. */
+    /**
+     * FK: UUID of the owning {@link WawelUser}.
+     */
     private UUID userUuid;
 
     /**
@@ -42,10 +53,14 @@ public class WawelToken {
      */
     private UUID profileUuid;
 
-    /** Epoch millis when this token was issued (created or last refreshed). */
+    /**
+     * Epoch millis when this token was issued (created or last refreshed).
+     */
     private long issuedAt;
 
-    /** Epoch millis when this token was last used (validate, join, etc). */
+    /**
+     * Epoch millis when this token was last used (validate, join, etc).
+     */
     private long lastUsedAt;
 
     /**
@@ -131,12 +146,16 @@ public class WawelToken {
         this.state = state;
     }
 
-    /** Whether this token can be used for authentication (only VALID tokens). */
+    /**
+     * Whether this token can be used for authentication (only VALID tokens).
+     */
     public boolean isUsable() {
         return state == TokenState.VALID;
     }
 
-    /** Whether this token can be refreshed (VALID or TEMPORARILY_INVALID). */
+    /**
+     * Whether this token can be refreshed (VALID or TEMPORARILY_INVALID).
+     */
     public boolean isRefreshable() {
         return state != TokenState.INVALID;
     }

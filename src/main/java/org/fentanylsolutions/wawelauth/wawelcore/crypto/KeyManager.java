@@ -20,7 +20,7 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 
 /**
  * Manages the server's RSA keypair for signing profile properties.
- *
+ * <p>
  * The keypair is generated on first run and stored as DER-encoded files
  * in the state directory. The private key file is restricted to owner-only
  * permissions (0600) on POSIX systems. The public key is served via the
@@ -98,7 +98,9 @@ public class KeyManager {
         return keyPair.getPrivate();
     }
 
-    /** Returns the public key as base64-encoded DER, for the API metadata endpoint. */
+    /**
+     * Returns the public key as base64-encoded DER, for the API metadata endpoint.
+     */
     public String getPublicKeyBase64() {
         return Base64.getEncoder()
             .encodeToString(
@@ -106,7 +108,9 @@ public class KeyManager {
                     .getEncoded());
     }
 
-    /** Returns the raw DER-encoded public key bytes. */
+    /**
+     * Returns the raw DER-encoded public key bytes.
+     */
     public byte[] getPublicKeyDer() {
         return keyPair.getPublic()
             .getEncoded();
@@ -143,7 +147,9 @@ public class KeyManager {
         }
     }
 
-    /** Set file permissions to owner-only read/write (0600). No-op on non-POSIX systems. */
+    /**
+     * Set file permissions to owner-only read/write (0600). No-op on non-POSIX systems.
+     */
     private static void restrictToOwner(File file) {
         try {
             Files.setPosixFilePermissions(

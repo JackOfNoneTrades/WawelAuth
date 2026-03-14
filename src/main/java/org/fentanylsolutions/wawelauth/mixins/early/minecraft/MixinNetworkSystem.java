@@ -77,12 +77,12 @@ public abstract class MixinNetworkSystem {
                                 .addLast("legacy_query", new PingResponseHandler(self))
                                 .addLast("splitter", new MessageDeserializer2())
                                 .addLast("decoder", new MessageDeserializer(NetworkManager.field_152462_h)) // attrKeyReceiving
-                                                                                                            // (protocol
-                                                                                                            // direction)
+                                // (protocol
+                                // direction)
                                 .addLast("prepender", new MessageSerializer2())
                                 .addLast("encoder", new MessageSerializer(NetworkManager.field_152462_h)); // attrKeyReceiving
-                                                                                                           // (protocol
-                                                                                                           // direction)
+                            // (protocol
+                            // direction)
 
                             NetworkManager networkmanager = new NetworkManager(false);
                             networkManagers.add(networkmanager);

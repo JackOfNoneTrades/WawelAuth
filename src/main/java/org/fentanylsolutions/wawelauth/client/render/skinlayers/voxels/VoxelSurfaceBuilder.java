@@ -4,11 +4,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * MIT-derived from 3d-Skin-Layers snapshot
- * (commit 4d5b1dd0bfb6d4b928958bcddae4a38142c8432d), then adapted for:
- * - local VoxelTexture abstraction
- * - generic face dimensions
- * - custom VoxelBuilder target
+ * MIT-derived from 3d-Skin-Layers snapshot (commit 4d5b1dd0bfb6d4b928958bcddae4a38142c8432d), then adapted for:
+ * <ul>
+ * <li>local VoxelTexture abstraction</li>
+ * <li>generic face dimensions</li>
+ * <li>custom VoxelBuilder target</li>
+ * </ul>
  */
 public class VoxelSurfaceBuilder {
 

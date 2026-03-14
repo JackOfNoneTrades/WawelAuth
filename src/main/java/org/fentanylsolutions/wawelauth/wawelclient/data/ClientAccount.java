@@ -6,33 +6,45 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 
 /**
  * A stored account in the client account manager.
- *
+ * <p>
  * Represents an authenticated session with a specific provider.
  * Each account belongs to exactly one provider and holds the tokens
  * and profile data returned by the provider's Yggdrasil API.
- *
+ * <p>
  * Uniqueness: when a profile is bound, unique by (provider_name, profile_uuid).
  * When unbound (profile_uuid is null), unique by (provider_name, user_uuid).
  * This allows a single user to have multiple profile bindings on one provider.
  */
 public class ClientAccount {
 
-    /** Auto-generated row ID. Primary key. */
+    /**
+     * Auto-generated row ID. Primary key.
+     */
     private long id;
 
-    /** FK: name of the provider this account belongs to. */
+    /**
+     * FK: name of the provider this account belongs to.
+     */
     private String providerName;
 
-    /** User UUID from the authenticate response's user.id. */
+    /**
+     * User UUID from the authenticate response's user.id.
+     */
     private String userUuid;
 
-    /** Profile UUID as returned by the auth server. Null until profile bound. */
+    /**
+     * Profile UUID as returned by the auth server. Null until profile bound.
+     */
     private UUID profileUuid;
 
-    /** Profile name (player name). Null until profile bound. */
+    /**
+     * Profile name (player name). Null until profile bound.
+     */
     private String profileName;
 
-    /** Access token stored in plaintext. */
+    /**
+     * Access token stored in plaintext.
+     */
     private String accessToken;
 
     /**
@@ -41,7 +53,9 @@ public class ClientAccount {
      */
     private String refreshToken;
 
-    /** Client token. Persisted to maintain session continuity across restarts. */
+    /**
+     * Client token. Persisted to maintain session continuity across restarts.
+     */
     private String clientToken;
 
     /**
@@ -50,37 +64,59 @@ public class ClientAccount {
      */
     private String userPropertiesJson;
 
-    /** Current verification status. */
+    /**
+     * Current verification status.
+     */
     private AccountStatus status;
 
-    /** Last error message from a failed validation/refresh attempt. */
+    /**
+     * Last error message from a failed validation/refresh attempt.
+     */
     private String lastError;
 
-    /** Epoch millis of the last error. */
+    /**
+     * Epoch millis of the last error.
+     */
     private long lastErrorAt;
 
-    /** Epoch millis of the last refresh/validate attempt. */
+    /**
+     * Epoch millis of the last refresh/validate attempt.
+     */
     private long lastRefreshAttemptAt;
 
-    /** Number of consecutive failures (for backoff calculation). */
+    /**
+     * Number of consecutive failures (for backoff calculation).
+     */
     private int consecutiveFailures;
 
-    /** Epoch millis when this account was first added. */
+    /**
+     * Epoch millis when this account was first added.
+     */
     private long createdAt;
 
-    /** Epoch millis of the last successful token validation or refresh. */
+    /**
+     * Epoch millis of the last successful token validation or refresh.
+     */
     private long lastValidatedAt;
 
-    /** Epoch millis when the token was originally issued. */
+    /**
+     * Epoch millis when the token was originally issued.
+     */
     private long tokenIssuedAt;
 
-    /** Local-only cosmetic skin path for offline accounts. */
+    /**
+     * Local-only cosmetic skin path for offline accounts.
+     */
     private String localSkinPath;
 
-    /** Local-only cosmetic skin model for offline accounts. */
+    /**
+     * Local-only cosmetic skin model for offline accounts.
+     */
     private SkinModel localSkinModel;
 
-    /** Local-only cosmetic cape path for offline accounts. */
+    /**
+     * Local-only cosmetic cape path for offline accounts.
+     */
     private String localCapePath;
 
     public ClientAccount() {}

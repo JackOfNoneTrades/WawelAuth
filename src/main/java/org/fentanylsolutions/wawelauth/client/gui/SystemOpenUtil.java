@@ -17,7 +17,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 
 /**
  * Cross-platform OS open helpers.
- *
+ * <p>
  * Mirrors the fallback strategy used in Catalogue-Vintage:
  * 1) java.awt.Desktop
  * 2) lwjgl3ify Desktop redirect

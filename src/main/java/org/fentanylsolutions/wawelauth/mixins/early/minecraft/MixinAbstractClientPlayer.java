@@ -6,11 +6,11 @@ import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
 
-import org.fentanylsolutions.wawelauth.api.TextureRequest;
-import org.fentanylsolutions.wawelauth.client.gui.AnimatedCapeTexture;
-import org.fentanylsolutions.wawelauth.client.gui.AnimatedCapeTracker;
+import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.render.IProviderAwareSkinManager;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
+import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTexture;
+import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTracker;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.BuiltinProviders;
 import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
@@ -30,7 +30,9 @@ import com.mojang.authlib.GameProfile;
 
 /**
  * Two injection points:
+ * <p>
  * 1. Static init: replace default Steve skin with 64x64 version
+ * <p>
  * 2. getLocationCape: override with animated cape texture if registered
  */
 @Mixin(value = AbstractClientPlayer.class, priority = 999)

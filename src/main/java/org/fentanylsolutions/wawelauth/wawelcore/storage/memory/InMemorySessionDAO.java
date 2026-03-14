@@ -13,7 +13,7 @@ import com.google.common.cache.CacheBuilder;
  * In-memory implementation of {@link SessionDAO} backed by Guava Cache.
  * Pending sessions are ephemeral (15-30 second lifetime) and don't need
  * persistence across server restarts.
- *
+ * <p>
  * Guava Cache handles automatic expiry via expireAfterWrite, so purgeExpired
  * is a no-op: expired entries are evicted lazily on access or by cache maintenance.
  */

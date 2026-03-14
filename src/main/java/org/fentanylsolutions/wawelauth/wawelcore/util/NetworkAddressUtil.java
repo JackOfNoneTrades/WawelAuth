@@ -12,7 +12,7 @@ public final class NetworkAddressUtil {
 
     /**
      * Extracts an IP literal from a socket address.
-     *
+     * <p>
      * Prefers {@link InetSocketAddress#getAddress()} host-address text and falls
      * back to parsing the string form for uncommon address implementations.
      */

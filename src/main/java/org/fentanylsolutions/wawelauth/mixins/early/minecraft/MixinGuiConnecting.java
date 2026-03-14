@@ -21,7 +21,7 @@ public class MixinGuiConnecting {
     /**
      * Swap the Minecraft session to the per-server selected account
      * before the connection thread starts.
-     *
+     * <p>
      * At this point, Minecraft.func_147104_D() returns the current ServerData
      * (set by the constructor before calling func_146367_a).
      * The session swap is synchronous: Thread.start() at the end of

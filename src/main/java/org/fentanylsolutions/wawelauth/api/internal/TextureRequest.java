@@ -1,9 +1,12 @@
-package org.fentanylsolutions.wawelauth.api;
+package org.fentanylsolutions.wawelauth.api.internal;
+
+import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
 
 /**
  * Caller-controlled flags for {@link WawelTextureResolver#getSkin} / {@link WawelTextureResolver#getCape} requests.
- *
+ * <p>
  * {@link #requireSigned}: demand cryptographic signature on the texture property.
+ * <p>
  * {@link #allowVanillaFallback}: if no WawelAuth provider is found, try Mojang
  * session service as a last resort.
  */

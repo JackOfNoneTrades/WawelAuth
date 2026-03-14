@@ -13,10 +13,10 @@ import com.google.gson.annotations.SerializedName;
 /**
  * Server-side configuration, stored as server.json in WawelAuth's active data
  * config directory.
- *
+ * <p>
  * Controls the Yggdrasil server module: registration policy, token limits,
  * texture constraints, fallback servers, etc.
- *
+ * <p>
  * All fields have sensible defaults. GSON deserializes over the default
  * instance, so missing fields in the JSON keep their defaults.
  * Getters for nested objects and lists are null-safe: if a user sets
@@ -80,7 +80,7 @@ public class ServerConfig {
 
     /**
      * Public landing page mount path.
-     *
+     * <p>
      * Examples:
      * - "" -> "/"
      * - "/" -> "/"
@@ -97,9 +97,9 @@ public class ServerConfig {
 
     /**
      * Public server-info API path consumed by the default landing page.
-     *
+     * <p>
      * Empty disables the endpoint entirely.
-     *
+     * <p>
      * Relative paths are resolved under {@link #getPublicPagePath()} so the
      * bundled static page can call it directly.
      */
@@ -113,7 +113,7 @@ public class ServerConfig {
 
     /**
      * Route prefix implied by apiRoot's path component.
-     *
+     * <p>
      * Examples:
      * - "https://auth.example.com" -> ""
      * - "https://auth.example.com/auth" -> "/auth"
@@ -347,7 +347,9 @@ public class ServerConfig {
             this.implementationName = implementationName;
         }
 
-        /** Returns the mod version from Tags. Not configurable. */
+        /**
+         * Returns the mod version from Tags. Not configurable.
+         */
         public String getImplementationVersion() {
             return Tags.VERSION;
         }
@@ -384,15 +386,21 @@ public class ServerConfig {
      */
     public static class Features {
 
-        /** Whether the legacy skin API (/skins/MinecraftSkins/) is supported. */
+        /**
+         * Whether the legacy skin API (/skins/MinecraftSkins/) is supported.
+         */
         @SerializedName("legacy_skin_api")
         private boolean legacySkinApi = false;
 
-        /** When true, the server uses its own UUID namespace instead of Mojang's. */
+        /**
+         * When true, the server uses its own UUID namespace instead of Mojang's.
+         */
         @SerializedName("no_mojang_namespace")
         private boolean noMojangNamespace = true;
 
-        /** Whether the server validates usernames against a regex. */
+        /**
+         * Whether the server validates usernames against a regex.
+         */
         @SerializedName("username_check")
         private boolean usernameCheck = true;
 
@@ -578,10 +586,14 @@ public class ServerConfig {
      */
     public static class Http {
 
-        /** Read timeout in seconds for HTTP connections. Prevents slowloris. */
+        /**
+         * Read timeout in seconds for HTTP connections. Prevents slowloris.
+         */
         private int readTimeoutSeconds = 10;
 
-        /** Maximum HTTP request body size in bytes. Must accommodate texture uploads. */
+        /**
+         * Maximum HTTP request body size in bytes. Must accommodate texture uploads.
+         */
         private int maxContentLengthBytes = 1_048_576;
 
         public int getReadTimeoutSeconds() {
@@ -606,10 +618,14 @@ public class ServerConfig {
      */
     public static class Admin {
 
-        /** Enables /admin UI and /api/wawelauth/admin/* endpoints. */
+        /**
+         * Enables /admin UI and /api/wawelauth/admin/* endpoints.
+         */
         private boolean enabled = true;
 
-        /** Static admin token. Prefer using tokenEnvVar in production. */
+        /**
+         * Static admin token. Prefer using tokenEnvVar in production.
+         */
         private String token = "";
 
         /**
@@ -618,7 +634,9 @@ public class ServerConfig {
          */
         private String tokenEnvVar = "WAWELAUTH_ADMIN_TOKEN";
 
-        /** Session lifetime for admin API bearer sessions. */
+        /**
+         * Session lifetime for admin API bearer sessions.
+         */
         private long sessionTtlMs = 30L * 60L * 1000L;
 
         public boolean isEnabled() {

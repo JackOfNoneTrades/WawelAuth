@@ -4,6 +4,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
  * Exception carrying Yggdrasil error semantics.
+ * <p>
  * Thrown from route handlers, caught by {@link HttpRequestHandler}
  * and serialized as {@code {"error":"...", "errorMessage":"..."}}.
  */

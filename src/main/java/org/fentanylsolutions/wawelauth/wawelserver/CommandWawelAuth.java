@@ -28,6 +28,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.WawelUser;
 
 /**
  * Server command for WawelAuth administration.
+ * <p>
  * Usage: /wawelauth &lt;register|invite|test&gt; ...
  */
 public class CommandWawelAuth extends CommandBase {

@@ -32,9 +32,11 @@ import com.mojang.util.UUIDTypeAdapter;
 /**
  * Resolves whitelist lookups using explicit fallback provider selection:
  * <username>@<providerName>.
- *
+ * <p>
  * providerName must match either:
+ * <p>
  * - a fallback entry "name" in server config, or
+ * <p>
  * - a local alias ("local", "localauth", "wawelauth", "self") for local profiles.
  */
 public final class FallbackWhitelistLookup {

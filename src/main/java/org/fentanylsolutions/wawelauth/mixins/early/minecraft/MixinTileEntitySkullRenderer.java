@@ -6,7 +6,7 @@ import net.minecraft.client.renderer.tileentity.TileEntitySkullRenderer;
 import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
 
-import org.fentanylsolutions.wawelauth.api.TextureRequest;
+import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DMesh;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
@@ -28,7 +28,7 @@ import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
 
 /**
  * Renders 3D hat layer on player skull blocks/items.
- *
+ * <p>
  * In 1.7.10, TileEntitySkullRenderer.func_152674_a handles skull rendering.
  * Player skulls have skullType == 3 and a non-null GameProfile.
  */

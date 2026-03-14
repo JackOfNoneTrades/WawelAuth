@@ -9,10 +9,10 @@ import com.mojang.authlib.yggdrasil.YggdrasilGameProfileRepository;
 /**
  * 1.7.10 authlib uses the legacy name-lookup endpoint:
  * https://api.mojang.com/profiles/{agent}
- *
+ * <p>
  * Modern Mojang/Microsoft lookup uses:
  * https://api.minecraftservices.com/{agent}/profile/lookup/bulk/byname
- *
+ * <p>
  * We patch only the URL argument and keep all original retry/pagination logic.
  */
 @Mixin(value = YggdrasilGameProfileRepository.class, remap = false)

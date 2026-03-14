@@ -9,7 +9,9 @@ public final class HexUtil {
 
     private HexUtil() {}
 
-    /** Encode a byte array as a lowercase hex string. */
+    /**
+     * Encode a byte array as a lowercase hex string.
+     */
     public static String bytesToHex(byte[] bytes) {
         char[] hex = new char[bytes.length * 2];
         for (int i = 0; i < bytes.length; i++) {
@@ -20,7 +22,9 @@ public final class HexUtil {
         return new String(hex);
     }
 
-    /** Decode a hex string to a byte array. */
+    /**
+     * Decode a hex string to a byte array.
+     */
     public static byte[] hexToBytes(String hex) {
         int len = hex.length();
         byte[] data = new byte[len / 2];
@@ -30,7 +34,9 @@ public final class HexUtil {
         return data;
     }
 
-    /** Checks whether a string is valid hex (non-null, even length, all hex digits). */
+    /**
+     * Checks whether a string is valid hex (non-null, even length, all hex digits).
+     */
     public static boolean isValidHex(String s) {
         if (s == null || s.isEmpty() || s.length() % 2 != 0) return false;
         for (int i = 0; i < s.length(); i++) {

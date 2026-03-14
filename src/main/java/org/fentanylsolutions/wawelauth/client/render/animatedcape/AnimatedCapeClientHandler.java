@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.gui;
+package org.fentanylsolutions.wawelauth.client.render.animatedcape;
 
 import java.util.UUID;
 
@@ -17,6 +17,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 
 /**
  * Client-side event handler for animated cape textures.
+ * <p>
  * Ticks all active animated capes each client tick, and clears
  * the tracker on world unload.
  */

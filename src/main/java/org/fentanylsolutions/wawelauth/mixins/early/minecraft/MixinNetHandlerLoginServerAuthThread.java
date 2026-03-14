@@ -13,7 +13,7 @@ import com.mojang.authlib.minecraft.MinecraftSessionService;
 
 /**
  * Redirect dedicated-server username verification in the login auth thread.
- *
+ * <p>
  * Targets NetHandlerLoginServer$1.run(), where vanilla calls:
  * MinecraftSessionService.hasJoinedServer(...)
  */
@@ -35,7 +35,8 @@ public class MixinNetHandlerLoginServerAuthThread {
         method = "run",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/server/network/NetHandlerLoginServer;func_147322_a(Ljava/lang/String;)V")) // NetHandlerLoginServer.disconnect
+            target = "Lnet/minecraft/server/network/NetHandlerLoginServer;func_147322_a(Ljava/lang/String;)V"))
+    // NetHandlerLoginServer.disconnect
     private void wawelauth$customDisconnectReason(NetHandlerLoginServer handler, String reason) {
         handler.func_147322_a(LocalSessionVerifier.consumeDisconnectReason(reason)); // NetHandlerLoginServer.disconnect
     }

@@ -9,6 +9,7 @@ import io.netty.handler.codec.http.HttpMethod;
 
 /**
  * Simple linear HTTP router with {@code {param}} path segment matching.
+ * <p>
  * Under 15 routes total: no trie needed.
  */
 public class HttpRouter {

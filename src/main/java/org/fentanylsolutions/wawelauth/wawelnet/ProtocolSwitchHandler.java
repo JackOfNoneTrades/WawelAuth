@@ -28,7 +28,7 @@ import io.netty.handler.timeout.ReadTimeoutHandler;
  * <li>HTTP detected: tears down the MC pipeline, installs HTTP handlers</li>
  * <li>MC detected: removes itself, vanilla pipeline proceeds unchanged</li>
  * </ul>
- *
+ * <p>
  * Based on Netty's port unification example.
  */
 public class ProtocolSwitchHandler extends ByteToMessageDecoder {
@@ -79,7 +79,7 @@ public class ProtocolSwitchHandler extends ByteToMessageDecoder {
 
     /**
      * Tears down the MC pipeline and installs HTTP handlers.
-     *
+     * <p>
      * Instead of removing handlers by hardcoded name (brittle),
      * we iterate the pipeline and remove everything except ourselves.
      * We also remove the NetworkManager from the networkManagers list

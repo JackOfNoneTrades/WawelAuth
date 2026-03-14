@@ -2,9 +2,10 @@ package org.fentanylsolutions.wawelauth.wawelcore.data;
 
 /**
  * Skin model type as defined by the Yggdrasil specification.
- *
+ * <p>
  * CLASSIC = standard 4px arm width (called "default" in the Yggdrasil textures property,
  * or omitted entirely: absent metadata implies classic).
+ * <p>
  * SLIM = 3px arm width (called "slim" in the Yggdrasil textures property).
  */
 public enum SkinModel {

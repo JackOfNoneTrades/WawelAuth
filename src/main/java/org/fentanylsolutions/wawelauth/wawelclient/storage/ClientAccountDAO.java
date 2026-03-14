@@ -7,13 +7,15 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 
 /**
  * Data access interface for {@link ClientAccount} entities.
- *
+ * <p>
  * Manages the stored client-side accounts (authenticated sessions
  * with Yggdrasil providers).
  */
 public interface ClientAccountDAO {
 
-    /** Find an account by its row ID. Returns null if not found. */
+    /**
+     * Find an account by its row ID. Returns null if not found.
+     */
     ClientAccount findById(long id);
 
     /**
@@ -34,24 +36,38 @@ public interface ClientAccountDAO {
      */
     ClientAccount findUnboundByProviderAndUser(String providerName, String userUuid);
 
-    /** Find all accounts for a given provider, ordered by lastValidatedAt desc. */
+    /**
+     * Find all accounts for a given provider, ordered by lastValidatedAt desc.
+     */
     List<ClientAccount> findByProvider(String providerName);
 
-    /** Return all accounts across all providers, ordered by lastValidatedAt desc. */
+    /**
+     * Return all accounts across all providers, ordered by lastValidatedAt desc.
+     */
     List<ClientAccount> listAll();
 
-    /** Persist a new account. Returns the generated row ID. */
+    /**
+     * Persist a new account. Returns the generated row ID.
+     */
     long create(ClientAccount account);
 
-    /** Update an existing account by id. */
+    /**
+     * Update an existing account by id.
+     */
     void update(ClientAccount account);
 
-    /** Delete an account by row ID. */
+    /**
+     * Delete an account by row ID.
+     */
     void delete(long id);
 
-    /** Delete all accounts for a provider. Used when removing a provider. */
+    /**
+     * Delete all accounts for a provider. Used when removing a provider.
+     */
     void deleteByProvider(String providerName);
 
-    /** Return total account count. */
+    /**
+     * Return total account count.
+     */
     long count();
 }

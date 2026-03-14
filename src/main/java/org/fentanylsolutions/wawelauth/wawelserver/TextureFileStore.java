@@ -10,6 +10,7 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 /**
  * File I/O for texture images stored as {@code {stateDir}/textures/{hash}.png}
  * or {@code {hash}.gif}.
+ * <p>
  * Content-addressed: the filename is the SHA-256 hash of the file contents.
  */
 public class TextureFileStore {

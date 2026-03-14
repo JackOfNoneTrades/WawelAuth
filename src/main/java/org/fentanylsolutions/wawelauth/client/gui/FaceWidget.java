@@ -5,8 +5,9 @@ import java.util.UUID;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.util.ResourceLocation;
 
-import org.fentanylsolutions.wawelauth.api.TextureRequest;
+import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
+import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.lwjgl.opengl.GL11;
 
@@ -71,7 +72,7 @@ public class FaceWidget extends Widget<FaceWidget> {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             RenderHelper.disableStandardItemLighting();
 
-            WawelTextureResolver.drawFace(skin, 0, 0, alpha);
+            WawelFaceRendererClient.drawFace(skin, 0, 0, alpha);
         } finally {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             GL11.glPopAttrib();

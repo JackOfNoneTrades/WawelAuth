@@ -47,7 +47,7 @@ public class AuthService {
 
     /**
      * POST /api/wawelauth/register
-     *
+     * <p>
      * WawelAuth extension endpoint used by the client register dialog.
      * Enforces server registration policy and optional invite consumption.
      */
@@ -150,7 +150,7 @@ public class AuthService {
 
     /**
      * POST /api/wawelauth/change-password
-     *
+     * <p>
      * WawelAuth extension endpoint for account credential management.
      * Requires a valid access token and the current password.
      */
@@ -191,7 +191,7 @@ public class AuthService {
 
     /**
      * POST /api/wawelauth/delete-account
-     *
+     * <p>
      * WawelAuth extension endpoint for self-service account deletion.
      * Requires a valid access token and the current password.
      */
@@ -235,7 +235,7 @@ public class AuthService {
 
     /**
      * POST /authserver/authenticate
-     *
+     * <p>
      * Authenticates a user and returns access/client tokens plus available profiles.
      */
     public Object authenticate(RequestContext ctx) {
@@ -337,7 +337,7 @@ public class AuthService {
 
     /**
      * POST /authserver/refresh
-     *
+     * <p>
      * Refreshes an access token. The old token is invalidated and a new one is issued.
      */
     public Object refresh(RequestContext ctx) {
@@ -450,7 +450,7 @@ public class AuthService {
 
     /**
      * POST /authserver/validate
-     *
+     * <p>
      * Validates an access token. Returns 204 on success.
      */
     public Object validate(RequestContext ctx) {
@@ -470,7 +470,7 @@ public class AuthService {
 
     /**
      * POST /authserver/invalidate
-     *
+     * <p>
      * Invalidates an access token. Always returns 204 (even if token doesn't exist).
      */
     public Object invalidate(RequestContext ctx) {
@@ -488,7 +488,7 @@ public class AuthService {
 
     /**
      * POST /authserver/signout
-     *
+     * <p>
      * Signs out a user by invalidating all their tokens. Returns 204.
      */
     public Object signout(RequestContext ctx) {

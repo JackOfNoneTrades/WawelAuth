@@ -21,12 +21,12 @@ import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.render.IProviderAwareSkinManager;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.SkinTextureState;
@@ -36,7 +36,6 @@ import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
-import org.lwjgl.opengl.GL11;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonPrimitive;
@@ -50,11 +49,11 @@ import cpw.mods.fml.relauncher.SideOnly;
 
 /**
  * Unified skin / cape resolution API for WawelAuth.
- *
+ * <p>
  * Given a player UUID (and optional context hints), resolves a skin / cape
  * {@link ResourceLocation} ready for rendering. Manages the full pipeline:
  * provider selection, profile fetch, texture download, and caching.
- *
+ * <p>
  * All {@code getSkin} / {@code getCape} methods are safe to call from the render thread.
  * They return a placeholder immediately and fetch asynchronously.
  *
@@ -65,16 +64,19 @@ import cpw.mods.fml.relauncher.SideOnly;
  * {
  *     &#64;code
  *     WawelTextureResolver resolver = WawelClient.instance()
- *         .getSkinResolver();
+ *         .getTextureResolver();
  *
  *     // Auto-resolve (uses ping context, local accounts, Mojang fallback)
  *     ResourceLocation skin = resolver.getSkin(uuid, name, TextureRequest.DEFAULT);
+ *     ResourceLocation cape = resolver.getCape(uuid, name, TextureRequest.DEFAULT);
  *
  *     // Resolve for a specific server entry (uses server's advertised auth)
  *     ResourceLocation skin = resolver.getSkin(uuid, name, serverData, TextureRequest.DEFAULT);
+ *     ResourceLocation cape = resolver.getCape(uuid, name, serverData, TextureRequest.DEFAULT);
  *
  *     // Resolve with an explicit provider key
  *     ResourceLocation skin = resolver.getSkin(uuid, name, publicKey, sessionBase, TextureRequest.DEFAULT);
+ *     ResourceLocation cape = resolver.getCape(uuid, name, publicKey, sessionBase, TextureRequest.DEFAULT);
  * }
  * </pre>
  */
@@ -91,97 +93,6 @@ public class WawelTextureResolver {
     // =========================================================================
     // Static face drawing API
     // =========================================================================
-
-    /**
-     * Draw an 8x8 player face from a skin {@link ResourceLocation}.
-     *
-     * Handles both legacy (64x32) and modern (64x64) skin formats,
-     * as well as HD textures of any resolution. Draws the base face
-     * layer and the hat/overlay layer on top.
-     *
-     * The caller is responsible for binding GL state (blend, lighting, etc.)
-     * before calling this method.
-     *
-     * @param skin  the skin texture ResourceLocation
-     * @param x     screen x position
-     * @param y     screen y position
-     * @param alpha opacity (0.0 = transparent, 1.0 = opaque)
-     */
-    public static void drawFace(ResourceLocation skin, float x, float y, float alpha) {
-        drawFace(skin, x, y, 8, 8, alpha);
-    }
-
-    /**
-     * Draw a player face at arbitrary dimensions.
-     *
-     * Same as {@link #drawFace(ResourceLocation, float, float, float)} but
-     * the output is scaled to {@code width x height} pixels instead of 8x8.
-     *
-     * @param skin   the skin texture ResourceLocation
-     * @param x      screen x position
-     * @param y      screen y position
-     * @param width  output width in pixels
-     * @param height output height in pixels
-     * @param alpha  opacity (0.0 = transparent, 1.0 = opaque)
-     */
-    public static void drawFace(ResourceLocation skin, float x, float y, int width, int height, float alpha) {
-        if (skin == null) skin = getDefaultSkin();
-
-        Minecraft.getMinecraft()
-            .getTextureManager()
-            .bindTexture(skin);
-
-        int texWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-        int texHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
-
-        if (texWidth <= 0 || texHeight <= 0) {
-            texWidth = 64;
-            texHeight = 64;
-        }
-
-        boolean legacyLayout = texWidth == texHeight * 2;
-        float uScale = texWidth / 64.0F;
-        float vScale = texHeight / (legacyLayout ? 32.0F : 64.0F);
-
-        int sampleW = Math.max(1, Math.round(8.0F * uScale));
-        int sampleH = Math.max(1, Math.round(8.0F * vScale));
-
-        float baseU = 8.0F * uScale;
-        float baseV = 8.0F * vScale;
-        drawTexQuad(x, y, baseU, baseV, sampleW, sampleH, width, height, texWidth, texHeight, alpha);
-
-        if (!legacyLayout) {
-            float hatU = 40.0F * uScale;
-            float hatV = 8.0F * vScale;
-            if (hatU + sampleW <= texWidth && hatV + sampleH <= texHeight) {
-                GL11.glEnable(GL11.GL_ALPHA_TEST);
-                drawTexQuad(x, y, hatU, hatV, sampleW, sampleH, width, height, texWidth, texHeight, alpha);
-            }
-        }
-    }
-
-    /**
-     * Draw a textured quad with precise float UV coordinates.
-     * Used internally by {@link #drawFace}.
-     */
-    private static void drawTexQuad(float x, float y, float u, float v, int uWidth, int vHeight, int width, int height,
-        float tileWidth, float tileHeight, float alpha) {
-        float uNorm = 1.0F / tileWidth;
-        float vNorm = 1.0F / tileHeight;
-        float u0 = u * uNorm;
-        float u1 = (u + uWidth) * uNorm;
-        float v0 = v * vNorm;
-        float v1 = (v + vHeight) * vNorm;
-
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, alpha);
-        Tessellator tessellator = Tessellator.instance;
-        tessellator.startDrawingQuads();
-        tessellator.addVertexWithUV(x, y + height, 0.0, u0, v1);
-        tessellator.addVertexWithUV(x + width, y + height, 0.0, u1, v1);
-        tessellator.addVertexWithUV(x + width, y, 0.0, u1, v0);
-        tessellator.addVertexWithUV(x, y, 0.0, u0, v0);
-        tessellator.draw();
-    }
 
     private static final int MAX_RETRIES = 3;
     private static final long[] RETRY_DELAYS_MS = { 2_000L, 8_000L, 30_000L };
@@ -331,13 +242,13 @@ public class WawelTextureResolver {
      * <li>Menu: ping-advertised server auth for this UUID</li>
      * <li>Menu: locally stored account provider for this UUID</li>
      * <li>Mojang fallback (if {@link TextureRequest#allowVanillaFallback()})</li>
-     * <li>Placeholder (steve) while async fetch runs</li>
+     * <li>null while async fetch runs</li>
      * </ol>
      *
      * @param profileId   player UUID
      * @param displayName player display name (used as fallback identifier)
      * @param request     caller flags
-     * @return a {@link ResourceLocation} ready for rendering, never null
+     * @return a {@link ResourceLocation} ready for rendering, can be null
      */
     public ResourceLocation getCape(UUID profileId, String displayName, TextureRequest request) {
         if (profileId == null) return null;
@@ -370,7 +281,7 @@ public class WawelTextureResolver {
      * @param displayName player display name
      * @param serverEntry the {@link ServerData} whose capabilities to use
      * @param request     caller flags
-     * @return a {@link ResourceLocation} ready for rendering, never null
+     * @return a {@link ResourceLocation} ready for rendering, can be null
      */
     public ResourceLocation getCape(UUID profileId, String displayName, ServerData serverEntry,
         TextureRequest request) {
@@ -406,7 +317,7 @@ public class WawelTextureResolver {
      * @param providerKey       the provider's public key (for texture signature verification)
      * @param sessionServerBase base URL of the provider's session server
      * @param request           caller flags
-     * @return a {@link ResourceLocation} ready for rendering, never null
+     * @return a {@link ResourceLocation} ready for rendering, can be null
      */
     public ResourceLocation getCape(UUID profileId, String displayName, PublicKey providerKey, String sessionServerBase,
         TextureRequest request) {
@@ -424,7 +335,7 @@ public class WawelTextureResolver {
      */
     public ResourceLocation getCape(UUID profileId, String displayName, PublicKey providerKey, String sessionServerBase,
         Iterable<String> skinDomains, TextureRequest request) {
-        if (profileId == null) return getDefaultSkin();
+        if (profileId == null) return null;
 
         ClientProvider explicitProvider = buildEphemeralProvider(providerKey, sessionServerBase, skinDomains);
         SessionBridge.LookupContext lookupContext = sessionBridge.createProviderLookupContext(explicitProvider, false);

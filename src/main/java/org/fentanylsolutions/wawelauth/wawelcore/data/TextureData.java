@@ -7,12 +7,12 @@ import java.util.UUID;
 
 /**
  * The decoded value of a profile's "textures" property.
- *
+ * <p>
  * In the Yggdrasil API, this structure is JSON-encoded, then base64-encoded,
  * and placed in a {@link ProfileProperty} with name "textures".
- *
+ * <p>
  * Spec format:
- * 
+ *
  * <pre>
  * {
  *   "timestamp": 1234567890000,
@@ -24,7 +24,7 @@ import java.util.UUID;
  *   }
  * }
  * </pre>
- *
+ * <p>
  * Note: profileId is serialized as an unsigned UUID (no dashes) in the JSON.
  */
 public class TextureData {
@@ -88,7 +88,7 @@ public class TextureData {
     /**
      * A reference to a single texture within the textures map.
      * Contains the URL where the texture can be fetched, and optional metadata.
-     *
+     * <p>
      * The texture hash is derived from the URL filename (substring after last '/'),
      * which Minecraft uses for client-side caching.
      */
@@ -119,7 +119,9 @@ public class TextureData {
             this.url = url;
         }
 
-        /** Metadata map. For SKIN textures, may contain {"model": "slim"}. Null or absent means classic. */
+        /**
+         * Metadata map. For SKIN textures, may contain {"model": "slim"}. Null or absent means classic.
+         */
         public Map<String, String> getMetadata() {
             return metadata;
         }
@@ -128,7 +130,9 @@ public class TextureData {
             this.metadata = metadata;
         }
 
-        /** Convenience: extract the SkinModel from metadata, defaulting to CLASSIC. */
+        /**
+         * Convenience: extract the SkinModel from metadata, defaulting to CLASSIC.
+         */
         public SkinModel getSkinModel() {
             if (metadata == null) return SkinModel.CLASSIC;
             return SkinModel.fromYggdrasil(metadata.get("model"));

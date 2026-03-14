@@ -36,13 +36,19 @@ import com.sun.net.httpserver.HttpServer;
 
 /**
  * Microsoft OAuth flow for Minecraft accounts (MSA -> XBL -> XSTS -> Minecraft services).
- *
+ * <p>
  * Flow:
+ * <p>
  * 1. Browser authorization code login (loopback redirect)
+ * <p>
  * 2. Exchange auth code for Microsoft access+refresh token
+ * <p>
  * 3. Get XBL token + user hash (uhs)
+ * <p>
  * 4. Get XSTS token
+ * <p>
  * 5. Exchange for Minecraft access token
+ * <p>
  * 6. Fetch Minecraft profile
  */
 public class MicrosoftOAuthClient {

@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.gui;
+package org.fentanylsolutions.wawelauth.client.render.animatedcape;
 
 import java.util.Map;
 import java.util.UUID;
@@ -11,6 +11,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 
 /**
  * Client-side singleton that maps player UUIDs to their animated cape textures.
+ * <p>
  * Used by the AbstractClientPlayer mixin to override getLocationCape() for
  * players with animated capes.
  */

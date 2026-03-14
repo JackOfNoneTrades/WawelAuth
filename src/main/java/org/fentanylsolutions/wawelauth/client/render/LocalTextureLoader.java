@@ -20,8 +20,8 @@ import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.client.gui.AnimatedCapeTexture;
-import org.fentanylsolutions.wawelauth.client.gui.AnimatedCapeTracker;
+import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTexture;
+import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTracker;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 
 import cpw.mods.fml.relauncher.Side;

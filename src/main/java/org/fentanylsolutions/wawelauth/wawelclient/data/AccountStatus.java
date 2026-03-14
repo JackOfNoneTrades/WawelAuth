@@ -2,7 +2,7 @@ package org.fentanylsolutions.wawelauth.wawelclient.data;
 
 /**
  * Verification status of a stored account's token.
- *
+ * <p>
  * VALID: Token was verified against the provider and is good.
  * REFRESHED: Token was refreshed (new accessToken obtained).
  * UNVERIFIED: Provider unreachable; using cached profile data.

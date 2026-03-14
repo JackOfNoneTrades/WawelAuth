@@ -9,8 +9,9 @@ import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelMode
 import org.lwjgl.opengl.GL11;
 
 /**
- * Extends VoxelModelPart for 1.7.10 GL rendering. Compiles polygon data into
- * a GL display list for fast repeated rendering.
+ * Extends VoxelModelPart for 1.7.10 GL rendering.
+ * <p>
+ * Compiles polygon data into a GL display list for fast repeated rendering.
  */
 public class SkinLayers3DMesh extends VoxelModelPart {
 

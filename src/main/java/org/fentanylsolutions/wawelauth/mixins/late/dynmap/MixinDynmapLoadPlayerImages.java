@@ -14,7 +14,7 @@ import org.dynmap.debug.Debug;
 import org.dynmap.storage.MapStorage;
 import org.dynmap.utils.BufferOutputStream;
 import org.dynmap.utils.ImageIOManager;
-import org.fentanylsolutions.wawelauth.api.WawelFaceRenderer;
+import org.fentanylsolutions.wawelauth.api.WawelFaceRendererServer;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -80,10 +80,10 @@ public abstract class MixinDynmapLoadPlayerImages {
             BufferedImage body32 = null;
             try {
                 if (refreshskins || !has8x8 || !hasBody) {
-                    face8 = WawelFaceRenderer.renderFace(skin, 8);
+                    face8 = WawelFaceRendererServer.renderFace(skin, 8);
                 }
                 if (refreshskins || !has16x16 || !has32x32) {
-                    faceLarge = WawelFaceRenderer.renderFace(skin, 64);
+                    faceLarge = WawelFaceRendererServer.renderFace(skin, 64);
                 }
                 if (refreshskins || !hasBody) {
                     body32 = renderBody32(skin, face8);

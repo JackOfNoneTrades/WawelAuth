@@ -7,17 +7,24 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.WawelUser;
 
 /**
  * Data access interface for {@link WawelUser} entities.
- *
+ * <p>
  * Used by:
+ * <p>
  * - POST /authserver/authenticate (findByUsername)
+ * <p>
  * - POST /authserver/signout (findByUsername)
+ * <p>
  * - Authenticate/refresh responses with requestUser=true (findByUuid)
+ * <p>
  * - Registration (create)
+ * <p>
  * - Admin user management (all methods)
  */
 public interface UserDAO {
 
-    /** Find a user by their UUID. Returns null if not found. */
+    /**
+     * Find a user by their UUID. Returns null if not found.
+     */
     WawelUser findByUuid(UUID uuid);
 
     /**
@@ -27,18 +34,28 @@ public interface UserDAO {
      */
     WawelUser findByUsername(String username);
 
-    /** Persist a new user. Throws if UUID or username already exists. */
+    /**
+     * Persist a new user. Throws if UUID or username already exists.
+     */
     void create(WawelUser user);
 
-    /** Update an existing user. Throws if user does not exist. */
+    /**
+     * Update an existing user. Throws if user does not exist.
+     */
     void update(WawelUser user);
 
-    /** Delete a user by UUID. */
+    /**
+     * Delete a user by UUID.
+     */
     void delete(UUID uuid);
 
-    /** Return all users. For admin listing. */
+    /**
+     * Return all users. For admin listing.
+     */
     List<WawelUser> listAll();
 
-    /** Return total user count. For server metadata/stats. */
+    /**
+     * Return total user count. For server metadata/stats.
+     */
     long count();
 }

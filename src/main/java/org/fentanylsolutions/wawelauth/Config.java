@@ -20,12 +20,15 @@ import cpw.mods.fml.common.FMLCommonHandler;
 
 /**
  * Top-level config loader.
- *
+ * <p>
  * Local bootstrap config (always local):
+ * <p>
  * - local.json (debug mode + useOsConfigDir)
- *
+ * <p>
  * Data configs (local or OS-shared based on local.json):
+ * <p>
  * - server.json (Yggdrasil server module settings)
+ * <p>
  * - client.json (client account manager settings)
  */
 public class Config {

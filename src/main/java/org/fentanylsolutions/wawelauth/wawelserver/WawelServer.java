@@ -24,6 +24,7 @@ import org.fentanylsolutions.wawelauth.wawelnet.HttpRouter;
 
 /**
  * Singleton composition root for the Yggdrasil server module.
+ * <p>
  * Initializes database, crypto, DAOs, services, and the HTTP router.
  */
 public class WawelServer {

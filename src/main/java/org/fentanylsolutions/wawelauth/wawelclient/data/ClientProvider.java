@@ -8,19 +8,23 @@ import com.google.gson.JsonParser;
 
 /**
  * A stored Yggdrasil-compatible authentication provider.
- *
+ * <p>
  * Built-in providers (e.g. Mojang) have separate auth/session/services URLs
  * on different domains. Custom providers derive all endpoints from their
  * API root URL per the ALI specification.
- *
+ * <p>
  * The provider's name acts as its primary key (unique identifier).
  */
 public class ClientProvider {
 
-    /** Unique human-readable name. Primary key. */
+    /**
+     * Unique human-readable name. Primary key.
+     */
     private String name;
 
-    /** BUILTIN or CUSTOM. */
+    /**
+     * BUILTIN or CUSTOM.
+     */
     private ProviderType type;
 
     /**
@@ -29,13 +33,19 @@ public class ClientProvider {
      */
     private String apiRoot;
 
-    /** Auth server URL, e.g. "https://authserver.mojang.com". */
+    /**
+     * Auth server URL, e.g. "https://authserver.mojang.com".
+     */
     private String authServerUrl;
 
-    /** Session server URL, e.g. "https://sessionserver.mojang.com". */
+    /**
+     * Session server URL, e.g. "https://sessionserver.mojang.com".
+     */
     private String sessionServerUrl;
 
-    /** Services URL. Nullable. */
+    /**
+     * Services URL. Nullable.
+     */
     private String servicesUrl;
 
     /**
@@ -57,28 +67,44 @@ public class ClientProvider {
      */
     private String publicKeyFingerprint;
 
-    /** Epoch millis when this provider was added. */
+    /**
+     * Epoch millis when this provider was added.
+     */
     private long createdAt;
 
-    /** True if this provider was explicitly added by the user. */
+    /**
+     * True if this provider was explicitly added by the user.
+     */
     private boolean manualEntry = true;
 
-    /** Per-provider proxy toggle. */
+    /**
+     * Per-provider proxy toggle.
+     */
     private boolean proxyEnabled;
 
-    /** Proxy type when proxyEnabled is true. */
+    /**
+     * Proxy type when proxyEnabled is true.
+     */
     private ProviderProxyType proxyType = ProviderProxyType.HTTP;
 
-    /** Proxy host/address. */
+    /**
+     * Proxy host/address.
+     */
     private String proxyHost;
 
-    /** Proxy port. */
+    /**
+     * Proxy port.
+     */
     private Integer proxyPort;
 
-    /** Optional proxy username. */
+    /**
+     * Optional proxy username.
+     */
     private String proxyUsername;
 
-    /** Optional proxy password. */
+    /**
+     * Optional proxy password.
+     */
     private String proxyPassword;
 
     public ClientProvider() {}

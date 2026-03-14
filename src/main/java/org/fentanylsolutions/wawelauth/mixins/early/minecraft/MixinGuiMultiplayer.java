@@ -15,8 +15,9 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.Config;
-import org.fentanylsolutions.wawelauth.api.TextureRequest;
+import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
+import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.gui.AccountManagerScreen;
 import org.fentanylsolutions.wawelauth.client.gui.AuthButton;
 import org.fentanylsolutions.wawelauth.client.gui.FolderIconButton;
@@ -313,7 +314,7 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
         int faceX = tooltipX;
         int headerTextX = faceX + WAWELAUTH_TOOLTIP_FACE_AREA_WIDTH;
         int detailTextX = tooltipX;
-        WawelTextureResolver.drawFace(
+        WawelFaceRendererClient.drawFace(
             wawelauth$resolveTooltipSkin(),
             faceX,
             tooltipY,

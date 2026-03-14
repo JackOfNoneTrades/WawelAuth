@@ -6,8 +6,9 @@ import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelSurf
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelTexture;
 
 /**
- * VoxelTexture implementation wrapping a BufferedImage (the 64x64 skin from
- * ImageBufferDownload). Reads pixel ARGB data for presence/solidity checks.
+ * VoxelTexture implementation wrapping a BufferedImage (the 64x64 skin from ImageBufferDownload).
+ * <p>
+ * Reads pixel ARGB data for presence/solidity checks.
  */
 public class SkinLayers3DSkinData implements VoxelTexture {
 

@@ -13,11 +13,11 @@ import org.spongepowered.asm.mixin.Shadow;
 /**
  * Replace ImageBufferDownload.parseUserSkin with a pure-raster implementation
  * that outputs 64x64 for all standard skins.
- *
+ * <p>
  * On some macOS/JDK setups, BufferedImage.getGraphics() can hang during join-time
  * skin processing. Vanilla parseUserSkin uses Graphics.drawImage.
  * This overwrite reproduces behavior without AWT Graphics usage.
- *
+ * <p>
  * For legacy 64x32 skins, the right arm and right leg are mirrored to their
  * dedicated left-limb UV positions in the bottom half of the texture.
  * Modern 64x64 skins are copied through directly.
@@ -142,16 +142,16 @@ public abstract class MixinImageBufferDownload {
     /**
      * Mirror a limb's UV block from source to destination by flipping each face
      * individually AND swapping inner↔outer faces.
-     *
+     * <p>
      * When mirroring a right limb to create a left limb, the inner face (facing
      * the body) geometrically becomes the outer face (facing away) and vice versa.
      * This matches modern MC's SkinTextureDownloader.processLegacySkin behavior.
-     *
+     * <p>
      * Limb UV layout (w = limb width, d = limb depth, h = limb height):
      * Cap rows (d rows): [d pad] [w top] [w bottom] [d pad]
      * Face rows (h rows): [d inner] [w front] [d outer] [w back]
      * Total: (2d + 2w) wide, (d + h) tall
-     *
+     * <p>
      * For standard arms/legs: w=4, d=4, h=12 → 16x16 block.
      */
     private static void mirrorLimb(int[] data, int stride, int srcX, int srcY, int dstX, int dstY, int limbWidth,

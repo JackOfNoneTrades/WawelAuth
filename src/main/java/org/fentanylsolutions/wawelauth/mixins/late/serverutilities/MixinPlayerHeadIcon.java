@@ -6,8 +6,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ResourceLocation;
 
-import org.fentanylsolutions.wawelauth.api.TextureRequest;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
+import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;

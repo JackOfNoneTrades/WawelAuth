@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.gui;
+package org.fentanylsolutions.wawelauth.client.render.animatedcape;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -21,6 +21,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 
 /**
  * Wraps a {@link DynamicTexture} and cycles through GIF animation frames.
+ * <p>
  * The GIF is decoded via FentLib's {@link GifUtil} which stitches all frames
  * into a single horizontal sprite sheet. Each tick, the appropriate frame's
  * pixels are copied into the dynamic texture.

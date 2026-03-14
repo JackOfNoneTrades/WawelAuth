@@ -22,7 +22,7 @@ import com.google.gson.JsonParser;
 /**
  * Simple HTTP client for making Yggdrasil API requests to remote auth servers.
  * Uses {@link java.net.HttpURLConnection} (always available in MC 1.7.10).
- *
+ * <p>
  * All methods are synchronous and blocking. The caller is responsible for
  * running them off the main thread if needed.
  */

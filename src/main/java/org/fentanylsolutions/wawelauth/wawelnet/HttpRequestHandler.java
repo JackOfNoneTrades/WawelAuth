@@ -26,6 +26,7 @@ import io.netty.util.CharsetUtil;
 
 /**
  * Dispatches fully-aggregated HTTP requests through the {@link HttpRouter}.
+ * <p>
  * Handles response serialization (JSON, binary, 204) and error mapping.
  */
 public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {

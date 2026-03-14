@@ -6,7 +6,7 @@ import net.minecraft.client.model.ModelRenderer;
 
 /**
  * Duck interface injected into {@link net.minecraft.client.model.ModelBiped} via mixin.
- *
+ * <p>
  * Cast any ModelBiped to this interface to access modern 64x64 skin features.
  * Non-player ModelBiped instances (zombies, skeletons, armor) have
  * {@link #wawelauth$isModern()} → false; all methods are no-ops for them.

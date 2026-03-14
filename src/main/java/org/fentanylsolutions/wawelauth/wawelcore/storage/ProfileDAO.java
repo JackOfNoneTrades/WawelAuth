@@ -7,18 +7,26 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
 
 /**
  * Data access interface for {@link WawelProfile} entities.
- *
+ * <p>
  * Used by:
+ * <p>
  * - GET /sessionserver/session/minecraft/profile/{uuid} (findByUuid)
+ * <p>
  * - GET /sessionserver/session/minecraft/hasJoined?username= (findByName)
+ * <p>
  * - POST /api/profiles/minecraft (findByNames)
+ * <p>
  * - POST /authserver/authenticate: availableProfiles (findByOwner)
+ * <p>
  * - PUT/DELETE /api/user/profile/{uuid}/{type}: texture upload (findByUuid)
+ * <p>
  * - Registration (create)
  */
 public interface ProfileDAO {
 
-    /** Find a profile by its game UUID. Returns null if not found. */
+    /**
+     * Find a profile by its game UUID. Returns null if not found.
+     */
     WawelProfile findByUuid(UUID uuid);
 
     /**
@@ -26,13 +34,15 @@ public interface ProfileDAO {
      * Names are stored preserving their original case for display, but all lookups
      * and uniqueness checks are case-insensitive. Implementations must normalize
      * accordingly (e.g. COLLATE NOCASE in SQLite, or a lowercase index column).
-     *
+     * <p>
      * Used by hasJoined (username query param) and non-email login.
      * Returns null if not found.
      */
     WawelProfile findByName(String name);
 
-    /** Find all profiles owned by a user. Used for availableProfiles in authenticate. */
+    /**
+     * Find all profiles owned by a user. Used for availableProfiles in authenticate.
+     */
     List<WawelProfile> findByOwner(UUID userUuid);
 
     /**
@@ -49,10 +59,14 @@ public interface ProfileDAO {
      */
     void create(WawelProfile profile);
 
-    /** Update an existing profile. Throws if profile does not exist. */
+    /**
+     * Update an existing profile. Throws if profile does not exist.
+     */
     void update(WawelProfile profile);
 
-    /** Delete a profile by UUID. */
+    /**
+     * Delete a profile by UUID.
+     */
     void delete(UUID uuid);
 
     /**
@@ -62,6 +76,8 @@ public interface ProfileDAO {
      */
     boolean isTextureHashReferenced(String hash);
 
-    /** Return total profile count. For server stats. */
+    /**
+     * Return total profile count. For server stats.
+     */
     long count();
 }
