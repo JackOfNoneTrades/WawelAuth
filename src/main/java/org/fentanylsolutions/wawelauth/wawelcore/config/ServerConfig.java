@@ -76,6 +76,18 @@ public class ServerConfig {
         this.apiRoot = apiRoot;
     }
 
+    /**
+     * Route prefix implied by apiRoot's path component.
+     *
+     * Examples:
+     * - "https://auth.example.com" -> ""
+     * - "https://auth.example.com/auth" -> "/auth"
+     * - "https://auth.example.com/auth/" -> "/auth"
+     */
+    public String getApiRoutePrefix() {
+        return normalizeApiRoutePrefix(apiRoot);
+    }
+
     public List<String> getSkinDomains() {
         if (skinDomains == null) skinDomains = new ArrayList<>();
         return skinDomains;
@@ -151,6 +163,37 @@ public class ServerConfig {
         }
     }
 
+    public static String normalizeApiRoutePrefix(String rawApiRoot) {
+        String raw = rawApiRoot == null ? null : rawApiRoot.trim();
+        if (raw == null || raw.isEmpty()) {
+            return "";
+        }
+
+        try {
+            URI uri = new URI(raw);
+            return normalizePathPrefix(uri.getPath());
+        } catch (Exception ignored) {
+            return normalizePathPrefix(raw);
+        }
+    }
+
+    private static String normalizePathPrefix(String rawPath) {
+        if (rawPath == null) {
+            return "";
+        }
+        String path = rawPath.trim();
+        if (path.isEmpty() || "/".equals(path)) {
+            return "";
+        }
+        if (!path.startsWith("/")) {
+            return "";
+        }
+        while (path.endsWith("/") && path.length() > 1) {
+            path = path.substring(0, path.length() - 1);
+        }
+        return "/".equals(path) ? "" : path;
+    }
+
     /**
      * Strict config validation. Throws on invalid operator input.
      */
@@ -219,6 +262,7 @@ public class ServerConfig {
         private String implementationName = "Wawel Auth";
         private String serverHomepage = "";
         private String serverRegister = "";
+        private String publicDescription = "";
 
         public String getImplementationName() {
             return implementationName;
@@ -247,6 +291,14 @@ public class ServerConfig {
 
         public void setServerRegister(String serverRegister) {
             this.serverRegister = serverRegister;
+        }
+
+        public String getPublicDescription() {
+            return publicDescription;
+        }
+
+        public void setPublicDescription(String publicDescription) {
+            this.publicDescription = publicDescription;
         }
     }
 

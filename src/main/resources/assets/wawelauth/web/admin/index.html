@@ -121,7 +121,10 @@
                             <input id="cfgServerName" type="text">
 
                             <label for="cfgApiRoot">API Root</label>
-                            <input id="cfgApiRoot" type="text" placeholder="http://host:25565">
+                            <input id="cfgApiRoot" type="text" placeholder="http://host:25565/auth">
+                            <p class="muted field-note">
+                                The path part of <code>apiRoot</code> is the auth API mount point. Use a path like <code>/auth</code> to reserve <code>/</code> for the public page.
+                            </p>
 
                             <label for="cfgImplementationName">Implementation Name</label>
                             <input id="cfgImplementationName" type="text">
@@ -131,6 +134,10 @@
 
                             <label for="cfgServerRegister">Register Link</label>
                             <input id="cfgServerRegister" type="text">
+
+                            <label for="cfgPublicDescription">Public Landing Page Description</label>
+                            <textarea id="cfgPublicDescription" rows="4"
+                                placeholder="Describe this auth server for visitors landing on /"></textarea>
 
                             <label for="cfgSkinDomains">Skin Domains (comma-separated)</label>
                             <input id="cfgSkinDomains" type="text" placeholder="auth.example.com, cdn.example.com">

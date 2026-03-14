@@ -909,6 +909,11 @@ public class AdminWebService {
                 serverConfig.getMeta()
                     .setServerRegister(value);
             }
+            value = readOptionalString(meta, "publicDescription");
+            if (value != null) {
+                serverConfig.getMeta()
+                    .setPublicDescription(value);
+            }
         }
 
         JsonObject features = readOptionalObject(body, "features");
@@ -1526,6 +1531,10 @@ public class AdminWebService {
             "serverRegister",
             serverConfig.getMeta()
                 .getServerRegister());
+        meta.put(
+            "publicDescription",
+            serverConfig.getMeta()
+                .getPublicDescription());
         out.put("meta", meta);
 
         Map<String, Object> features = new LinkedHashMap<>();

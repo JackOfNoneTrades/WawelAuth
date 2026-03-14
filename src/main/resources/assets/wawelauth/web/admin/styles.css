@@ -148,6 +148,12 @@ h3 {
     margin-bottom: 0.9rem;
 }
 
+.field-note {
+    margin: -0.15rem 0 0.35rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
 .hidden {
     display: none !important;
 }
@@ -183,7 +189,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
     border: 1px solid rgba(123, 147, 220, 0.45);
     background: rgba(7, 12, 28, 0.84);
     color: var(--text);
@@ -193,10 +200,17 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
     outline: none;
     border-color: rgba(79, 140, 255, 0.95);
     box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.24);
+}
+
+textarea {
+    resize: vertical;
+    min-height: 6.2rem;
+    font-family: inherit;
 }
 
 button {

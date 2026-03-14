@@ -163,10 +163,12 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
     }
 
     private static void setCommonHeaders(FullHttpResponse response) {
+        WawelServer server = WawelServer.instance();
+        String aliLocation = server != null ? server.getApiLocationHeaderValue() : "/";
         response.headers()
             .set(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.CLOSE);
         response.headers()
-            .set(ALI_HEADER, "/");
+            .set(ALI_HEADER, aliLocation);
         response.headers()
             .set("X-Content-Type-Options", "nosniff");
         response.headers()

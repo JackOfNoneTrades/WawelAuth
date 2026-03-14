@@ -30,6 +30,7 @@ public class WawelServer {
 
     private static WawelServer instance;
 
+    private final ServerConfig serverConfig;
     private final SqliteDatabase database;
     private final KeyManager keyManager;
     private final HttpRouter router;
@@ -47,6 +48,7 @@ public class WawelServer {
         }
 
         ServerConfig config = Config.server();
+        this.serverConfig = config;
 
         // Warn if apiRoot is unset: textures will be broken
         String apiRoot = config.getApiRoot();
@@ -57,7 +59,7 @@ public class WawelServer {
             WawelAuth.LOG.warn("skinDomains will be empty. Clients using");
             WawelAuth.LOG.warn("authlib-injector will reject all textures.");
             WawelAuth.LOG.warn("Set apiRoot to your public URL, e.g.:");
-            WawelAuth.LOG.warn("  \"apiRoot\": \"http://your-ip:25565\"");
+            WawelAuth.LOG.warn("  \"apiRoot\": \"http://your-ip:25565/auth\"");
             WawelAuth.LOG.warn("========================================");
         }
 
@@ -154,6 +156,15 @@ public class WawelServer {
 
     public HttpRouter getRouter() {
         return router;
+    }
+
+    public ServerConfig getServerConfig() {
+        return serverConfig;
+    }
+
+    public String getApiLocationHeaderValue() {
+        String prefix = serverConfig.getApiRoutePrefix();
+        return prefix.isEmpty() ? "/" : prefix;
     }
 
     public KeyManager getKeyManager() {

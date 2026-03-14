@@ -86,6 +86,7 @@
         el.cfgImplementationName = document.getElementById("cfgImplementationName");
         el.cfgServerHomepage = document.getElementById("cfgServerHomepage");
         el.cfgServerRegister = document.getElementById("cfgServerRegister");
+        el.cfgPublicDescription = document.getElementById("cfgPublicDescription");
         el.cfgLegacySkinApi = document.getElementById("cfgLegacySkinApi");
         el.cfgNoMojangNamespace = document.getElementById("cfgNoMojangNamespace");
         el.cfgUsernameCheck = document.getElementById("cfgUsernameCheck");
@@ -637,7 +638,8 @@
             meta: {
                 implementationName: (el.cfgImplementationName.value || "").trim(),
                 serverHomepage: (el.cfgServerHomepage.value || "").trim(),
-                serverRegister: (el.cfgServerRegister.value || "").trim()
+                serverRegister: (el.cfgServerRegister.value || "").trim(),
+                publicDescription: (el.cfgPublicDescription.value || "").trim()
             },
             features: {
                 legacySkinApi: Boolean(el.cfgLegacySkinApi.checked),
@@ -703,6 +705,7 @@
         el.cfgImplementationName.value = meta.implementationName || "";
         el.cfgServerHomepage.value = meta.serverHomepage || "";
         el.cfgServerRegister.value = meta.serverRegister || "";
+        el.cfgPublicDescription.value = meta.publicDescription || "";
 
         el.cfgLegacySkinApi.checked = Boolean(features.legacySkinApi);
         el.cfgNoMojangNamespace.checked = Boolean(features.noMojangNamespace);
