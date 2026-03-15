@@ -1,5 +1,6 @@
 package org.fentanylsolutions.wawelauth.wawelclient;
 
+import java.net.URI;
 import java.util.List;
 
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
@@ -44,14 +45,23 @@ public final class LocalAuthProviderResolver {
 
         ClientProvider provider = findByPublicKey(publicKeyBase64, fingerprint);
         if (provider == null) {
-            String providerName = resolveProviderName(fingerprint);
+            String providerName = resolveProviderName(apiRoot, fingerprint, null);
             provider = createProvider(providerName, apiRoot, fingerprint, publicKeyBase64, capabilities);
             providerDAO.create(provider);
             return provider;
         }
 
+        String providerName = provider.getName();
+        String desiredProviderName = resolveProviderName(apiRoot, fingerprint, providerName);
+        if (isGeneratedNameForLocalAuth(providerName, apiRoot, fingerprint)
+            && !desiredProviderName.equals(providerName)) {
+            providerDAO.rename(providerName, desiredProviderName);
+            provider.setName(desiredProviderName);
+            providerName = desiredProviderName;
+        }
+
         boolean dirty = false;
-        if (provider.isManualEntry() && isGeneratedNameForFingerprint(provider.getName(), fingerprint)) {
+        if (provider.isManualEntry() && isGeneratedNameForLocalAuth(providerName, apiRoot, fingerprint)) {
             provider.setManualEntry(false);
             dirty = true;
         }
@@ -122,18 +132,17 @@ public final class LocalAuthProviderResolver {
         return null;
     }
 
-    private String resolveProviderName(String fingerprint) {
-        String suffix = fingerprint.length() > 12 ? fingerprint.substring(0, 12) : fingerprint;
-        String baseName = "LocalAuth-" + suffix;
+    private String resolveProviderName(String apiRoot, String fingerprint, String currentName) {
+        String baseName = buildGeneratedProviderBaseName(apiRoot, fingerprint);
 
         for (int i = 1; i < 200; i++) {
             String candidate = i == 1 ? baseName : baseName + "-" + i;
-            if (providerDAO.findByName(candidate) == null) {
+            if (candidate.equals(currentName) || providerDAO.findByName(candidate) == null) {
                 return candidate;
             }
         }
 
-        throw new IllegalStateException("Could not allocate local provider name for fingerprint.");
+        throw new IllegalStateException("Could not allocate local provider name for API root.");
     }
 
     private static ClientProvider createProvider(String providerName, String apiRoot, String fingerprint,
@@ -166,14 +175,55 @@ public final class LocalAuthProviderResolver {
         return array.toString();
     }
 
-    private static boolean isGeneratedNameForFingerprint(String providerName, String fingerprint) {
-        if (providerName == null || fingerprint == null) {
+    private static boolean isGeneratedNameForLocalAuth(String providerName, String apiRoot, String fingerprint) {
+        if (providerName == null) {
             return false;
         }
 
-        String suffix = fingerprint.length() > 12 ? fingerprint.substring(0, 12) : fingerprint;
-        String baseName = "LocalAuth-" + suffix;
+        String currentBaseName = buildGeneratedProviderBaseName(apiRoot, fingerprint);
+        if (matchesGeneratedPattern(providerName, currentBaseName)) {
+            return true;
+        }
+
+        if (fingerprint == null) {
+            return false;
+        }
+        String legacySuffix = fingerprint.length() > 12 ? fingerprint.substring(0, 12) : fingerprint;
+        String legacyBaseName = "LocalAuth-" + legacySuffix;
+        return matchesGeneratedPattern(providerName, legacyBaseName);
+    }
+
+    private static boolean matchesGeneratedPattern(String providerName, String baseName) {
+        if (providerName == null || baseName == null) {
+            return false;
+        }
         return providerName.equals(baseName) || providerName.startsWith(baseName + "-");
+    }
+
+    private static String buildGeneratedProviderBaseName(String apiRoot, String fingerprint) {
+        String domain = extractDomain(apiRoot);
+        if (domain != null) {
+            return "WawelAuth@" + domain;
+        }
+        if (fingerprint != null) {
+            String suffix = fingerprint.length() > 12 ? fingerprint.substring(0, 12) : fingerprint;
+            return "LocalAuth-" + suffix;
+        }
+        return "WawelAuth@local";
+    }
+
+    private static String extractDomain(String apiRoot) {
+        String normalized = normalizeString(apiRoot);
+        if (normalized == null) {
+            return null;
+        }
+        try {
+            URI uri = URI.create(normalized);
+            String host = normalizeString(uri.getHost());
+            return host != null ? host.toLowerCase() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String normalizeString(String value) {

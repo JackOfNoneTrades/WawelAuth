@@ -3174,7 +3174,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static boolean isLocalAuthProvider(ClientProvider provider) {
         if (provider == null) return false;
         String name = provider.getName();
-        if (name != null && name.startsWith("LocalAuth-")) {
+        if (name != null && (name.startsWith("LocalAuth-") || name.startsWith("WawelAuth@"))) {
             return true;
         }
 

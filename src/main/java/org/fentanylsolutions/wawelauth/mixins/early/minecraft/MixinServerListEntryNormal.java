@@ -377,12 +377,18 @@ public class MixinServerListEntryNormal {
     }
 
     private static String fallbackLocalAuthProviderName(ServerCapabilities localAuthCapabilities) {
+        String apiRoot = normalizeTooltipValue(
+            localAuthCapabilities != null ? localAuthCapabilities.getLocalAuthApiRoot() : null);
+        String domain = extractHost(apiRoot);
+        if (domain != null) {
+            return "WawelAuth@" + domain;
+        }
+
         String fingerprint = normalizeTooltipValue(
             localAuthCapabilities != null ? localAuthCapabilities.getLocalAuthPublicKeyFingerprint() : null);
         if (fingerprint == null) {
             return GuiText.tr("wawelauth.gui.common.unknown");
         }
-
         String suffix = fingerprint.length() > 12 ? fingerprint.substring(0, 12) : fingerprint;
         return "LocalAuth-" + suffix;
     }
@@ -391,6 +397,20 @@ public class MixinServerListEntryNormal {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String extractHost(String rawUrl) {
+        String normalized = normalizeTooltipValue(rawUrl);
+        if (normalized == null) {
+            return null;
+        }
+        try {
+            java.net.URI uri = java.net.URI.create(normalized);
+            String host = normalizeTooltipValue(uri.getHost());
+            return host != null ? host.toLowerCase() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String resolveAccountDisplayName(ClientAccount account, long accountId) {
