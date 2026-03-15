@@ -83,11 +83,16 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class WawelTextureResolver {
 
-    public static final ResourceLocation LEGACY_STEVE = new ResourceLocation("textures/entity/steve.png");
-    public static final ResourceLocation MODERN_STEVE = new ResourceLocation("wawelauth", "textures/steve_64.png");
+    private static final ResourceLocation LEGACY_STEVE = new ResourceLocation("textures/entity/steve.png");
+    private static final ResourceLocation MODERN_STEVE = new ResourceLocation("wawelauth", "textures/steve_64.png");
+    private static final ResourceLocation DEFAULT_CAPE = new ResourceLocation("wawelauth", "textures/capeFallback.png");
 
     public static ResourceLocation getDefaultSkin() {
         return SkinLayers3DConfig.modernSkinSupport ? MODERN_STEVE : LEGACY_STEVE;
+    }
+
+    public static ResourceLocation getDefaultCape() {
+        return DEFAULT_CAPE;
     }
 
     // =========================================================================
@@ -671,13 +676,13 @@ public class WawelTextureResolver {
         return sessionBridge.withLookupContext(lookupContext, action);
     }
 
-    private static boolean hasUsableRegisteredTexture(ResourceLocation skinLocation) {
-        if (skinLocation == null) {
+    private static boolean hasUsableRegisteredTexture(ResourceLocation texLocation) {
+        if (texLocation == null) {
             return false;
         }
         ITextureObject textureObject = Minecraft.getMinecraft()
             .getTextureManager()
-            .getTexture(skinLocation);
+            .getTexture(texLocation);
         return SkinTextureState.isUsable(textureObject);
     }
 

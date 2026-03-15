@@ -398,7 +398,7 @@ public class PlayerPreviewEntity extends EntityOtherPlayerMP implements ISkinMod
         ProviderThreadDownloadImageData texture = new ProviderThreadDownloadImageData(
             null,
             url,
-            WawelTextureResolver.getDefaultSkin(),
+            useSkinBuffer ? WawelTextureResolver.getDefaultSkin() : WawelTextureResolver.getDefaultCape(),
             buffer,
             provider);
 

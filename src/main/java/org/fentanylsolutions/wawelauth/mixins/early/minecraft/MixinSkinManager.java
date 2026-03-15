@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
 
+import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
 import org.fentanylsolutions.wawelauth.client.render.IProviderAwareSkinManager;
 import org.fentanylsolutions.wawelauth.client.render.ProviderThreadDownloadImageData;
 import org.fentanylsolutions.wawelauth.client.render.SkinManagerCompatImageBuffer;
@@ -84,7 +85,7 @@ public abstract class MixinSkinManager implements IProviderAwareSkinManager {
         ProviderThreadDownloadImageData download = new ProviderThreadDownloadImageData(
             cacheFile,
             texture.getUrl(),
-            field_152793_a,
+            textureType == Type.SKIN ? field_152793_a : WawelTextureResolver.getDefaultCape(),
             new SkinManagerCompatImageBuffer(delegate, callback, textureType, resourceLocation),
             provider);
         field_152795_c.loadTexture(resourceLocation, download);
