@@ -26,13 +26,11 @@
                 <div class="hero-head">
                     <h1 id="serverName">Wawel Auth Server</h1>
                     <div class="hero-corner-actions">
-                        <a class="btn icon-btn hidden" id="adminButton" href="/admin">
-                            <span class="nf-icon" aria-hidden="true">&#xf030b;</span>
-                            <span>Admin Panel</span>
+                        <a class="btn icon-only-btn hidden" id="adminButton" href="/admin" title="Admin Panel" aria-label="Admin Panel">
+                            <span class="nf-icon" aria-hidden="true">&#xf0bc4;</span>
                         </a>
-                        <a class="btn icon-btn alt hidden" id="dynmapButton" href="/dynmap">
-                            <span class="nf-icon" aria-hidden="true">&#xf1418;</span>
-                            <span>Dynmap</span>
+                        <a class="btn icon-only-btn alt hidden" id="dynmapButton" href="/dynmap" title="Dynmap" aria-label="Dynmap">
+                            <span class="nf-icon" aria-hidden="true">&#xf0352;</span>
                         </a>
                     </div>
                 </div>
@@ -56,6 +54,13 @@
             <div class="stack">
                 <article class="card section">
                     <p class="section-title">How to Connect</p>
+                    <div class="server-address-block">
+                        <a class="btn icon-btn server-address-btn hidden" id="serverAddressButton" href="#" draggable="false" title="Advertised Minecraft server address.">
+                            <span class="nf-icon" aria-hidden="true">&#xf0318;</span>
+                            <span id="serverAddressText">example.org:25565</span>
+                        </a>
+                        <p class="muted hidden" id="serverAddressWarning">Admin: set server-address in Wawel Auth server.json to advertise a join address on this page.</p>
+                    </div>
                     <div class="connect">
                         <div class="connect-card">
                             <h3>Wawel Auth Client</h3>

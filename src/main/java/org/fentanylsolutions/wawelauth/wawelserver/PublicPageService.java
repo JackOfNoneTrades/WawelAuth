@@ -276,6 +276,8 @@ public final class PublicPageService {
             formatRegistrationPolicy(registrationPolicy),
             registrationDescription(registrationPolicy),
             Collections.unmodifiableList(new ArrayList<>(resolveFallbacks())),
+            trimToNull(serverConfig.getServerAddress()),
+            resolveAdvertisedServerAddressWarning(),
             trimToNull(serverConfig.getApiRoot()),
             trimToNull(
                 serverConfig.getMeta()
@@ -315,6 +317,8 @@ public final class PublicPageService {
         server.put("playersOnline", Integer.valueOf(liveStatus.playersOnline));
         server.put("maxPlayers", staticInfo.maxPlayers);
         server.put("connectedPlayers", liveStatus.connectedPlayers);
+        server.put("address", staticInfo.serverAddress);
+        server.put("addressWarning", staticInfo.serverAddressWarning);
 
         Map<String, Object> registration = new LinkedHashMap<>();
         registration.put("id", staticInfo.registrationId);
@@ -572,6 +576,12 @@ public final class PublicPageService {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    private String resolveAdvertisedServerAddressWarning() {
+        return trimToNull(serverConfig.getServerAddress()) == null
+            ? "Admin: set server-address in Wawel Auth server.json to advertise a join address on this page."
+            : null;
     }
 
     private List<Map<String, Object>> resolveConnectedPlayers() {
@@ -1027,6 +1037,8 @@ public final class PublicPageService {
         private final String registrationLabel;
         private final String registrationDescription;
         private final List<Map<String, Object>> fallbacks;
+        private final String serverAddress;
+        private final String serverAddressWarning;
         private final String apiRoot;
         private final String homepage;
         private final String register;
@@ -1038,9 +1050,9 @@ public final class PublicPageService {
 
         private StaticPublicInfo(String serverName, String implementationName, String implementationVersion,
             String description, String motd, Integer maxPlayers, String registrationId, String registrationLabel,
-            String registrationDescription, List<Map<String, Object>> fallbacks, String apiRoot, String homepage,
-            String register, boolean adminEnabled, boolean dynmapInstalled, List<Map<String, Object>> modlist,
-            byte[] serverIconPng, byte[] serverIconGif) {
+            String registrationDescription, List<Map<String, Object>> fallbacks, String serverAddress,
+            String serverAddressWarning, String apiRoot, String homepage, String register, boolean adminEnabled,
+            boolean dynmapInstalled, List<Map<String, Object>> modlist, byte[] serverIconPng, byte[] serverIconGif) {
             this.serverName = serverName;
             this.implementationName = implementationName;
             this.implementationVersion = implementationVersion;
@@ -1051,6 +1063,8 @@ public final class PublicPageService {
             this.registrationLabel = registrationLabel;
             this.registrationDescription = registrationDescription;
             this.fallbacks = fallbacks;
+            this.serverAddress = serverAddress;
+            this.serverAddressWarning = serverAddressWarning;
             this.apiRoot = apiRoot;
             this.homepage = homepage;
             this.register = register;

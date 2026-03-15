@@ -37,6 +37,8 @@ public class ServerConfig {
     private boolean enablePublicInfoApi = true;
     private String publicPagePath = "/";
     private String publicInfoApiPath = "__server-info";
+    @SerializedName("server-address")
+    private String serverAddress = "localhost:25565";
 
     /**
      * Domains from which clients should accept texture URLs.
@@ -136,6 +138,19 @@ public class ServerConfig {
 
     public void setPublicInfoApiPath(String publicInfoApiPath) {
         this.publicInfoApiPath = publicInfoApiPath;
+    }
+
+    /**
+     * Public-facing advertised Minecraft server address shown on the landing
+     * page. Unlike server.properties server-ip, this is intended for humans and
+     * client launchers, not socket binding.
+     */
+    public String getServerAddress() {
+        return serverAddress == null ? "" : serverAddress.trim();
+    }
+
+    public void setServerAddress(String serverAddress) {
+        this.serverAddress = serverAddress;
     }
 
     /**

@@ -44,6 +44,9 @@
             minecraftVersionPill: document.getElementById("minecraftVersionPill"),
             adminButton: document.getElementById("adminButton"),
             dynmapButton: document.getElementById("dynmapButton"),
+            serverAddressButton: document.getElementById("serverAddressButton"),
+            serverAddressText: document.getElementById("serverAddressText"),
+            serverAddressWarning: document.getElementById("serverAddressWarning"),
             homepageButton: document.getElementById("homepageButton"),
             registerButton: document.getElementById("registerButton"),
             registrationPolicy: document.getElementById("registrationPolicy"),
@@ -116,6 +119,8 @@
         const motd = nonEmpty(server.motd) || "Minecraft Server";
         const playersOnline = numberOrNull(server.playersOnline);
         const maxPlayers = numberOrNull(server.maxPlayers);
+        const serverAddress = nonEmpty(server.address);
+        const serverAddressWarning = nonEmpty(server.addressWarning);
 
         document.title = serverName;
 
@@ -150,6 +155,7 @@
         configureLink(el.registerButton, registerUrl);
         configureLink(el.adminButton, nonEmpty(links.admin));
         configureLink(el.dynmapButton, nonEmpty(links.dynmap));
+        configureServerAddress(el, serverAddress, serverAddressWarning);
         renderFallbacks(el, fallbacks);
         renderConnectedPlayers(el, connectedPlayers);
         renderModlist(el, modlist);
@@ -168,6 +174,7 @@
         el.serverIcon.src = FALLBACK_ICON_URL;
         el.motdLine.textContent = "Minecraft Server";
         el.playerCountPill.textContent = "Players: ? / ?";
+        configureServerAddress(el, null, null);
         el.apiRootValue.textContent = "Unavailable";
         el.apiRootDescription.textContent = "Public server information could not be loaded.";
         el.fallbackList.classList.add("hidden");
@@ -272,6 +279,34 @@
         }
         anchor.href = url;
         anchor.classList.remove("hidden");
+    }
+
+    function configureServerAddress(el, address, warning) {
+        if (address) {
+            el.serverAddressText.textContent = address;
+            el.serverAddressButton.setAttribute("href", "#");
+            el.serverAddressButton.dataset.serverAddress = address;
+            el.serverAddressButton.onclick = function (event) {
+                event.preventDefault();
+            };
+            el.serverAddressButton.classList.remove("hidden");
+            el.serverAddressWarning.classList.add("hidden");
+            el.serverAddressWarning.textContent = "";
+            return;
+        }
+
+        el.serverAddressButton.classList.add("hidden");
+        el.serverAddressButton.removeAttribute("href");
+        delete el.serverAddressButton.dataset.serverAddress;
+        el.serverAddressButton.onclick = null;
+
+        if (warning) {
+            el.serverAddressWarning.textContent = warning;
+            el.serverAddressWarning.classList.remove("hidden");
+        } else {
+            el.serverAddressWarning.textContent = "";
+            el.serverAddressWarning.classList.add("hidden");
+        }
     }
 
     function renderConnectedPlayers(el, players) {

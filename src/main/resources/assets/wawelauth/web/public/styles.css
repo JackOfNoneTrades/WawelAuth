@@ -235,6 +235,21 @@ h1 {
     gap: 0.55rem;
 }
 
+.icon-only-btn {
+    width: 2.85rem;
+    height: 2.85rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.icon-only-btn .nf-icon {
+    font-size: 1.18rem;
+    width: 1.18rem;
+}
+
 .nf-icon {
     font-family: "Wawel Nerd Symbols";
     font-style: normal;
@@ -291,6 +306,19 @@ h1 {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.9rem;
+}
+
+.server-address-block {
+    display: grid;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+}
+
+.server-address-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    font-weight: 600;
 }
 
 .stats-grid {

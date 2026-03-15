@@ -898,6 +898,14 @@ public class AdminWebService {
             serverConfig.setPublicInfoApiPath(value);
         }
 
+        value = readOptionalString(body, "serverAddress");
+        if (value == null) {
+            value = readOptionalString(body, "server-address");
+        }
+        if (value != null) {
+            serverConfig.setServerAddress(value);
+        }
+
         JsonArray skinDomainsArr = readOptionalArray(body, "skinDomains");
         if (skinDomainsArr != null) {
             List<String> domains = new ArrayList<>();
@@ -1535,6 +1543,7 @@ public class AdminWebService {
         out.put("apiRoot", serverConfig.getApiRoot());
         out.put("publicPagePath", serverConfig.getPublicPagePath());
         out.put("publicInfoApiPath", serverConfig.getPublicInfoApiPath());
+        out.put("serverAddress", serverConfig.getServerAddress());
         out.put("skinDomains", serverConfig.getSkinDomains());
 
         Map<String, Object> meta = new LinkedHashMap<>();

@@ -85,6 +85,7 @@
         el.cfgApiRoot = document.getElementById("cfgApiRoot");
         el.cfgPublicPagePath = document.getElementById("cfgPublicPagePath");
         el.cfgPublicInfoApiPath = document.getElementById("cfgPublicInfoApiPath");
+        el.cfgServerAddress = document.getElementById("cfgServerAddress");
         el.cfgImplementationName = document.getElementById("cfgImplementationName");
         el.cfgServerHomepage = document.getElementById("cfgServerHomepage");
         el.cfgServerRegister = document.getElementById("cfgServerRegister");
@@ -638,6 +639,7 @@
             apiRoot: (el.cfgApiRoot.value || "").trim(),
             publicPagePath: (el.cfgPublicPagePath.value || "").trim(),
             publicInfoApiPath: (el.cfgPublicInfoApiPath.value || "").trim(),
+            serverAddress: (el.cfgServerAddress.value || "").trim(),
             skinDomains: parseCommaSeparatedList(el.cfgSkinDomains.value),
             meta: {
                 implementationName: (el.cfgImplementationName.value || "").trim(),
@@ -707,6 +709,7 @@
         el.cfgApiRoot.value = cfg.apiRoot || "";
         el.cfgPublicPagePath.value = cfg.publicPagePath || "/";
         el.cfgPublicInfoApiPath.value = cfg.publicInfoApiPath || "";
+        el.cfgServerAddress.value = cfg.serverAddress || "";
 
         el.cfgImplementationName.value = meta.implementationName || "";
         el.cfgServerHomepage.value = meta.serverHomepage || "";
