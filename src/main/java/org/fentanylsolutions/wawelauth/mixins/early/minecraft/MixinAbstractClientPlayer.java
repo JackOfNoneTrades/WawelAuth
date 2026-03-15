@@ -76,7 +76,7 @@ public class MixinAbstractClientPlayer {
     }
 
     @Inject(method = "getLocationCape", at = @At("RETURN"), cancellable = true)
-    private void wawelauth$overrideAnimatedCape(CallbackInfoReturnable<ResourceLocation> cir) {
+    private void wawelauth$overrideGetCape(CallbackInfoReturnable<ResourceLocation> cir) {
 
         AbstractClientPlayer self = (AbstractClientPlayer) (Object) this;
         UUID uuid = self.getUniqueID();
@@ -93,25 +93,16 @@ public class MixinAbstractClientPlayer {
             return;
         }
 
-        SessionBridge.OfflineLocalSkin local = client.getSessionBridge()
-            .resolveOfflineLocalSkin(uuid);
-        if (local == null || local.getCapePath() == null) {
-            return;
-        }
-
         ResourceLocation resolved = client.getTextureResolver()
-            .getCape(
-                uuid,
-                self.getCommandSenderName(),
-                BuiltinProviders.OFFLINE_PROVIDER_NAME,
-                TextureRequest.NO_FALLBACK);
+            .getCape(uuid, self.getCommandSenderName(), TextureRequest.NO_FALLBACK);
         if (resolved != null) {
             cir.setReturnValue(resolved);
         }
+
     }
 
     @Inject(method = "func_152122_n", at = @At("RETURN"), cancellable = true)
-    private void wawelauth$reportOfflineLocalCape(CallbackInfoReturnable<Boolean> cir) {
+    private void wawelauth$reportCape(CallbackInfoReturnable<Boolean> cir) {
         if (cir.getReturnValue()) {
             return;
         }
@@ -127,22 +118,24 @@ public class MixinAbstractClientPlayer {
             return;
         }
 
+        ResourceLocation resolved = client.getTextureResolver()
+            .getCape(uuid, self.getCommandSenderName(), TextureRequest.NO_FALLBACK);
+
+        if (resolved != null) {
+            cir.setReturnValue(true);
+            return;
+        }
+
         SessionBridge.OfflineLocalSkin local = client.getSessionBridge()
             .resolveOfflineLocalSkin(uuid);
         if (local == null || local.getCapePath() == null) {
             return;
         }
 
-        ResourceLocation resolved = client.getTextureResolver()
-            .getCape(
-                uuid,
-                self.getCommandSenderName(),
-                BuiltinProviders.OFFLINE_PROVIDER_NAME,
-                TextureRequest.NO_FALLBACK);
-
-        if (resolved != null || LocalTextureLoader.getOfflineGIFCape(uuid, local.getCapePath()) != null) {
+        if (LocalTextureLoader.getOfflineGIFCape(uuid, local.getCapePath()) != null) {
             cir.setReturnValue(true);
         }
+
     }
 
     @Inject(method = "getLocationSkin", at = @At("RETURN"), cancellable = true)

@@ -20,7 +20,6 @@ import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
@@ -829,14 +828,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     @Override
     public void onUpdate() {
         super.onUpdate();
-
-        // Tick animated cape previews
-        if (previewFrontEntity != null) {
-            previewFrontEntity.tickAnimatedCape();
-        }
-        if (previewBackEntity != null) {
-            previewBackEntity.tickAnimatedCape();
-        }
 
         if (accountListRebuildPending) {
             accountListRebuildPending = false;
@@ -2008,7 +1999,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             client.getProviderRegistry()
                 .getProvider(account.getProviderName()));
         if (ProviderDisplayName.isOfflineProvider(account.getProviderName())) {
-            loadOfflinePreviewTextures(account, uuid, frontRequestId, backRequestId);
+            loadOfflinePreviewModel(account);
             applyCapePreviewVisibility();
             return;
         }
@@ -2038,13 +2029,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     || previewBackEntity == null
                     || previewFrontEntity.isRequestStale(frontRequestId)
                     || previewBackEntity.isRequestStale(backRequestId)) return;
-
                 Minecraft.getMinecraft()
                     .func_152344_a(() -> {
                         if (previewFrontEntity == null || previewBackEntity == null
                             || previewFrontEntity.isRequestStale(frontRequestId)
                             || previewBackEntity.isRequestStale(backRequestId)) return;
-                        applyTexturesFromProfile(response, uuid, frontRequestId, backRequestId, provider);
+                        applyTexturesFromProfile(response, uuid);
                     });
             });
     }
@@ -2072,8 +2062,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         return obj;
     }
 
-    private void applyTexturesFromProfile(JsonObject profileResponse, UUID uuid, long frontRequestId,
-        long backRequestId, ClientProvider provider) {
+    private void applyTexturesFromProfile(JsonObject profileResponse, UUID uuid) {
         if (profileResponse == null || !profileResponse.has("properties")) return;
 
         try {
@@ -2122,51 +2111,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     WawelAuth.debug("Preview skin URL: " + skinUrl);
                     previewFrontEntity.setForcedSkinModel(model);
                     previewBackEntity.setForcedSkinModel(model);
-                    previewFrontEntity.setSkinFromUrl(skinUrl, uuid, frontRequestId, provider);
-                    ResourceLocation sharedSkin = previewFrontEntity.getCustomSkinLocation();
-                    if (sharedSkin != null) {
-                        previewBackEntity.setSkinFromExisting(sharedSkin, backRequestId);
-                    } else {
-                        previewBackEntity.setSkinFromUrl(skinUrl, uuid, backRequestId, provider);
-                    }
                     foundSkin = true;
-                }
-                if (textures.has("CAPE")) {
-                    JsonObject capeObj = textures.getAsJsonObject("CAPE");
-                    String capeUrl = capeObj.get("url")
-                        .getAsString();
-                    boolean animated = false;
-                    if (capeObj.has("metadata") && capeObj.get("metadata")
-                        .isJsonObject()) {
-                        JsonObject capeMeta = capeObj.getAsJsonObject("metadata");
-                        if (capeMeta.has("animated") && "true".equals(
-                            capeMeta.get("animated")
-                                .getAsString())) {
-                            animated = true;
-                        }
-                    }
-                    WawelAuth.debug("Preview cape URL: " + capeUrl + (animated ? " (animated)" : ""));
-                    if (animated) {
-                        previewFrontEntity.setCapeAnimated(capeUrl, uuid, frontRequestId, provider, () -> {
-                            if (previewFrontEntity == null || previewBackEntity == null
-                                || previewFrontEntity.isRequestStale(frontRequestId)
-                                || previewBackEntity.isRequestStale(backRequestId)) {
-                                return;
-                            }
-                            ResourceLocation sharedCape = previewFrontEntity.getCustomCapeLocation();
-                            if (sharedCape != null) {
-                                previewBackEntity.setCapeFromExisting(sharedCape, backRequestId);
-                            }
-                        });
-                    } else {
-                        previewFrontEntity.setCapeFromUrl(capeUrl, uuid, frontRequestId, provider);
-                        ResourceLocation sharedCape = previewFrontEntity.getCustomCapeLocation();
-                        if (sharedCape != null) {
-                            previewBackEntity.setCapeFromExisting(sharedCape, backRequestId);
-                        } else {
-                            previewBackEntity.setCapeFromUrl(capeUrl, uuid, backRequestId, provider);
-                        }
-                    }
                 }
                 applyCapePreviewVisibility();
                 break;
@@ -2181,37 +2126,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
     }
 
-    private void loadOfflinePreviewTextures(ClientAccount account, UUID uuid, long frontRequestId, long backRequestId) {
+    private void loadOfflinePreviewModel(ClientAccount account) {
         SkinModel model = account.getLocalSkinModel();
         previewFrontEntity.setForcedSkinModel(model);
         previewBackEntity.setForcedSkinModel(model);
-
-        File skinFile = fileFromStoredPath(account.getLocalSkinPath());
-        if (skinFile != null) {
-            previewFrontEntity.setSkinFromLocalFile(skinFile, uuid, frontRequestId);
-            previewBackEntity.setSkinFromLocalFile(skinFile, uuid, backRequestId);
-        } else {
-            previewFrontEntity.setSkinFromExisting(null, frontRequestId);
-            previewBackEntity.setSkinFromExisting(null, backRequestId);
-        }
-
-        File capeFile = fileFromStoredPath(account.getLocalCapePath());
-        if (capeFile != null) {
-            previewFrontEntity.setCapeFromLocalFile(capeFile, uuid, frontRequestId);
-            previewBackEntity.setCapeFromLocalFile(capeFile, uuid, backRequestId);
-        } else {
-            previewFrontEntity.setCapeFromExisting(null, frontRequestId);
-            previewBackEntity.setCapeFromExisting(null, backRequestId);
-        }
-    }
-
-    private static File fileFromStoredPath(String path) {
-        if (path == null || path.trim()
-            .isEmpty()) {
-            return null;
-        }
-        File file = new File(path);
-        return file.isFile() ? file : null;
     }
 
     private void prepareEntityPreview(PlayerPreviewEntity entity, boolean backView) {
@@ -2668,6 +2586,13 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         if (client == null) {
             textureUploadStatus = GuiText.tr("wawelauth.gui.common.client_not_running");
             return;
+        }
+
+        if (previewFrontEntity != null) {
+            previewFrontEntity.prepareTextureUpload();
+        }
+        if (previewBackEntity != null) {
+            previewBackEntity.prepareTextureUpload();
         }
 
         final long accountId = selectedAccount.getId();
