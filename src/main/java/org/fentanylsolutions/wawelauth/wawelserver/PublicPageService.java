@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.management.ServerConfigurationManager;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
@@ -575,42 +576,33 @@ public final class PublicPageService {
 
     private List<Map<String, Object>> resolveConnectedPlayers() {
         List<Map<String, Object>> rows = new ArrayList<>();
-        Object configManager = null;
         MinecraftServer server = MinecraftServer.getServer();
-        if (server != null) {
-            configManager = server.getConfigurationManager();
-        }
+        ServerConfigurationManager configManager = server == null ? null : server.getConfigurationManager();
         if (configManager == null) {
             return rows;
         }
-        try {
-            Object rawList = configManager.getClass()
-                .getField("playerEntityList")
-                .get(configManager);
-            if (rawList instanceof List<?>) {
-                for (Object rawPlayer : (List<?>) rawList) {
-                    if (!(rawPlayer instanceof EntityPlayerMP)) {
-                        continue;
-                    }
-                    EntityPlayerMP player = (EntityPlayerMP) rawPlayer;
-                    GameProfile profile = player.getGameProfile();
-                    if (profile == null || profile.getId() == null) {
-                        continue;
-                    }
 
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put(
-                        "uuid",
-                        profile.getId()
-                            .toString());
-                    row.put("name", trimToNull(profile.getName()));
-                    row.put(
-                        "avatarUrl",
-                        joinRoute(publicPath, PLAYER_AVATAR_NAME) + "?uuid=" + UuidUtil.toUnsigned(profile.getId()));
-                    rows.add(row);
-                }
+        for (Object rawPlayer : configManager.playerEntityList) {
+            if (!(rawPlayer instanceof EntityPlayerMP)) {
+                continue;
             }
-        } catch (Throwable ignored) {}
+            EntityPlayerMP player = (EntityPlayerMP) rawPlayer;
+            GameProfile profile = player.getGameProfile();
+            if (profile == null || profile.getId() == null) {
+                continue;
+            }
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put(
+                "uuid",
+                profile.getId()
+                    .toString());
+            row.put("name", trimToNull(profile.getName()));
+            row.put(
+                "avatarUrl",
+                joinRoute(publicPath, PLAYER_AVATAR_NAME) + "?uuid=" + UuidUtil.toUnsigned(profile.getId()));
+            rows.add(row);
+        }
         rows.sort(
             (a, b) -> String.valueOf(a.get("name"))
                 .compareToIgnoreCase(String.valueOf(b.get("name"))));
@@ -636,31 +628,21 @@ public final class PublicPageService {
     }
 
     private static GameProfile findConnectedPlayerProfile(UUID uuid) {
-        Object configManager = null;
         MinecraftServer server = MinecraftServer.getServer();
-        if (server != null) {
-            configManager = server.getConfigurationManager();
-        }
+        ServerConfigurationManager configManager = server == null ? null : server.getConfigurationManager();
         if (configManager == null) {
             return null;
         }
-        try {
-            Object rawList = configManager.getClass()
-                .getField("playerEntityList")
-                .get(configManager);
-            if (!(rawList instanceof List<?>)) {
-                return null;
+
+        for (Object rawPlayer : configManager.playerEntityList) {
+            if (!(rawPlayer instanceof EntityPlayerMP)) {
+                continue;
             }
-            for (Object rawPlayer : (List<?>) rawList) {
-                if (!(rawPlayer instanceof EntityPlayerMP)) {
-                    continue;
-                }
-                GameProfile profile = ((EntityPlayerMP) rawPlayer).getGameProfile();
-                if (profile != null && uuid.equals(profile.getId())) {
-                    return profile;
-                }
+            GameProfile profile = ((EntityPlayerMP) rawPlayer).getGameProfile();
+            if (profile != null && uuid.equals(profile.getId())) {
+                return profile;
             }
-        } catch (Throwable ignored) {}
+        }
         return null;
     }
 

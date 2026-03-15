@@ -1710,20 +1710,8 @@ public class AdminWebService {
             }
         }
 
-        Object rawList;
-        try {
-            rawList = scm.getClass()
-                .getField("playerEntityList")
-                .get(scm);
-        } catch (Throwable ignored) {
-            return 0;
-        }
-        if (!(rawList instanceof List<?>)) {
-            return 0;
-        }
-
         LinkedHashSet<EntityPlayerMP> toKick = new LinkedHashSet<>();
-        for (Object rawPlayer : (List<?>) rawList) {
+        for (Object rawPlayer : scm.playerEntityList) {
             if (!(rawPlayer instanceof EntityPlayerMP)) {
                 continue;
             }
