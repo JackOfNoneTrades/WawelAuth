@@ -155,7 +155,7 @@
         configureLink(el.registerButton, registerUrl);
         configureLink(el.adminButton, nonEmpty(links.admin));
         configureLink(el.dynmapButton, nonEmpty(links.dynmap));
-        configureServerAddress(el, serverAddress, serverAddressWarning);
+        configureServerAddress(el, serverName, serverAddress, serverAddressWarning);
         renderFallbacks(el, fallbacks);
         renderConnectedPlayers(el, connectedPlayers);
         renderModlist(el, modlist);
@@ -281,13 +281,35 @@
         anchor.classList.remove("hidden");
     }
 
-    function configureServerAddress(el, address, warning) {
+    function configureServerAddress(el, serverName, address, warning) {
         if (address) {
+            const payload = buildServerDragPayload(serverName || address, address);
             el.serverAddressText.textContent = address;
             el.serverAddressButton.setAttribute("href", "#");
             el.serverAddressButton.dataset.serverAddress = address;
+            el.serverAddressButton.dataset.serverName = serverName || address;
+            el.serverAddressButton.dataset.dragPayload = payload;
+            el.serverAddressButton.setAttribute("draggable", "true");
             el.serverAddressButton.onclick = function (event) {
                 event.preventDefault();
+            };
+            el.serverAddressButton.ondragstart = function (event) {
+                if (!event.dataTransfer) {
+                    console.info("[WawelAuth public-page] dragstart without dataTransfer");
+                    return;
+                }
+                console.info("[WawelAuth public-page] dragstart", {
+                    serverName: serverName || address,
+                    address: address,
+                    payload: payload
+                });
+                event.dataTransfer.effectAllowed = "copy";
+                safeSetDragData(event.dataTransfer, "text/plain", payload);
+                safeSetDragData(event.dataTransfer, "text/uri-list", payload);
+                safeSetDragData(event.dataTransfer, "application/x-wawelauth-server", payload);
+            };
+            el.serverAddressButton.ondragend = function () {
+                console.info("[WawelAuth public-page] dragend");
             };
             el.serverAddressButton.classList.remove("hidden");
             el.serverAddressWarning.classList.add("hidden");
@@ -297,8 +319,13 @@
 
         el.serverAddressButton.classList.add("hidden");
         el.serverAddressButton.removeAttribute("href");
+        el.serverAddressButton.setAttribute("draggable", "false");
         delete el.serverAddressButton.dataset.serverAddress;
+        delete el.serverAddressButton.dataset.serverName;
+        delete el.serverAddressButton.dataset.dragPayload;
         el.serverAddressButton.onclick = null;
+        el.serverAddressButton.ondragstart = null;
+        el.serverAddressButton.ondragend = null;
 
         if (warning) {
             el.serverAddressWarning.textContent = warning;
@@ -432,6 +459,21 @@
         const online = playersOnline === null ? "?" : String(playersOnline);
         const max = maxPlayers === null ? "?" : String(maxPlayers);
         return online + " / " + max;
+    }
+
+    function buildServerDragPayload(serverName, address) {
+        return "wawelauth-server://add?name="
+            + encodeURIComponent(serverName)
+            + "&address="
+            + encodeURIComponent(address);
+    }
+
+    function safeSetDragData(dataTransfer, mimeType, value) {
+        try {
+            dataTransfer.setData(mimeType, value);
+        } catch (err) {
+            console.debug("[WawelAuth public-page] Failed to set drag data", mimeType, err);
+        }
     }
 
     function numberOrNull(value) {
