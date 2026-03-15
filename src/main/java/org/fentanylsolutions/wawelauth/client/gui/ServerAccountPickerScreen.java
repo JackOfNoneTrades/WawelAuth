@@ -55,8 +55,8 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
     private static final int ACCOUNT_LIST_TOP_MARGIN = 4;
     private static final int ACCOUNT_LIST_MAX_VISIBLE_ROWS = 8;
     private static final int PICKER_PANEL_HEIGHT_SINGLEPLAYER = 204;
-    private static final int PICKER_PANEL_HEIGHT_SERVER_ONLY = 196;
-    private static final int PICKER_PANEL_HEIGHT_SERVER_WITH_LOCAL_AUTH = 226;
+    private static final int PICKER_PANEL_HEIGHT_SERVER_ONLY = 202;
+    private static final int PICKER_PANEL_HEIGHT_SERVER_WITH_LOCAL_AUTH = 246;
 
     /**
      * ModularScreen's constructor calls buildUI() immediately, before subclass
@@ -163,10 +163,23 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         int accountRowCount = allAccounts.size() + (singleplayerMode ? 1 : 0);
         int visibleRowCount = Math.max(1, Math.min(accountRowCount, ACCOUNT_LIST_MAX_VISIBLE_ROWS));
         int listHeight = visibleRowCount * ACCOUNT_ENTRY_HEIGHT;
-        int panelHeight = singleplayerMode ? PICKER_PANEL_HEIGHT_SINGLEPLAYER
-            : showLocalAuthActions ? PICKER_PANEL_HEIGHT_SERVER_WITH_LOCAL_AUTH : PICKER_PANEL_HEIGHT_SERVER_ONLY;
-        if (statusMessage != null && !statusMessage.isEmpty()) {
-            panelHeight += 12;
+
+        int baseHeight = 12 + 14 + ACCOUNT_LIST_TOP_MARGIN * 2 + 18; // padding + title + list margins + manage btn
+        if (!singleplayerMode) baseHeight += 21; // server proxy btn
+        if (showLocalAuthControls) baseHeight += 21; // manage local auth btn
+        if (showLocalAuthActions) baseHeight += 23; // login/register row
+        if (statusMessage != null && !statusMessage.isEmpty()) baseHeight += 14;
+
+        int panelHeight = baseHeight + listHeight;
+        net.minecraft.client.gui.ScaledResolution sr = new net.minecraft.client.gui.ScaledResolution(
+            Minecraft.getMinecraft(),
+            Minecraft.getMinecraft().displayWidth,
+            Minecraft.getMinecraft().displayHeight);
+        int maxPanelHeight = sr.getScaledHeight() - 10;
+        if (panelHeight > maxPanelHeight) {
+            visibleRowCount = Math.max(1, (maxPanelHeight - baseHeight) / ACCOUNT_ENTRY_HEIGHT);
+            listHeight = visibleRowCount * ACCOUNT_ENTRY_HEIGHT;
+            panelHeight = baseHeight + listHeight;
         }
 
         ModularPanel panel = ModularPanel.defaultPanel("wawelauth_server_picker", 200, panelHeight);
