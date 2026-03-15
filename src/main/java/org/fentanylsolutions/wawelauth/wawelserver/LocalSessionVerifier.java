@@ -3,20 +3,18 @@ package org.fentanylsolutions.wawelauth.wawelserver;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.management.ServerConfigurationManager;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
@@ -221,65 +219,23 @@ public final class LocalSessionVerifier {
         MinecraftServer server = MinecraftServer.getServer();
         if (server == null) return false;
 
-        Object configManager = server.getConfigurationManager();
+        ServerConfigurationManager configManager = server.getConfigurationManager();
         if (configManager == null) return false;
 
-        if (invokePlayerLookup(configManager, "getPlayerByUsername", normalizedTarget)) return true;
-        if (invokePlayerLookup(configManager, "getPlayerForUsername", normalizedTarget)) return true;
-        if (invokePlayerLookup(configManager, "func_72361_f", normalizedTarget)) return true; // getPlayerForUsername
-        // (SRG)
-
-        try {
-            Field listField = configManager.getClass()
-                .getField("playerEntityList");
-            Object rawList = listField.get(configManager);
-            if (rawList instanceof List<?>) {
-                Iterator<?> it = ((List<?>) rawList).iterator();
-                while (it.hasNext()) {
-                    Object player = it.next();
-                    String onlineName = extractPlayerName(player);
-                    if (onlineName != null && onlineName.equalsIgnoreCase(normalizedTarget)) {
-                        return true;
-                    }
-                }
+        for (Object rawPlayer : configManager.playerEntityList) {
+            if (!(rawPlayer instanceof EntityPlayerMP)) {
+                continue;
             }
-        } catch (Throwable ignored) {}
+            EntityPlayerMP player = (EntityPlayerMP) rawPlayer;
+            GameProfile profile = player.getGameProfile();
+            String onlineName = profile == null ? trimToNull(player.getCommandSenderName())
+                : trimToNull(profile.getName());
+            if (onlineName != null && onlineName.equalsIgnoreCase(normalizedTarget)) {
+                return true;
+            }
+        }
 
         return false;
-    }
-
-    private static boolean invokePlayerLookup(Object configManager, String methodName, String username) {
-        try {
-            Method method = configManager.getClass()
-                .getMethod(methodName, String.class);
-            return method.invoke(configManager, username) != null;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static String extractPlayerName(Object player) {
-        if (player == null) return null;
-
-        try {
-            Method getCommandSenderName = player.getClass()
-                .getMethod("getCommandSenderName");
-            Object value = getCommandSenderName.invoke(player);
-            if (value instanceof String) {
-                return trimToNull((String) value);
-            }
-        } catch (Throwable ignored) {}
-
-        try {
-            Method getGameProfile = player.getClass()
-                .getMethod("getGameProfile");
-            Object profile = getGameProfile.invoke(player);
-            if (profile instanceof GameProfile) {
-                return trimToNull(((GameProfile) profile).getName());
-            }
-        } catch (Throwable ignored) {}
-
-        return null;
     }
 
     private static GameProfile fetchProfile(URL url, String fallbackName) throws AuthenticationUnavailableException {
