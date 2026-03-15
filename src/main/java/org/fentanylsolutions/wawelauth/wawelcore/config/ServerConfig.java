@@ -24,7 +24,8 @@ import com.google.gson.annotations.SerializedName;
  */
 public class ServerConfig {
 
-    private boolean enabled = false;
+    private boolean wawelAuthEnabled = true;
+    private boolean enableLocalAuth = true;
     private String serverName = "A Wawel Auth Server";
 
     /**
@@ -54,12 +55,20 @@ public class ServerConfig {
     private Admin admin = new Admin();
     private List<FallbackServer> fallbackServers = new ArrayList<>();
 
-    public boolean isEnabled() {
-        return enabled;
+    public boolean isWawelAuthEnabled() {
+        return wawelAuthEnabled;
     }
 
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+    public void setWawelAuthEnabled(boolean wawelAuthEnabled) {
+        this.wawelAuthEnabled = wawelAuthEnabled;
+    }
+
+    public boolean isLocalAuthEnabled() {
+        return enableLocalAuth;
+    }
+
+    public void setLocalAuthEnabled(boolean enableLocalAuth) {
+        this.enableLocalAuth = enableLocalAuth;
     }
 
     public String getServerName() {

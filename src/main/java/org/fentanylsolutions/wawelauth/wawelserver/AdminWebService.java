@@ -1752,7 +1752,7 @@ public class AdminWebService {
         List<ProviderChoice> providers = new ArrayList<>();
         LinkedHashSet<String> seen = new LinkedHashSet<>();
 
-        if (serverConfig.isEnabled()) {
+        if (serverConfig.isLocalAuthEnabled()) {
             providers.add(new ProviderChoice("local", "Local (Wawel Auth)", "local", null));
             seen.add("local");
         }

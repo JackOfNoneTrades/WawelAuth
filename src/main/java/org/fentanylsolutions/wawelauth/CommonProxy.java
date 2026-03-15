@@ -27,7 +27,7 @@ public class CommonProxy {
 
     public void serverStarting(FMLServerStartingEvent event) {
         if (Config.server() != null && Config.server()
-            .isEnabled()) {
+            .isWawelAuthEnabled()) {
             if (!event.getServer()
                 .isServerInOnlineMode()) {
                 WawelAuth.LOG.warn("============================================================");

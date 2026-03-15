@@ -67,7 +67,11 @@ public final class LocalSessionVerifier {
         }
 
         ServerConfig config = Config.server();
-        boolean localEnabled = config != null && config.isEnabled();
+        boolean localEnabled = config != null && config.isWawelAuthEnabled() && config.isLocalAuthEnabled();
+
+        if (config == null || !config.isWawelAuthEnabled()) {
+            return vanillaService.hasJoinedServer(user, serverId);
+        }
 
         if (localEnabled) {
             if (WawelServer.instance() == null) {

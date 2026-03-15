@@ -41,7 +41,7 @@ public class MixinServerConfigurationManagerJoinSync {
             player.getCommandSenderName(),
             payload.length,
             Config.server() != null && Config.server()
-                .isEnabled()
+                .isLocalAuthEnabled()
                 && Config.server()
                     .getApiRoot() != null
                 && publicKeyBase64 != null,
@@ -49,7 +49,7 @@ public class MixinServerConfigurationManagerJoinSync {
                 .getFallbackServers()
                 .size()
                 + (Config.server()
-                    .isEnabled()
+                    .isLocalAuthEnabled()
                     && Config.server()
                         .getApiRoot() != null ? 1 : 0)
                 : 0);

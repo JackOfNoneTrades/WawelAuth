@@ -93,7 +93,7 @@ public abstract class MixinNetworkSystem {
                             // If the server module is enabled, add protocol detection
                             // at the front. When disabled, the pipeline is vanilla.
                             if (Config.server() != null && Config.server()
-                                .isEnabled()) {
+                                .isWawelAuthEnabled()) {
                                 ch.pipeline()
                                     .addFirst("wawelauth_protocol_switch", new ProtocolSwitchHandler(networkManagers));
                             }
