@@ -548,6 +548,9 @@ public class SessionBridge {
 
     boolean isVanillaTextureTrustAllowed(UUID profileId) {
         if (isClientWorldLoaded()) {
+            // No WawelAuth provider active — using the launcher's original Mojang session,
+            // so vanilla texture trust must be allowed (e.g. singleplayer with no account selected).
+            if (activeProvider == null) return true;
             return containsMojangProvider(trustedProviders);
         }
 
