@@ -39,6 +39,7 @@ public class SkinLayers3DSetup {
     }
 
     public static void updateSkullCache(UUID uuid, SkullMeshCache newCache) {
+        if (uuid == null) return;
         SkullMeshCache oldCache = (newCache == null) ? skullCache.remove(uuid) : skullCache.put(uuid, newCache);
         if (oldCache != null && oldCache.mesh != null && oldCache != newCache) {
             oldCache.mesh.cleanup();
@@ -46,6 +47,7 @@ public class SkinLayers3DSetup {
     }
 
     public static SkullMeshCache getSkullCache(UUID uuid) {
+        if (uuid == null) return null;
         return skullCache.get(uuid);
     }
 
@@ -59,6 +61,7 @@ public class SkinLayers3DSetup {
     }
 
     public static void updateState(UUID uuid, SkinLayers3DState newState) {
+        if (uuid == null) return;
         SkinLayers3DState oldState = (newState == null) ? skinLayersStateCache.remove(uuid)
             : skinLayersStateCache.put(uuid, newState);
         if (oldState != null && oldState != newState) {
@@ -67,6 +70,7 @@ public class SkinLayers3DSetup {
     }
 
     public static SkinLayers3DState getState(UUID uuid) {
+        if (uuid == null) return null;
         return skinLayersStateCache.get(uuid);
     }
 
