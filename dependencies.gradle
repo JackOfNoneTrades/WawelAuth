@@ -51,6 +51,8 @@ dependencies {
 
     // Pure compile
     compileOnly("org.jetbrains:annotations:26.1.0")
+    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.15:dev")
+    compileOnly("org.lwjgl:lwjgl-sdl:3.4.0")
     compileOnly("com.github.GTNewHorizons:GTNH-Web-Map:0.3.46:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.2.18:dev")
     devOnlyNonPublishable(rfg.deobf("curse.maven:better-questing-238856:2950244"))

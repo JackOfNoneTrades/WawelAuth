@@ -252,3 +252,8 @@ wawelauth.gui.file_picker.unavailable=Native file picker is not available on thi
 wawelauth.gui.file_picker.unknown_error=Unknown picker error.
 wawelauth.gui.local_auth.remove_auth=Remove Auth
 wawelauth.gui.local_auth.status.removed=Local auth removed.
+
+wawelauth.gui.drop.hint_title=Drop to Add Server
+wawelauth.gui.drop.hint_subtitle=Release to add this server to your list
+wawelauth.gui.drop.confirm_title=Add this server?
+wawelauth.gui.drop.add_server=Add Server

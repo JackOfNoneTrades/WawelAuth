@@ -15,6 +15,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.WawelPingClientHooks;
 import org.fentanylsolutions.wawelauth.wawelcore.config.LocalConfig;
 
 import cpw.mods.fml.client.registry.ClientRegistry;
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 
@@ -49,6 +50,11 @@ public class ClientProxy extends CommonProxy {
         GuiTransitionScheduler.register();
         AnimatedCapeClientHandler.register();
         SkinResolverClientHandler.register();
+
+        // Window drag-and-drop detection — requires lwjgl3ify (SDL3)
+        if (Loader.isModLoaded("lwjgl3ify")) {
+            org.fentanylsolutions.wawelauth.client.WindowDropHandler.register();
+        }
 
         // Compat
         NTMArmorCompat.register();
