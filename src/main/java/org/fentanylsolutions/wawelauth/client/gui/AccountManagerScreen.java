@@ -139,6 +139,41 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         openParentOnClose(true);
     }
 
+    /**
+     * Whether the texture preview is active (an account with a profile is selected).
+     * Used by the drop handler to decide if file drops should show the texture zone overlay.
+     */
+    public boolean isTexturePreviewActive() {
+        return previewFrontEntity != null && selectedAccount != null;
+    }
+
+    /**
+     * Accept a file dropped from outside the GUI as a skin or cape selection.
+     */
+    public void acceptDroppedTextureFile(File file, boolean isSkin) {
+        if (selectedAccount == null) return;
+        String lowerName = file.getName()
+            .toLowerCase();
+        if (!lowerName.endsWith(".png") && !lowerName.endsWith(".gif")) {
+            textureSelectionStatus = GuiText.tr("wawelauth.gui.account_manager.file_types_supported");
+            return;
+        }
+        if (!file.isFile() || !file.canRead()) {
+            textureSelectionStatus = GuiText.tr("wawelauth.gui.account_manager.file_not_readable");
+            return;
+        }
+        if (isSkin) {
+            selectedSkinFile = file;
+            textureSelectionStatus = GuiText
+                .tr("wawelauth.gui.account_manager.skin_selected", trimPath(file.getAbsolutePath(), 68));
+        } else {
+            selectedCapeFile = file;
+            textureSelectionStatus = GuiText
+                .tr("wawelauth.gui.account_manager.cape_selected", trimPath(file.getAbsolutePath(), 68));
+        }
+        textureUploadStatus = "";
+    }
+
     public static void openForLocalAuth(ServerData serverData) {
         pendingFocusedServerData = serverData;
         pendingFocusedCapabilities = ServerBindingPersistence.getEffectiveLocalAuthCapabilities(serverData);

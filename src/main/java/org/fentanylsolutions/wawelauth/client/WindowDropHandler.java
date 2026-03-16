@@ -12,7 +12,9 @@ import net.minecraft.client.gui.GuiMultiplayer;
 import net.minecraft.client.gui.GuiScreen;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.client.gui.AccountManagerScreen;
 import org.fentanylsolutions.wawelauth.client.gui.ServerDropScreen;
+import org.fentanylsolutions.wawelauth.client.gui.TextureDropOverlay;
 import org.lwjgl.sdl.SDLEvents;
 import org.lwjgl.sdl.SDL_DropEvent;
 import org.lwjgl.sdl.SDL_Event;
@@ -28,12 +30,14 @@ import cpw.mods.fml.relauncher.SideOnly;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 
 /**
- * Handles drag-and-drop of {@code wawelauth-server://} URIs onto the game window
- * using SDL3's event watch system (available via lwjgl3ify).
+ * Handles drag-and-drop onto the game window using SDL3's event watch system
+ * (available via lwjgl3ify).
  * <p>
- * Only active when the current screen is the main menu or multiplayer menu.
- * On drag begin, shows a hint overlay. On drop, parses the URI and prompts
- * for confirmation before adding the server.
+ * Two modes:
+ * <ul>
+ * <li><b>Server add</b> — {@code wawelauth-server://} text drops on main menu or multiplayer.</li>
+ * <li><b>Texture file</b> — file drops on the account manager when a skin preview is active.</li>
+ * </ul>
  */
 @Lwjgl3Aware
 @SideOnly(Side.CLIENT)
@@ -49,10 +53,14 @@ public final class WindowDropHandler {
     /** Strong reference to prevent GC while SDL holds the native pointer. */
     private SDL_EventFilterI eventWatch;
 
-    /** Text payload from a DROP_TEXT event within the current drag session. */
+    // Per-drag session state (written from SDL thread, read on main thread)
     private volatile String pendingDropText;
-    /** Whether a drag session is currently active. */
-    private volatile boolean dragActive;
+    private volatile String pendingDropFile;
+    private volatile float lastDropX;
+    private volatile float lastDropY;
+
+    /** Which handler is active for the current drag session. */
+    private volatile DragMode dragMode = DragMode.NONE;
 
     private WindowDropHandler() {}
 
@@ -79,16 +87,39 @@ public final class WindowDropHandler {
 
             if (type == SDLEvents.SDL_EVENT_DROP_BEGIN) {
                 pendingDropText = null;
-                dragActive = true;
+                pendingDropFile = null;
+                dragMode = DragMode.NONE;
                 scheduleOnMainThread(this::onDragBegin);
             } else if (type == SDLEvents.SDL_EVENT_DROP_TEXT) {
                 SDL_DropEvent drop = sdlEvent.drop();
                 pendingDropText = drop.dataString();
+                if (dragMode == DragMode.NONE) dragMode = DragMode.SERVER_ADD;
+            } else if (type == SDLEvents.SDL_EVENT_DROP_FILE) {
+                SDL_DropEvent drop = sdlEvent.drop();
+                pendingDropFile = drop.dataString();
+                lastDropX = drop.x();
+                lastDropY = drop.y();
+                if (dragMode == DragMode.NONE) dragMode = DragMode.TEXTURE;
+                TextureDropOverlay.setDroppedFile(pendingDropFile);
+                WawelAuth.LOG
+                    .info("[WindowDropHandler] DROP_FILE x={} y={} file={}", drop.x(), drop.y(), pendingDropFile);
+            } else if (type == SDLEvents.SDL_EVENT_DROP_POSITION) {
+                SDL_DropEvent drop = sdlEvent.drop();
+                lastDropX = drop.x();
+                lastDropY = drop.y();
+                TextureDropOverlay.updateDropPosition(drop.x(), drop.y());
             } else if (type == SDLEvents.SDL_EVENT_DROP_COMPLETE) {
-                dragActive = false;
+                WawelAuth.LOG.info(
+                    "[WindowDropHandler] DROP_COMPLETE lastDropX={} lastDropY={} dragMode={}",
+                    lastDropX,
+                    lastDropY,
+                    dragMode);
+                DragMode mode = dragMode;
                 String text = pendingDropText;
                 pendingDropText = null;
-                scheduleOnMainThread(() -> onDragComplete(text));
+                pendingDropFile = null;
+                dragMode = DragMode.NONE;
+                scheduleOnMainThread(() -> onDragComplete(mode, text));
             }
 
             return true;
@@ -99,16 +130,32 @@ public final class WindowDropHandler {
         WawelAuth.LOG.info("[WindowDropHandler] SDL drop event watch installed");
     }
 
+    // -- Drag begin --
+
     private void onDragBegin() {
-        if (!isOnEligibleScreen()) return;
-        ServerDropScreen.showHint();
+        // Texture screen check first — it's more specific, and its parent
+        // is often the multiplayer menu which would also match server-add.
+        if (isOnTextureScreen()) {
+            TextureDropOverlay.show();
+        } else if (isOnServerAddScreen()) {
+            ServerDropScreen.showHint();
+        }
     }
 
-    private void onDragComplete(String text) {
-        // Defer confirmation to the next tick so the hint screen fully tears down first.
+    // -- Drag complete --
+
+    private void onDragComplete(DragMode mode, String text) {
+        if (mode == DragMode.TEXTURE || isOnTextureScreen()) {
+            TextureDropOverlay.complete();
+            // Also dismiss server hint in case it was open
+            ServerDropScreen.dismissHint();
+            return;
+        }
+
+        // Server add flow
         ServerDropScreen.dismissHintThenRun(() -> {
             if (text == null || text.isEmpty()) return;
-            if (!isOnEligibleScreen()) return;
+            if (!isOnServerAddScreen()) return;
 
             ServerAddRequest request = parseServerUri(text);
             if (request == null) {
@@ -122,16 +169,13 @@ public final class WindowDropHandler {
         });
     }
 
-    private static boolean isOnEligibleScreen() {
+    // -- Screen detection --
+
+    private static boolean isOnServerAddScreen() {
         Minecraft mc = Minecraft.getMinecraft();
         GuiScreen screen = mc.currentScreen;
         if (screen == null) return false;
-
-        // Allow if on the main menu or multiplayer menu.
-        // Also allow if a ModularUI overlay is open on top of either.
-        if (screen instanceof GuiMainMenu || screen instanceof GuiMultiplayer) {
-            return true;
-        }
+        if (screen instanceof GuiMainMenu || screen instanceof GuiMultiplayer) return true;
         if (screen instanceof IMuiScreen muiScreen) {
             GuiScreen parent = muiScreen.getScreen()
                 .getContext()
@@ -140,6 +184,13 @@ public final class WindowDropHandler {
         }
         return false;
     }
+
+    private static boolean isOnTextureScreen() {
+        AccountManagerScreen ams = TextureDropOverlay.findAccountManagerScreen(Minecraft.getMinecraft());
+        return ams != null && ams.isTexturePreviewActive();
+    }
+
+    // -- URI parsing --
 
     static ServerAddRequest parseServerUri(String text) {
         try {
@@ -178,6 +229,14 @@ public final class WindowDropHandler {
     private static void scheduleOnMainThread(Runnable action) {
         Minecraft.getMinecraft()
             .func_152344_a(action); // addScheduledTask
+    }
+
+    // -- Types --
+
+    private enum DragMode {
+        NONE,
+        SERVER_ADD,
+        TEXTURE
     }
 
     static final class ServerAddRequest {
