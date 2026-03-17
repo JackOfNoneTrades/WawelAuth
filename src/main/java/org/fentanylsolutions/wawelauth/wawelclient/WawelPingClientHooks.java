@@ -5,11 +5,9 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.authlib.GameProfile;
 
 /**
- * Registers client-side ping deserialization for WawelAuth capabilities.
- * Capabilities are runtime-only and never persisted to NBT.
+ * Client-side ping deserialization for WawelAuth capabilities. Runtime-only, not persisted.
  */
 public final class WawelPingClientHooks {
 
@@ -33,21 +31,13 @@ public final class WawelPingClientHooks {
                 ServerBindingPersistence.persistLocalAuthMetadata(serverData, ext.getWawelCapabilities());
                 WawelAuth.debug("Ping capabilities updated for " + serverData.serverIP + " from WawelAuth payload");
             } else {
-                // No payload from this server -> auth provider set is unknown.
+                // No payload, provider set unknown
                 ext.setWawelCapabilities(ServerCapabilities.unadvertised(now));
                 ServerBindingPersistence.persistLocalAuthMetadata(serverData, ext.getWawelCapabilities());
                 WawelAuth.debug("Ping capabilities updated for " + serverData.serverIP + " as unadvertised/unknown");
             }
 
-            WawelClient client = WawelClient.instance();
-            if (client != null && response != null && response.func_151318_b() != null) {
-                GameProfile[] profiles = response.func_151318_b()
-                    .func_151331_c();
-                if (profiles != null && profiles.length > 0) {
-                    client.getSessionBridge()
-                        .rememberPingProfiles(ext.getWawelCapabilities(), profiles);
-                }
-            }
+            // Provider resolution happens at call sites using the bound account's provider
         });
 
         registered = true;

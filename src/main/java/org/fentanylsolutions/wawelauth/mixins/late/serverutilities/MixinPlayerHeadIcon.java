@@ -7,7 +7,6 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
-import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
@@ -36,7 +35,7 @@ public abstract class MixinPlayerHeadIcon extends ImageIcon {
 
     /**
      * @author Wawel Auth
-     * @reason Use WawelAuth's resolved skin texture instead of Mojang-only fetching.
+     * @reason Use WawelAuth skin resolver instead of Mojang-only.
      */
     @Overwrite(remap = false)
     @SideOnly(Side.CLIENT)
@@ -48,7 +47,7 @@ public abstract class MixinPlayerHeadIcon extends ImageIcon {
 
     /**
      * @author Wawel Auth
-     * @reason Render the face from the WawelAuth skin while preserving ServerUtilities tint behavior.
+     * @reason Render face from WawelAuth skin, preserve SU tint behavior.
      */
     @Overwrite(remap = false)
     @SideOnly(Side.CLIENT)
@@ -78,8 +77,24 @@ public abstract class MixinPlayerHeadIcon extends ImageIcon {
             return WawelTextureResolver.getDefaultSkin();
         }
 
-        return client.getTextureResolver()
-            .getSkin(profileUuid, wawelauth$resolveDisplayName(profileUuid), TextureRequest.DEFAULT);
+        // SU only gives us a UUID, try all trusted providers
+        java.util.List<org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider> trusted = client
+            .getSessionBridge()
+            .getTrustedProviders();
+        if (!trusted.isEmpty()) {
+            return client.getTextureResolver()
+                .getSkinFromAnyProvider(profileUuid, wawelauth$resolveDisplayName(profileUuid), trusted);
+        }
+
+        // Not on WA server: try active provider or local account
+        org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider provider = client
+            .resolvePlayerProvider(profileUuid);
+        if (provider != null) {
+            return client.getTextureResolver()
+                .getSkin(profileUuid, wawelauth$resolveDisplayName(profileUuid), provider, false);
+        }
+
+        return WawelTextureResolver.getDefaultSkin();
     }
 
     @Unique

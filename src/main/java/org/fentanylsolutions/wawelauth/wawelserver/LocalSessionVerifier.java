@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
@@ -37,14 +38,15 @@ import com.mojang.authlib.properties.Property;
 import com.mojang.util.UUIDTypeAdapter;
 
 /**
- * Server-side login verification bridge.
- * <p>
- * When the WawelAuth server module is enabled, this verifier queries the local
- * /sessionserver/session/minecraft/hasJoined endpoint first.
+ * Server-side login verification. Queries local hasJoined endpoint first
+ * when WawelAuth server module is enabled.
  */
 public final class LocalSessionVerifier {
 
     private static final ThreadLocal<String> DISCONNECT_REASON = new ThreadLocal<String>();
+
+    /** Player UUID -> session server URL of their auth provider. Set during hasJoined. */
+    private static final ConcurrentHashMap<UUID, String> playerProviderSessionUrls = new ConcurrentHashMap<>();
 
     private LocalSessionVerifier() {}
 
@@ -78,12 +80,16 @@ public final class LocalSessionVerifier {
             } else {
                 GameProfile localResult = queryLocalHasJoined(user.getName(), serverId);
                 if (localResult != null) {
+                    String localSessionUrl = resolveLocalSessionServerUrl();
+                    if (localResult.getId() != null && localSessionUrl != null) {
+                        playerProviderSessionUrls.put(localResult.getId(), localSessionUrl);
+                    }
                     return localResult;
                 }
             }
         }
 
-        // Try configured fallback session servers (Mojang must be explicitly listed here to be used)
+        // Try configured fallback session servers (Mojang must be listed explicitly)
         GameProfile fallbackResult = queryConfiguredFallbacks(user.getName(), serverId, config);
         if (fallbackResult != null) {
             return fallbackResult;
@@ -138,6 +144,9 @@ public final class LocalSessionVerifier {
                 GameProfile profile = fetchProfile(url, username);
                 if (profile != null) {
                     WawelAuth.debug("Fallback hasJoined hit: " + displayName);
+                    if (profile.getId() != null && rawSessionUrl != null) {
+                        playerProviderSessionUrls.put(profile.getId(), rawSessionUrl);
+                    }
                     return profile;
                 }
             } catch (AuthenticationUnavailableException e) {
@@ -171,7 +180,7 @@ public final class LocalSessionVerifier {
             }
         } catch (Exception ignored) {}
 
-        // Default compatibility for entries configured as server roots.
+        // Default for entries configured as server roots
         return base + "/session/minecraft";
     }
 
@@ -303,9 +312,8 @@ public final class LocalSessionVerifier {
                     String propValue = getString(property, "value");
                     if (propName == null || propValue == null) continue;
 
-                    // 1.7.10 S0CPacketSpawnPlayer writes signature as a mandatory
-                    // string field. Unsigned properties (null signature) would crash
-                    // packet encoding on the server thread, so keep only signed ones.
+                    // 1.7.10 S0CPacketSpawnPlayer needs signature as a mandatory string.
+                    // Null signature would crash packet encoding, so skip unsigned.
                     String signature = trimToNull(getString(property, "signature"));
                     if (signature == null) {
                         continue;
@@ -346,5 +354,33 @@ public final class LocalSessionVerifier {
 
     private static String trimToNull(String value) {
         return StringUtil.trimToNull(value);
+    }
+
+    // =========================================================================
+    // Per-player provider tracking
+    // =========================================================================
+
+    /** Session server URL of the player's auth provider, or null. */
+    public static String getPlayerProviderSessionUrl(UUID playerUuid) {
+        return playerUuid == null ? null : playerProviderSessionUrls.get(playerUuid);
+    }
+
+    /**
+     * Get all tracked player-provider associations.
+     */
+    public static Map<UUID, String> getAllPlayerProviderSessionUrls() {
+        return new HashMap<>(playerProviderSessionUrls);
+    }
+
+    /** Remove tracking for a player (on disconnect). */
+    public static void clearPlayer(UUID playerUuid) {
+        if (playerUuid != null) {
+            playerProviderSessionUrls.remove(playerUuid);
+        }
+    }
+
+    private static String resolveLocalSessionServerUrl() {
+        String apiRoot = resolveLocalApiRoot();
+        return apiRoot != null ? apiRoot + "/sessionserver" : null;
     }
 }

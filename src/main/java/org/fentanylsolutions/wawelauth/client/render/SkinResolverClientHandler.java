@@ -7,7 +7,6 @@ import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
-import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
@@ -19,12 +18,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 /**
- * Manages the {@link WawelTextureResolver} state by:
- * <ul>
- * <li>Sweeping expired cache entries on client tick.</li>
- * <li>Invalidating player data on world join.</li>
- * <li>Clearing all cached data upon server disconnection.</li>
- * </ul>
+ * Drives WawelTextureResolver lifecycle: tick sweep, invalidate on join, clear on disconnect.
  */
 @SideOnly(Side.CLIENT)
 public final class SkinResolverClientHandler {
@@ -80,6 +74,8 @@ public final class SkinResolverClientHandler {
 
         client.getTextureResolver()
             .invalidateAll();
+        client.getConnectionProviderCache()
+            .clear();
         LocalTextureLoader.clearImageCache();
         Minecraft.getMinecraft()
             .func_152344_a(() -> {

@@ -69,6 +69,9 @@ public class WawelServer {
         database = new SqliteDatabase(new File(stateDir, "wawelauth.db"));
         database.initialize();
 
+        // Discover fallback providers' public signing keys
+        FallbackKeyDiscovery.discoverKeys(config);
+
         // Crypto
         keyManager = new KeyManager(stateDir);
         keyManager.loadOrGenerate();

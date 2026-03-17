@@ -261,6 +261,7 @@ public final class ServerCapabilities {
                     WawelPingPayload.normalizeUrl(getString(obj, WawelPingPayload.KEY_PROVIDER_AUTH_SERVER_URL)),
                     WawelPingPayload.normalizeUrl(getString(obj, WawelPingPayload.KEY_PROVIDER_SESSION_SERVER_URL)),
                     WawelPingPayload.normalizeUrl(getString(obj, WawelPingPayload.KEY_PROVIDER_SERVICES_URL)),
+                    normalizeString(getString(obj, WawelPingPayload.KEY_PROVIDER_SIGNATURE_PUBLIC_KEY)),
                     skinDomains));
         }
 
@@ -274,15 +275,17 @@ public final class ServerCapabilities {
         private final String authServerUrl;
         private final String sessionServerUrl;
         private final String servicesUrl;
+        private final String signaturePublicKeyBase64;
         private final List<String> skinDomains;
 
         private AcceptedProviderDescriptor(String name, String apiRoot, String authServerUrl, String sessionServerUrl,
-            String servicesUrl, List<String> skinDomains) {
+            String servicesUrl, String signaturePublicKeyBase64, List<String> skinDomains) {
             this.name = name;
             this.apiRoot = apiRoot;
             this.authServerUrl = authServerUrl;
             this.sessionServerUrl = sessionServerUrl;
             this.servicesUrl = servicesUrl;
+            this.signaturePublicKeyBase64 = signaturePublicKeyBase64;
             this.skinDomains = skinDomains != null ? skinDomains : Collections.emptyList();
         }
 
@@ -304,6 +307,10 @@ public final class ServerCapabilities {
 
         public String getServicesUrl() {
             return servicesUrl;
+        }
+
+        public String getSignaturePublicKeyBase64() {
+            return signaturePublicKeyBase64;
         }
 
         public List<String> getSkinDomains() {

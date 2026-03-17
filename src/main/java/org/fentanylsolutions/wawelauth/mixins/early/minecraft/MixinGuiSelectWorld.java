@@ -11,7 +11,6 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
-import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.gui.AuthButton;
 import org.fentanylsolutions.wawelauth.client.gui.ServerAccountPickerScreen;
 import org.fentanylsolutions.wawelauth.wawelclient.SingleplayerAccountPersistence;
@@ -114,15 +113,10 @@ public abstract class MixinGuiSelectWorld extends GuiScreen {
         ResourceLocation skin = WawelTextureResolver.getDefaultSkin();
         if (client != null) {
             String profileName = account.getProfileName() != null ? account.getProfileName() : "?";
-            String providerName = account.getProviderName();
-            if (providerName != null && !providerName.trim()
-                .isEmpty()) {
-                skin = client.getTextureResolver()
-                    .getSkin(account.getProfileUuid(), profileName, providerName, TextureRequest.DEFAULT);
-            } else {
-                skin = client.getTextureResolver()
-                    .getSkin(account.getProfileUuid(), profileName, TextureRequest.DEFAULT);
-            }
+            org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider provider = client
+                .resolveProviderByName(account.getProviderName());
+            skin = client.getTextureResolver()
+                .getSkin(account.getProfileUuid(), profileName, provider, false);
         }
 
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);

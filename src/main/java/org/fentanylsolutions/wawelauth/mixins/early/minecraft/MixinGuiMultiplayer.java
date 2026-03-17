@@ -17,7 +17,6 @@ import net.minecraft.util.ResourceLocation;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
-import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.gui.AccountManagerScreen;
 import org.fentanylsolutions.wawelauth.client.gui.AuthButton;
 import org.fentanylsolutions.wawelauth.client.gui.FolderIconButton;
@@ -348,17 +347,9 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
         }
 
         String displayName = this.wawelauth$tooltipDisplayName != null ? this.wawelauth$tooltipDisplayName : "?";
-        if (this.wawelauth$tooltipProviderName != null && !this.wawelauth$tooltipProviderName.trim()
-            .isEmpty()) {
-            return client.getTextureResolver()
-                .getSkin(
-                    this.wawelauth$tooltipProfileUuid,
-                    displayName,
-                    this.wawelauth$tooltipProviderName,
-                    TextureRequest.DEFAULT);
-        }
-
+        org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider provider = client
+            .resolveProviderByName(this.wawelauth$tooltipProviderName);
         return client.getTextureResolver()
-            .getSkin(this.wawelauth$tooltipProfileUuid, displayName, TextureRequest.DEFAULT);
+            .getSkin(this.wawelauth$tooltipProfileUuid, displayName, provider, false);
     }
 }

@@ -13,9 +13,11 @@ import java.util.List;
 public class FallbackServer {
 
     private String name = "";
+    private String apiRoot = "";
     private String sessionServerUrl = "";
     private String accountUrl = "";
     private String servicesUrl = "";
+    private String signaturePublicKeyBase64 = "";
     private List<String> skinDomains = new ArrayList<>();
     private int cacheTtlSeconds = 300;
 
@@ -25,6 +27,14 @@ public class FallbackServer {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getApiRoot() {
+        return apiRoot;
+    }
+
+    public void setApiRoot(String apiRoot) {
+        this.apiRoot = apiRoot;
     }
 
     public String getSessionServerUrl() {
@@ -58,6 +68,14 @@ public class FallbackServer {
 
     public void setSkinDomains(List<String> skinDomains) {
         this.skinDomains = skinDomains;
+    }
+
+    public String getSignaturePublicKeyBase64() {
+        return signaturePublicKeyBase64;
+    }
+
+    public void setSignaturePublicKeyBase64(String signaturePublicKeyBase64) {
+        this.signaturePublicKeyBase64 = signaturePublicKeyBase64;
     }
 
     public int getCacheTtlSeconds() {

@@ -1,9 +1,13 @@
 package org.fentanylsolutions.wawelauth.wawelclient;
 
 import java.io.File;
+import java.util.UUID;
+
+import net.minecraft.client.Minecraft;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
+import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilHttpClient;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientAccountDAO;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientProviderDAO;
@@ -12,16 +16,8 @@ import org.fentanylsolutions.wawelauth.wawelclient.storage.sqlite.SqliteClientAc
 import org.fentanylsolutions.wawelauth.wawelclient.storage.sqlite.SqliteClientProviderDAO;
 
 /**
- * Singleton composition root for the client account manager module.
- * <p>
- * Manages the client-side SQLite database, provider registry, account manager,
- * and background token refresh.
- * <p>
- * Lifecycle:
- * <ul>
- * <li>{@link #start(File)} called from {@code ClientProxy.init()} (client-side only)</li>
- * <li>{@link #stop()} called on game shutdown (JVM hook + explicit call)</li>
- * </ul>
+ * Client module singleton. Owns the SQLite DB, provider registry, account manager,
+ * and background token refresh. Start from ClientProxy.init(), stop on shutdown.
  */
 public class WawelClient {
 
@@ -36,6 +32,7 @@ public class WawelClient {
     private final LocalAuthProviderResolver localAuthProviderResolver;
     private final AccountManager accountManager;
     private final SessionBridge sessionBridge;
+    private final ConnectionProviderCache connectionProviderCache;
     private final WawelTextureResolver textureResolver;
 
     private WawelClient(File dataDir) {
@@ -65,11 +62,14 @@ public class WawelClient {
         accountManager = new AccountManager(accountDAO, providerDAO, httpClient);
         accountManager.startBackgroundRefresh();
 
-        // Session bridge: coordinates mixin layer with account system
+        // Session bridge
         sessionBridge = new SessionBridge(httpClient, providerDAO, accountDAO, accountManager);
         sessionBridge.tryImportLauncherSession();
 
-        // Skin resolver: unified skin resolution API
+        // Connection provider cache
+        connectionProviderCache = new ConnectionProviderCache();
+
+        // Skin resolver
         textureResolver = new WawelTextureResolver(sessionBridge);
 
         int prunedBindings = ServerBindingPersistence.clearMissingAccountBindings(accountManager);
@@ -93,7 +93,7 @@ public class WawelClient {
         }
         instance = new WawelClient(dataDir);
 
-        // Register JVM shutdown hook for crash safety
+        // JVM shutdown hook for crash safety
         shutdownHook = new Thread(() -> {
             WawelClient local = instance;
             if (local != null) {
@@ -109,7 +109,7 @@ public class WawelClient {
         instance.doStop();
         instance = null;
 
-        // Remove the shutdown hook since we're stopping cleanly
+        // Clean shutdown, remove hook
         if (shutdownHook != null) {
             try {
                 Runtime.getRuntime()
@@ -175,5 +175,61 @@ public class WawelClient {
 
     public YggdrasilHttpClient getHttpClient() {
         return httpClient;
+    }
+
+    public ConnectionProviderCache getConnectionProviderCache() {
+        return connectionProviderCache;
+    }
+
+    /**
+     * Resolve the provider for a player UUID.
+     * Checks: connection cache, active account, local accounts.
+     * Returns null if unknown (caller shows Steve).
+     */
+    public ClientProvider resolvePlayerProvider(UUID playerUuid) {
+        // In-world on WA server: check connection cache
+        if (Minecraft.getMinecraft().theWorld != null && connectionProviderCache.isActive()) {
+            ClientProvider connectionProvider = connectionProviderCache.getPlayerProvider(playerUuid);
+            if (connectionProvider != null) {
+                return connectionProvider;
+            }
+        }
+
+        // In-world but no per-player match: use active account's provider
+        if (Minecraft.getMinecraft().theWorld != null) {
+            return sessionBridge.getActiveProvider();
+        }
+
+        // Not in-world: check local accounts
+        if (playerUuid != null && accountDAO != null) {
+            for (org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount account : accountDAO.listAll()) {
+                if (account != null && playerUuid.equals(account.getProfileUuid())) {
+                    String providerName = account.getProviderName();
+                    if (providerName != null && !providerName.trim()
+                        .isEmpty()) {
+                        ClientProvider provider = providerDAO.findByName(providerName);
+                        if (provider != null) {
+                            return provider;
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** Resolve provider by name, or null. */
+    public ClientProvider resolveProviderByName(String providerName) {
+        if (providerName != null && !providerName.trim()
+            .isEmpty()) {
+            return providerDAO.findByName(providerName);
+        }
+        return null;
+    }
+
+    /** Mojang provider. Only for singleplayer with no explicit account. */
+    public ClientProvider getMojangProvider() {
+        return providerDAO.findByName(BuiltinProviders.MOJANG_PROVIDER_NAME);
     }
 }

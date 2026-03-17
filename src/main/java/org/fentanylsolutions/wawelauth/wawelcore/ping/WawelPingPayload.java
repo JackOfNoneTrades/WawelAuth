@@ -40,6 +40,7 @@ public final class WawelPingPayload {
     public static final String KEY_PROVIDER_AUTH_SERVER_URL = "authServerUrl";
     public static final String KEY_PROVIDER_SESSION_SERVER_URL = "sessionServerUrl";
     public static final String KEY_PROVIDER_SERVICES_URL = "servicesUrl";
+    public static final String KEY_PROVIDER_SIGNATURE_PUBLIC_KEY = "signaturePublickey";
     public static final String KEY_PROVIDER_SKIN_DOMAINS = "skinDomains";
 
     private WawelPingPayload() {}
@@ -219,6 +220,10 @@ public final class WawelPingPayload {
         }
         if (servicesUrl != null) {
             descriptor.addProperty(KEY_PROVIDER_SERVICES_URL, servicesUrl);
+        }
+        String publicKey = trimToNull(fallback.getSignaturePublicKeyBase64());
+        if (publicKey != null) {
+            descriptor.addProperty(KEY_PROVIDER_SIGNATURE_PUBLIC_KEY, publicKey);
         }
         descriptor.add(KEY_PROVIDER_SKIN_DOMAINS, toJsonArray(skinDomains));
         return descriptor;

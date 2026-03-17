@@ -15,7 +15,6 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
-import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.gui.AccountManagerScreen;
 import org.fentanylsolutions.wawelauth.client.gui.GuiText;
 import org.fentanylsolutions.wawelauth.client.gui.IServerTooltipFaceHost;
@@ -468,12 +467,10 @@ public class MixinServerListEntryNormal {
             providerName = fallbackProviderName;
         }
 
-        if (providerName != null) {
-            return client.getTextureResolver()
-                .getSkin(profileUuid, displayName, providerName, TextureRequest.DEFAULT);
-        }
+        org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider provider = client
+            .resolveProviderByName(providerName);
         return client.getTextureResolver()
-            .getSkin(profileUuid, displayName, TextureRequest.DEFAULT);
+            .getSkin(profileUuid, displayName, provider, false);
     }
 
     private static boolean notBlank(String value) {

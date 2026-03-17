@@ -31,13 +31,10 @@ import com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService;
 
 /**
  * Mixin into authlib's YggdrasilMinecraftSessionService.
- * remap = false because authlib classes are NOT obfuscated by MCP.
- * <p>
- * Injection points:
- * 1. Signature verification in getTextures(): try connection-trusted keys
- * 2. Domain whitelisting in getTextures(): check connection-trusted domains
- * 3. fillProfileProperties(): fetch from active provider's session server
- * 4. getTextures() return: detect animated capes from metadata
+ * remap = false because authlib is not obfuscated.
+ *
+ * Hooks: signature verification, domain whitelisting, profile fetching,
+ * provider context skip, animated cape detection.
  */
 @Mixin(value = YggdrasilMinecraftSessionService.class, remap = false)
 public class MixinYggdrasilMinecraftSessionService {
@@ -54,18 +51,21 @@ public class MixinYggdrasilMinecraftSessionService {
             return;
         }
 
-        GameProfile filled = client.getSessionBridge()
-            .fillProfileFromProvider(profile, requireSecure);
-        copyFetchedProperties(profile, filled);
+        // Provider context set = resolver already filled the profile
+        ClientProvider providerContext = client.getSessionBridge()
+            .getActiveProviderContext();
+        if (providerContext != null) {
+            return;
+        }
+
+        // In-world: resolver handles skin fetching per-player. Don't fill here,
+        // would use wrong provider for other players.
+        if (net.minecraft.client.Minecraft.getMinecraft().theWorld != null) {
+            return;
+        }
     }
 
-    /**
-     * Redirect Property.isSignatureValid(PublicKey) in getTextures().
-     *
-     * Try the Mojang key only when the current lookup context permits
-     * vanilla fallback, then try the profile-scoped trusted provider keys
-     * selected by SessionBridge.
-     */
+    /** Redirect signature check to use provider context key, falling back to Mojang. */
     @Redirect(
         method = "getTextures",
         at = @At(
@@ -78,29 +78,21 @@ public class MixinYggdrasilMinecraftSessionService {
             return property.isSignatureValid(mojangKey);
         }
 
+        // Check vanilla Mojang key first if allowed
         if (client.getSessionBridge()
-            .isVanillaTextureTrustAllowed(profile) && property.isSignatureValid(mojangKey)) {
+            .isVanillaTextureTrustAllowed() && property.isSignatureValid(mojangKey)) {
             return true;
         }
 
+        // Check provider-scoped keys
         for (PublicKey key : client.getSessionBridge()
-            .getTextureVerificationKeys(profile)) {
+            .getTextureVerificationKeys()) {
             if (property.isSignatureValid(key)) return true;
         }
         return false;
     }
 
-    /**
-     * Redirect static isWhitelistedDomain(String) in getTextures().
-     *
-     * isWhitelistedDomain is a private static method in authlib, so the
-     * redirect handler takes only the static method's arg (String url).
-     * No instance parameter.
-     *
-     * Check vanilla Mojang domains only when the current lookup context
-     * permits vanilla fallback, plus the profile-scoped trusted provider
-     * skin domains selected by SessionBridge.
-     */
+    /** Redirect domain whitelist to use provider context domains, falling back to vanilla. */
     @Redirect(
         method = "getTextures",
         at = @At(
@@ -109,7 +101,6 @@ public class MixinYggdrasilMinecraftSessionService {
     private boolean wawelauth$checkScopedDomains(String url, GameProfile profile, boolean requireSecure) {
         WawelClient client = WawelClient.instance();
         if (client == null) {
-            // Vanilla-equivalent fallback before WawelAuth client starts
             try {
                 String host = new java.net.URI(url).getHost();
                 return host != null && (host.endsWith(".minecraft.net") || host.endsWith(".mojang.com"));
@@ -118,17 +109,10 @@ public class MixinYggdrasilMinecraftSessionService {
             }
         }
         return client.getSessionBridge()
-            .isWhitelistedDomain(url, profile);
+            .isWhitelistedDomain(url);
     }
 
-    /**
-     * Inject at HEAD of fillProfileProperties() to route profile property
-     * fetching through the active provider's session server.
-     *
-     * Uses active provider context: ALL profiles on the current server
-     * belong to the active provider, including other players' skins.
-     * If no active provider is set, falls through to vanilla (Mojang).
-     */
+    /** Route fillProfileProperties through the active provider's session server. */
     @Inject(method = "fillProfileProperties", at = @At("HEAD"), cancellable = true)
     private void wawelauth$fillFromProvider(GameProfile profile, boolean requireSecure,
         CallbackInfoReturnable<GameProfile> cir) {
@@ -137,40 +121,37 @@ public class MixinYggdrasilMinecraftSessionService {
         WawelClient client = WawelClient.instance();
         if (client == null) return;
 
-        GameProfile filled = client.getSessionBridge()
-            .fillProfileFromProvider(profile, requireSecure);
-        if (filled != null) {
-            copyFetchedProperties(profile, filled);
-            cir.setReturnValue(profile);
+        // ThreadLocal provider context (set by WawelTextureResolver.doFetch)
+        ClientProvider providerContext = client.getSessionBridge()
+            .getActiveProviderContext();
+        if (providerContext != null) {
+            GameProfile filled = client.getSessionBridge()
+                .fillProfileFromProvider(providerContext, profile, requireSecure);
+            if (filled != null) {
+                copyFetchedProperties(profile, filled);
+                cir.setReturnValue(profile);
+            }
+            return;
         }
-        // null → no active provider, fall through to vanilla (Mojang)
+
+        // In-world: resolver handles profile fetching with correct provider
+        if (net.minecraft.client.Minecraft.getMinecraft().theWorld != null) {
+            return;
+        }
+        // Not in-world: fall through to vanilla Mojang
     }
 
     private static void copyFetchedProperties(GameProfile profile, GameProfile filled) {
         if (profile == null || filled == null || filled == profile) {
             return;
         }
-
-        // Vanilla fillProfileProperties modifies the original profile and
-        // returns it. Other code (e.g. the player entity) holds a reference
-        // to the original object. Copy fetched properties into it so that
-        // SkinModelHelper.resolveFromProfileProperty() and similar lookups
-        // see the textures property on the original reference.
         profile.getProperties()
             .clear();
         profile.getProperties()
             .putAll(filled.getProperties());
     }
 
-    /**
-     * Inject at RETURN of getTextures() to detect animated cape metadata.
-     * When a CAPE texture has metadata "animated" = "true", download the
-     * GIF asynchronously and register it in {@link AnimatedCapeTracker}.
-     *
-     * The textures map returned by authlib doesn't include custom metadata
-     * (authlib 1.7.10 doesn't parse it), so we re-parse the raw textures
-     * property from the profile to find the animated flag.
-     */
+    /** Detect animated cape metadata from getTextures() result. */
     @Inject(method = "getTextures", at = @At("RETURN"))
     private void wawelauth$detectAnimatedCape(GameProfile profile, boolean requireSecure,
         CallbackInfoReturnable<Map<MinecraftProfileTexture.Type, MinecraftProfileTexture>> cir) {
@@ -181,13 +162,11 @@ public class MixinYggdrasilMinecraftSessionService {
 
         UUID uuid = profile.getId();
 
-        // Don't re-download if already tracked
         if (AnimatedCapeTracker.has(uuid)) return;
 
         WawelClient client = WawelClient.instance();
         if (client == null) return;
 
-        // Parse the raw textures property for animated metadata
         try {
             for (Property prop : profile.getProperties()
                 .get("textures")) {
@@ -215,19 +194,23 @@ public class MixinYggdrasilMinecraftSessionService {
                     .getAsString();
                 if (!"true".equals(animatedVal)) continue;
 
-                // Found animated cape: download GIF and register
                 String capeUrl = capeObj.get("url")
                     .getAsString();
                 WawelAuth.debug("Detected animated cape for " + uuid + " at " + capeUrl);
+
+                // Use ThreadLocal provider context, or resolve from connection
                 ClientProvider provider = client.getSessionBridge()
-                    .resolveTextureDownloadProvider(uuid);
+                    .getActiveProviderContext();
+                if (provider == null) {
+                    provider = client.resolvePlayerProvider(uuid);
+                }
+                final ClientProvider downloadProvider = provider;
 
                 final String locationPath = "capes/ingame/" + uuid.toString()
                     .replace("-", "");
                 CompletableFuture.supplyAsync(() -> {
                     try {
-                        byte[] gifBytes = wawelauth$downloadBytes(capeUrl, provider);
-                        // Decode on background thread (CPU only, no OpenGL)
+                        byte[] gifBytes = wawelauth$downloadBytes(capeUrl, downloadProvider);
                         return AnimatedCapeTexture.decodeGif(gifBytes);
                     } catch (Exception e) {
                         WawelAuth.debug("Failed to download animated cape for " + uuid + ": " + e.getMessage());
@@ -236,7 +219,6 @@ public class MixinYggdrasilMinecraftSessionService {
                 })
                     .whenComplete((decoded_, err) -> {
                         if (decoded_ == null) return;
-                        // Create OpenGL texture on main thread
                         Minecraft.getMinecraft()
                             .func_152344_a(() -> {
                                 AnimatedCapeTexture tex = AnimatedCapeTexture.createFromDecoded(decoded_, locationPath);
@@ -246,7 +228,7 @@ public class MixinYggdrasilMinecraftSessionService {
                             });
                     });
 
-                break; // only process first textures property
+                break;
             }
         } catch (Exception e) {
             WawelAuth.debug("Failed to parse animated cape metadata: " + e.getMessage());

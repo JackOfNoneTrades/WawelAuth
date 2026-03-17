@@ -23,68 +23,6 @@ import com.mojang.authlib.properties.Property;
 public class SessionBridgeTest {
 
     @Test
-    public void pingProfileContextExpiresAfterTtl() {
-        SessionBridge bridge = new SessionBridge(null, null, null, null, launcherSession("token"));
-        UUID profileId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
-
-        bridge.rememberPingProfiles(
-            ServerCapabilities.unadvertised(System.currentTimeMillis()),
-            new GameProfile[] { new GameProfile(profileId, "Sample") });
-
-        long now = System.currentTimeMillis();
-        Assert.assertTrue(bridge.hasFreshPingProfileContext(profileId, now));
-        Assert.assertFalse(bridge.hasFreshPingProfileContext(profileId, now + 31_000L));
-    }
-
-    @Test
-    public void createServerLookupContextUsesLauncherSessionForUnknownServers() {
-        InMemoryProviderDao providerDao = new InMemoryProviderDao();
-        providerDao.create(provider("Mojang"));
-
-        SessionBridge bridge = new SessionBridge(
-            null,
-            providerDao,
-            new InMemoryAccountDao(),
-            null,
-            launcherSession("launcher-token"));
-
-        SessionBridge.LookupContext context = bridge
-            .createServerLookupContext(ServerCapabilities.unadvertised(System.currentTimeMillis()));
-
-        Assert.assertTrue(context.isVanillaFallbackAllowed());
-        Assert.assertNotNull(context.getProvider());
-        Assert.assertEquals(
-            "Mojang",
-            context.getProvider()
-                .getName());
-        Assert.assertEquals(
-            1,
-            context.getTrustedProviders()
-                .size());
-    }
-
-    @Test
-    public void explicitEmptyLookupContextDoesNotFallBackToLocalAccounts() {
-        UUID profileId = UUID.fromString("12345678-1234-1234-1234-1234567890ab");
-        InMemoryProviderDao providerDao = new InMemoryProviderDao();
-        providerDao.create(provider("Alpha"));
-
-        InMemoryAccountDao accountDao = new InMemoryAccountDao();
-        accountDao.create(account("Alpha", profileId));
-
-        SessionBridge bridge = new SessionBridge(
-            null,
-            providerDao,
-            accountDao,
-            null,
-            launcherSession("launcher-token"));
-
-        SessionBridge.LookupContext missingProviderContext = bridge.createProviderLookupContext("Missing", false);
-
-        Assert.assertFalse(bridge.hasProviderForProfile(profileId, missingProviderContext));
-    }
-
-    @Test
     public void advertisedServerWithoutMojangExcludesMojangFromConnectionTrust() {
         InMemoryProviderDao providerDao = new InMemoryProviderDao();
         ClientProvider mojang = provider("Mojang", "https://authserver.mojang.com");
@@ -104,28 +42,6 @@ public class SessionBridgeTest {
 
         Assert.assertTrue(containsProvider(trusted, "Alpha"));
         Assert.assertFalse(containsProvider(trusted, "Mojang"));
-    }
-
-    @Test
-    public void advertisedServerWithoutMojangDisablesVanillaTextureTrustInLookupContext() {
-        InMemoryProviderDao providerDao = new InMemoryProviderDao();
-        providerDao.create(provider("Mojang", "https://authserver.mojang.com"));
-        providerDao.create(provider("Alpha", "https://alpha.example/authserver"));
-
-        SessionBridge bridge = new SessionBridge(
-            null,
-            providerDao,
-            new InMemoryAccountDao(),
-            null,
-            launcherSession("launcher-token"));
-
-        SessionBridge.LookupContext context = bridge
-            .createServerLookupContext(advertisedCapabilities("https://alpha.example/authserver"), true);
-
-        Assert.assertFalse(
-            bridge.withLookupContext(
-                context,
-                () -> bridge.isVanillaTextureTrustAllowed(UUID.fromString("feedfeed-feed-feed-feed-feedfeedfeed"))));
     }
 
     @Test

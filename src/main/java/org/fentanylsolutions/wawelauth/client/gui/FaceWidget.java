@@ -7,8 +7,8 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
-import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
+import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.lwjgl.opengl.GL11;
 
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
@@ -50,14 +50,9 @@ public class FaceWidget extends Widget<FaceWidget> {
         WawelClient client = WawelClient.instance();
         ResourceLocation skin;
         if (client != null && profileUuid != null) {
-            if (providerName != null && !providerName.trim()
-                .isEmpty()) {
-                skin = client.getTextureResolver()
-                    .getSkin(profileUuid, displayName, providerName, TextureRequest.DEFAULT);
-            } else {
-                skin = client.getTextureResolver()
-                    .getSkin(profileUuid, displayName, TextureRequest.DEFAULT);
-            }
+            ClientProvider provider = client.resolveProviderByName(providerName);
+            skin = client.getTextureResolver()
+                .getSkin(profileUuid, displayName, provider, false);
         } else {
             skin = WawelTextureResolver.getDefaultSkin();
         }

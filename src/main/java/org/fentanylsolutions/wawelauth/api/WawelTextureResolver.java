@@ -2,13 +2,7 @@ package org.fentanylsolutions.wawelauth.api;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.net.URI;
-import java.security.PublicKey;
-import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,28 +11,22 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.render.IProviderAwareSkinManager;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.SkinTextureState;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
-import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
-import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
+import org.fentanylsolutions.wawelauth.wawelclient.BuiltinProviders;
 import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonPrimitive;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.InsecureTextureException;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
@@ -48,37 +36,8 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 /**
- * Unified skin / cape resolution API for WawelAuth.
- * <p>
- * Given a player UUID (and optional context hints), resolves a skin / cape
- * {@link ResourceLocation} ready for rendering. Manages the full pipeline:
- * provider selection, profile fetch, texture download, and caching.
- * <p>
- * All {@code getSkin} / {@code getCape} methods are safe to call from the render thread.
- * They return a placeholder immediately and fetch asynchronously.
- *
- * <h3>Usage</h3>
- *
- * <pre>
- *
- * {
- *     &#64;code
- *     WawelTextureResolver resolver = WawelClient.instance()
- *         .getTextureResolver();
- *
- *     // Auto-resolve (uses ping context, local accounts, Mojang fallback)
- *     ResourceLocation skin = resolver.getSkin(uuid, name, TextureRequest.DEFAULT);
- *     ResourceLocation cape = resolver.getCape(uuid, name, TextureRequest.DEFAULT);
- *
- *     // Resolve for a specific server entry (uses server's advertised auth)
- *     ResourceLocation skin = resolver.getSkin(uuid, name, serverData, TextureRequest.DEFAULT);
- *     ResourceLocation cape = resolver.getCape(uuid, name, serverData, TextureRequest.DEFAULT);
- *
- *     // Resolve with an explicit provider key
- *     ResourceLocation skin = resolver.getSkin(uuid, name, publicKey, sessionBase, TextureRequest.DEFAULT);
- *     ResourceLocation cape = resolver.getCape(uuid, name, publicKey, sessionBase, TextureRequest.DEFAULT);
- * }
- * </pre>
+ * Single source of truth for skin/cape resolution.
+ * Render-thread safe, returns placeholder and fetches async.
  */
 @SideOnly(Side.CLIENT)
 public class WawelTextureResolver {
@@ -98,10 +57,6 @@ public class WawelTextureResolver {
     public static ResourceLocation getDefaultCape() {
         return DEFAULT_CAPE;
     }
-
-    // =========================================================================
-    // Static face drawing API
-    // =========================================================================
 
     private static final int MAX_RETRIES = 3;
     private static final long[] RETRY_DELAYS_MS = { 2_000L, 8_000L, 30_000L };
@@ -127,249 +82,52 @@ public class WawelTextureResolver {
     // Public API
     // =========================================================================
 
-    /**
-     * Resolve a player skin using WawelAuth's own context.
-     * <p>
-     * Resolution order:
-     * <ol>
-     * <li>Cache hit</li>
-     * <li>In-world: connection-scoped provider</li>
-     * <li>Menu: ping-advertised server auth for this UUID</li>
-     * <li>Menu: locally stored account provider for this UUID</li>
-     * <li>Mojang fallback (if {@link TextureRequest#allowVanillaFallback()})</li>
-     * <li>Placeholder (steve) while async fetch runs</li>
-     * </ol>
-     *
-     * @param profileId   player UUID
-     * @param displayName player display name (used as fallback identifier)
-     * @param request     caller flags
-     * @return a {@link ResourceLocation} ready for rendering, never null
-     */
-    public ResourceLocation getSkin(UUID profileId, String displayName, TextureRequest request) {
-        if (profileId == null) return getDefaultSkin();
-        return getSkinInternal(new LookupHint(buildCacheKey("auto", profileId), null), profileId, displayName, request);
+    /** Resolve a player skin. Never returns null. */
+    public ResourceLocation getSkin(UUID profileId, String displayName, ClientProvider provider,
+        boolean allowUnsigned) {
+        if (profileId == null || provider == null) return getDefaultSkin();
+        String cacheKey = buildCacheKey(provider, profileId);
+        return getSkinInternal(cacheKey, profileId, displayName, provider, allowUnsigned);
+    }
+
+    /** Resolve a player cape, or null if none. */
+    public ResourceLocation getCape(UUID profileId, String displayName, ClientProvider provider,
+        boolean allowUnsigned) {
+        if (profileId == null || provider == null) return null;
+        String cacheKey = buildCacheKey(provider, profileId);
+        return getCapeInternal(cacheKey, profileId, displayName, provider, allowUnsigned);
     }
 
     /**
-     * Resolve a player skin using a specific configured provider.
-     * <p>
-     * This is provider-scoped: it will not silently switch to another local
-     * provider that happens to share the same UUID.
+     * Try multiple providers and return the first resolved skin.
+     * For when we don't know which provider a player belongs to.
      */
-    public ResourceLocation getSkin(UUID profileId, String displayName, String providerName, TextureRequest request) {
-        if (profileId == null) return getDefaultSkin();
-        SessionBridge.LookupContext lookupContext = sessionBridge.createProviderLookupContext(providerName, false);
-        return getSkinInternal(
-            new LookupHint(buildCacheKey(buildProviderScope(providerName), profileId), lookupContext),
-            profileId,
-            displayName,
-            request);
-    }
+    public ResourceLocation getSkinFromAnyProvider(UUID profileId, String displayName,
+        java.util.List<ClientProvider> providers) {
+        if (profileId == null || providers == null || providers.isEmpty()) return getDefaultSkin();
 
-    /**
-     * Resolve a player skin for a specific server entry.
-     * <p>
-     * Uses the server's advertised auth capabilities (from its ping response)
-     * to determine which provider to query for the profile and textures.
-     *
-     * @param profileId   player UUID
-     * @param displayName player display name
-     * @param serverEntry the {@link ServerData} whose capabilities to use
-     * @param request     caller flags
-     * @return a {@link ResourceLocation} ready for rendering, never null
-     */
-    public ResourceLocation getSkin(UUID profileId, String displayName, ServerData serverEntry,
-        TextureRequest request) {
-        if (profileId == null) return getDefaultSkin();
-
-        ServerCapabilities caps = null;
-        if (serverEntry instanceof IServerDataExt) {
-            caps = ((IServerDataExt) serverEntry).getWawelCapabilities();
-            GameProfile profile = new GameProfile(profileId, displayName);
-            sessionBridge.rememberPingProfiles(
-                caps != null ? caps : ServerCapabilities.unadvertised(System.currentTimeMillis()),
-                new GameProfile[] { profile });
+        for (ClientProvider provider : providers) {
+            if (provider == null) continue;
+            ResourceLocation skin = getSkin(profileId, displayName, provider, false);
+            if (skin != null && !skin.equals(getDefaultSkin()) && !skin.equals(getLegacyDefaultSkin())) {
+                return skin;
+            }
         }
-
-        String scope = buildServerScope(serverEntry != null ? serverEntry.serverIP : null);
-        SessionBridge.LookupContext lookupContext = sessionBridge
-            .createServerLookupContext(caps, request.allowVanillaFallback());
-        return getSkinInternal(
-            new LookupHint(buildCacheKey(scope, profileId), lookupContext),
-            profileId,
-            displayName,
-            request);
-    }
-
-    /**
-     * Resolve a player skin using an explicit provider public key.
-     * <p>
-     * Use this when the caller already knows the auth provider's key and
-     * session server, bypassing WawelAuth's automatic provider resolution.
-     *
-     * @param profileId         player UUID
-     * @param displayName       player display name
-     * @param providerKey       the provider's public key (for texture signature verification)
-     * @param sessionServerBase base URL of the provider's session server
-     * @param request           caller flags
-     * @return a {@link ResourceLocation} ready for rendering, never null
-     */
-    public ResourceLocation getSkin(UUID profileId, String displayName, PublicKey providerKey, String sessionServerBase,
-        TextureRequest request) {
-        return getSkin(
-            profileId,
-            displayName,
-            providerKey,
-            sessionServerBase,
-            Collections.<String>emptyList(),
-            request);
-    }
-
-    /**
-     * Resolve a player skin using an explicit provider key and trusted skin domains.
-     */
-    public ResourceLocation getSkin(UUID profileId, String displayName, PublicKey providerKey, String sessionServerBase,
-        Iterable<String> skinDomains, TextureRequest request) {
-        if (profileId == null) return getDefaultSkin();
-
-        ClientProvider explicitProvider = buildEphemeralProvider(providerKey, sessionServerBase, skinDomains);
-        SessionBridge.LookupContext lookupContext = sessionBridge.createProviderLookupContext(explicitProvider, false);
-        return getSkinInternal(
-            new LookupHint(buildCacheKey(buildExplicitScope(sessionServerBase), profileId), lookupContext),
-            profileId,
-            displayName,
-            request);
-    }
-
-    /**
-     * Resolve a player cape using WawelAuth's own context.
-     * <p>
-     * Resolution order:
-     * <ol>
-     * <li>Cache hit</li>
-     * <li>In-world: connection-scoped provider</li>
-     * <li>Menu: ping-advertised server auth for this UUID</li>
-     * <li>Menu: locally stored account provider for this UUID</li>
-     * <li>Mojang fallback (if {@link TextureRequest#allowVanillaFallback()})</li>
-     * <li>null while async fetch runs</li>
-     * </ol>
-     *
-     * @param profileId   player UUID
-     * @param displayName player display name (used as fallback identifier)
-     * @param request     caller flags
-     * @return a {@link ResourceLocation} ready for rendering, can be null
-     */
-    public ResourceLocation getCape(UUID profileId, String displayName, TextureRequest request) {
-        if (profileId == null) return null;
-        return getCapeInternal(new LookupHint(buildCacheKey("auto", profileId), null), profileId, displayName, request);
-    }
-
-    /**
-     * Resolve a player cape using a specific configured provider.
-     * <p>
-     * This is provider-scoped: it will not silently switch to another local
-     * provider that happens to share the same UUID.
-     */
-    public ResourceLocation getCape(UUID profileId, String displayName, String providerName, TextureRequest request) {
-        if (profileId == null) return null;
-        SessionBridge.LookupContext lookupContext = sessionBridge.createProviderLookupContext(providerName, false);
-        return getCapeInternal(
-            new LookupHint(buildCacheKey(buildProviderScope(providerName), profileId), lookupContext),
-            profileId,
-            displayName,
-            request);
-    }
-
-    /**
-     * Resolve a player cape for a specific server entry.
-     * <p>
-     * Uses the server's advertised auth capabilities (from its ping response)
-     * to determine which provider to query for the profile and textures.
-     *
-     * @param profileId   player UUID
-     * @param displayName player display name
-     * @param serverEntry the {@link ServerData} whose capabilities to use
-     * @param request     caller flags
-     * @return a {@link ResourceLocation} ready for rendering, can be null
-     */
-    public ResourceLocation getCape(UUID profileId, String displayName, ServerData serverEntry,
-        TextureRequest request) {
-        if (profileId == null) return null;
-
-        ServerCapabilities caps = null;
-        if (serverEntry instanceof IServerDataExt) {
-            caps = ((IServerDataExt) serverEntry).getWawelCapabilities();
-            GameProfile profile = new GameProfile(profileId, displayName);
-            sessionBridge.rememberPingProfiles(
-                caps != null ? caps : ServerCapabilities.unadvertised(System.currentTimeMillis()),
-                new GameProfile[] { profile });
-        }
-
-        String scope = buildServerScope(serverEntry != null ? serverEntry.serverIP : null);
-        SessionBridge.LookupContext lookupContext = sessionBridge
-            .createServerLookupContext(caps, request.allowVanillaFallback());
-        return getCapeInternal(
-            new LookupHint(buildCacheKey(scope, profileId), lookupContext),
-            profileId,
-            displayName,
-            request);
-    }
-
-    /**
-     * Resolve a player cape using an explicit provider public key.
-     * <p>
-     * Use this when the caller already knows the auth provider's key and
-     * session server, bypassing WawelAuth's automatic provider resolution.
-     *
-     * @param profileId         player UUID
-     * @param displayName       player display name
-     * @param providerKey       the provider's public key (for texture signature verification)
-     * @param sessionServerBase base URL of the provider's session server
-     * @param request           caller flags
-     * @return a {@link ResourceLocation} ready for rendering, can be null
-     */
-    public ResourceLocation getCape(UUID profileId, String displayName, PublicKey providerKey, String sessionServerBase,
-        TextureRequest request) {
-        return getCape(
-            profileId,
-            displayName,
-            providerKey,
-            sessionServerBase,
-            Collections.<String>emptyList(),
-            request);
-    }
-
-    /**
-     * Resolve a player cape using an explicit provider key and trusted skin domains.
-     */
-    public ResourceLocation getCape(UUID profileId, String displayName, PublicKey providerKey, String sessionServerBase,
-        Iterable<String> skinDomains, TextureRequest request) {
-        if (profileId == null) return null;
-
-        ClientProvider explicitProvider = buildEphemeralProvider(providerKey, sessionServerBase, skinDomains);
-        SessionBridge.LookupContext lookupContext = sessionBridge.createProviderLookupContext(explicitProvider, false);
-        return getCapeInternal(
-            new LookupHint(buildCacheKey(buildExplicitScope(sessionServerBase), profileId), lookupContext),
-            profileId,
-            displayName,
-            request);
+        return getDefaultSkin();
     }
 
     // =========================================================================
     // Cache management
     // =========================================================================
 
-    /**
-     * Invalidate all cached entries for a player UUID.
-     * The next {@code getSkin} / {@code getCape} call will re-fetch from scratch.
-     */
+    /** Invalidate all cached entries for a player UUID across all providers. */
     public void invalidate(UUID profileId) {
         if (profileId == null) return;
-        String suffix = profileId.toString();
+        String suffix = "|" + profileId.toString();
         skinEntries.keySet()
-            .removeIf(k -> k.equals(suffix) || k.endsWith("|" + suffix));
+            .removeIf(k -> k.endsWith(suffix));
         capeEntries.keySet()
-            .removeIf(k -> k.equals(suffix) || k.endsWith("|" + suffix));
+            .removeIf(k -> k.endsWith(suffix));
         sessionBridge.invalidateProfileCache(profileId);
     }
 
@@ -385,9 +143,7 @@ public class WawelTextureResolver {
     // Lifecycle
     // =========================================================================
 
-    /**
-     * Sweep expired resolved entries. Call once per client tick.
-     */
+    /** Sweep expired entries. Call once per client tick. */
     public void tick() {
         long now = System.currentTimeMillis();
         skinEntries.values()
@@ -400,9 +156,7 @@ public class WawelTextureResolver {
                     && now - entry.resolvedAtMs > SKIN_TTL_MS);
     }
 
-    /**
-     * Shut down the worker pool and clear all state.
-     */
+    /** Shut down worker pool and clear state. */
     public void shutdown() {
         executor.shutdownNow();
         skinEntries.clear();
@@ -413,12 +167,12 @@ public class WawelTextureResolver {
     // Internals
     // =========================================================================
 
-    private ResourceLocation getSkinInternal(LookupHint hint, UUID profileId, String displayName,
-        TextureRequest request) {
-        SkinEntry entry = skinEntries.get(hint.cacheKey);
+    private ResourceLocation getSkinInternal(String cacheKey, UUID profileId, String displayName,
+        ClientProvider provider, boolean allowUnsigned) {
+
+        SkinEntry entry = skinEntries.get(cacheKey);
 
         if (entry != null) {
-            entry.lookupContext = hint.lookupContext;
             switch (entry.state) {
                 case RESOLVED:
                     if (!entry.isExpired() && hasUsableRegisteredTexture(entry.texLocation)) {
@@ -428,7 +182,7 @@ public class WawelTextureResolver {
                     entry.state = FetchState.PENDING;
                     break;
                 case FETCHING:
-                    return entry.texLocation != null ? entry.texLocation : getDefaultSkin();
+                    return getDefaultSkin();
                 case PLACEHOLDER:
                 case FAILED:
                     if (entry.shouldRetry()) {
@@ -443,11 +197,10 @@ public class WawelTextureResolver {
         }
 
         if (entry == null) {
-            entry = new SkinEntry(profileId, displayName, request, hint.lookupContext);
-            SkinEntry existing = skinEntries.putIfAbsent(hint.cacheKey, entry);
+            entry = new SkinEntry(profileId, displayName, provider, allowUnsigned);
+            SkinEntry existing = skinEntries.putIfAbsent(cacheKey, entry);
             if (existing != null) {
                 entry = existing;
-                entry.lookupContext = hint.lookupContext;
             }
         }
 
@@ -455,25 +208,31 @@ public class WawelTextureResolver {
             submitFetch(entry);
         }
 
-        return entry.texLocation != null ? entry.texLocation : getDefaultSkin();
+        return getDefaultSkin();
     }
 
-    private ResourceLocation getCapeInternal(LookupHint hint, UUID profileId, String displayName,
-        TextureRequest request) {
-        CapeEntry entry = capeEntries.get(hint.cacheKey);
+    private ResourceLocation getCapeInternal(String cacheKey, UUID profileId, String displayName,
+        ClientProvider provider, boolean allowUnsigned) {
+
+        CapeEntry entry = capeEntries.get(cacheKey);
 
         if (entry != null) {
-            entry.lookupContext = hint.lookupContext;
             switch (entry.state) {
                 case RESOLVED:
-                    if (!entry.isExpired() && hasUsableRegisteredTexture(entry.texLocation)) {
-                        return entry.texLocation;
+                    if (entry.isExpired()) {
+                        entry.texLocation = null;
+                        entry.state = FetchState.PENDING;
+                        break;
                     }
-                    entry.texLocation = null;
-                    entry.state = FetchState.PENDING;
-                    break;
+                    // null texture = no cape, not an error
+                    if (entry.texLocation != null && !hasUsableRegisteredTexture(entry.texLocation)) {
+                        entry.texLocation = null;
+                        entry.state = FetchState.PENDING;
+                        break;
+                    }
+                    return entry.texLocation;
                 case FETCHING:
-                    return entry.texLocation != null ? entry.texLocation : null;
+                    return null;
                 case PLACEHOLDER:
                 case FAILED:
                     if (entry.shouldRetry()) {
@@ -488,11 +247,10 @@ public class WawelTextureResolver {
         }
 
         if (entry == null) {
-            entry = new CapeEntry(profileId, displayName, request, hint.lookupContext);
-            CapeEntry existing = capeEntries.putIfAbsent(hint.cacheKey, entry);
+            entry = new CapeEntry(profileId, displayName, provider, allowUnsigned);
+            CapeEntry existing = capeEntries.putIfAbsent(cacheKey, entry);
             if (existing != null) {
                 entry = existing;
-                entry.lookupContext = hint.lookupContext;
             }
         }
 
@@ -500,7 +258,7 @@ public class WawelTextureResolver {
             submitFetch(entry);
         }
 
-        return entry.texLocation != null ? entry.texLocation : null;
+        return null;
     }
 
     private void submitFetch(TextureEntry entry) {
@@ -511,12 +269,22 @@ public class WawelTextureResolver {
 
         final UUID profileId = entry.profileId;
         final String displayName = entry.displayName;
-        final boolean requireSecure = entry.request.requireSigned();
-        final boolean allowVanilla = entry.request.allowVanillaFallback();
+        final ClientProvider provider = entry.provider;
+        String type = entry instanceof SkinEntry ? "skin" : "cape";
+        WawelAuth.debug(
+            "Fetching " + type
+                + " for "
+                + profileId
+                + " ("
+                + displayName
+                + ") from provider '"
+                + provider.getName()
+                + "'");
+        final boolean requireSecure = !entry.allowUnsigned;
 
         executor.submit(() -> {
             try {
-                doFetch(entry, profileId, displayName, requireSecure, allowVanilla);
+                doFetch(entry, profileId, displayName, provider, requireSecure);
             } catch (Exception e) {
                 WawelAuth.debug("Skin fetch failed for " + profileId + ": " + e.getMessage());
                 handleFetchFailure(entry);
@@ -526,73 +294,73 @@ public class WawelTextureResolver {
         });
     }
 
-    private void doFetch(TextureEntry entry, UUID profileId, String displayName, boolean requireSecure,
-        boolean allowVanilla) {
-
-        MinecraftSessionService sessionService = Minecraft.getMinecraft()
-            .func_152347_ac();
-        SessionBridge.LookupContext lookupContext = entry.lookupContext;
-        SessionBridge.OfflineLocalSkin offlineLocalSkin = sessionBridge
-            .resolveOfflineLocalSkin(profileId, lookupContext);
+    private void doFetch(TextureEntry entry, UUID profileId, String displayName, ClientProvider provider,
+        boolean requireSecure) {
 
         final boolean isSkin = entry instanceof SkinEntry;
+        final boolean isOffline = BuiltinProviders.isOfflineProvider(provider.getName());
 
-        if (offlineLocalSkin != null
-            && (isSkin ? offlineLocalSkin.getSkinPath() != null : offlineLocalSkin.getCapePath() != null)) {
-            resolveOfflineLocalTexture(entry, isSkin, profileId, offlineLocalSkin);
+        // Offline provider: resolve local skin files
+        if (isOffline) {
+            SessionBridge.OfflineLocalSkin offlineLocalSkin = sessionBridge
+                .resolveOfflineLocalSkin(profileId, provider);
+            if (offlineLocalSkin != null
+                && (isSkin ? offlineLocalSkin.getSkinPath() != null : offlineLocalSkin.getCapePath() != null)) {
+                resolveOfflineLocalTexture(entry, isSkin, profileId, offlineLocalSkin);
+                return;
+            }
+            // No local skin file, not transient, don't retry
+            entry.state = FetchState.RESOLVED;
+            entry.resolvedAtMs = System.currentTimeMillis();
             return;
         }
 
-        if (!allowVanilla && !sessionBridge.hasProviderForProfile(profileId, lookupContext)) {
-            entry.state = FetchState.PLACEHOLDER;
-            entry.texLocation = entry.getDefaultTexture();
-            entry.lastAttemptMs = System.currentTimeMillis();
-            return;
-        }
-
-        // fillProfileProperties goes through the authlib mixin which routes
-        // to SessionBridge. SessionBridge resolves the right provider from
-        // connection context, ping context, or local accounts.
+        // Fetch profile from the provider's session server
         GameProfile requestedProfile = new GameProfile(profileId, displayName);
         GameProfile profile;
         try {
-            profile = runWithLookupContext(
-                lookupContext,
-                () -> sessionService.fillProfileProperties(requestedProfile, requireSecure));
+            profile = sessionBridge.fillProfileFromProvider(provider, requestedProfile, requireSecure);
         } catch (Exception e) {
-            WawelAuth.debug("fillProfileProperties failed for " + profileId + ": " + e.getMessage());
+            WawelAuth.debug("fillProfileFromProvider failed for " + profileId + ": " + e.getMessage());
             handleFetchFailure(entry);
             return;
         }
 
-        if (profile.getProperties()
+        if (profile == null || profile.getProperties()
             .isEmpty()) {
             handleFetchFailure(entry);
             return;
         }
 
+        // Parse textures via authlib (mixin handles signature/domain checks)
+        MinecraftSessionService sessionService = Minecraft.getMinecraft()
+            .func_152347_ac();
         Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> textures;
         try {
-            textures = runWithLookupContext(lookupContext, () -> sessionService.getTextures(profile, requireSecure));
+            sessionBridge.setActiveProviderContext(provider);
+            textures = sessionService.getTextures(profile, requireSecure);
         } catch (InsecureTextureException e) {
             WawelAuth.debug(
                 "Insecure texture for " + profileId + " with requireSecure=" + requireSecure + ": " + e.getMessage());
             textures = Collections.emptyMap();
+        } finally {
+            sessionBridge.clearActiveProviderContext();
         }
 
         final MinecraftProfileTexture.Type finalType = isSkin ? MinecraftProfileTexture.Type.SKIN
             : MinecraftProfileTexture.Type.CAPE;
 
         if (textures == null || !textures.containsKey(finalType)) {
-            // Profile exists but has no skin texture
-            entry.state = FetchState.PLACEHOLDER;
-            entry.texLocation = entry.getDefaultTexture();
-            entry.lastAttemptMs = System.currentTimeMillis();
+            // Profile has no skin/cape, not transient, don't retry
+            if (isSkin) {
+                entry.texLocation = getDefaultSkin();
+            }
+            entry.state = FetchState.RESOLVED;
+            entry.resolvedAtMs = System.currentTimeMillis();
             return;
         }
 
         final MinecraftProfileTexture finalTexture = textures.get(finalType);
-        final ClientProvider downloadProvider = sessionBridge.resolveTextureDownloadProvider(profileId, lookupContext);
         Minecraft.getMinecraft()
             .func_152344_a(() -> {
                 try {
@@ -600,7 +368,7 @@ public class WawelTextureResolver {
                         .func_152342_ad();
                     ResourceLocation registeredLocation = skinManager instanceof IProviderAwareSkinManager
                         ? ((IProviderAwareSkinManager) skinManager)
-                            .wawelauth$loadTexture(finalTexture, finalType, null, downloadProvider)
+                            .wawelauth$loadTexture(finalTexture, finalType, null, provider)
                         : skinManager.func_152792_a(finalTexture, finalType);
                     if (!hasUsableRegisteredTexture(registeredLocation)) {
                         WawelAuth.debug("Texture registration was not usable yet for " + profileId);
@@ -637,9 +405,7 @@ public class WawelTextureResolver {
         Minecraft.getMinecraft()
             .func_152344_a(() -> {
                 try {
-
                     ResourceLocation location;
-
                     if (isSkin) {
                         location = new ResourceLocation("wawelauth", "offline_skins/" + UuidUtil.toUnsigned(profileId));
                     } else {
@@ -668,16 +434,6 @@ public class WawelTextureResolver {
         entry.retryCount++;
         entry.lastAttemptMs = System.currentTimeMillis();
         entry.state = entry.retryCount >= MAX_RETRIES ? FetchState.FAILED : FetchState.PLACEHOLDER;
-        if (entry.texLocation == null) {
-            entry.texLocation = entry.getDefaultTexture();
-        }
-    }
-
-    private <T> T runWithLookupContext(SessionBridge.LookupContext lookupContext, Supplier<T> action) {
-        if (lookupContext == null) {
-            return action.get();
-        }
-        return sessionBridge.withLookupContext(lookupContext, action);
     }
 
     private static boolean hasUsableRegisteredTexture(ResourceLocation texLocation) {
@@ -690,124 +446,15 @@ public class WawelTextureResolver {
         return SkinTextureState.isUsable(textureObject);
     }
 
-    private static ClientProvider buildEphemeralProvider(PublicKey key, String sessionServerBase,
-        Iterable<String> skinDomains) {
-        ClientProvider provider = new ClientProvider();
-        provider.setName("explicit@" + sessionServerBase);
-        provider.setSessionServerUrl(sessionServerBase);
-        if (key != null) {
-            provider.setPublicKeyBase64(
-                Base64.getEncoder()
-                    .encodeToString(key.getEncoded()));
-        }
-
-        List<String> normalizedSkinDomains = normalizeSkinDomains(sessionServerBase, skinDomains);
-        if (!normalizedSkinDomains.isEmpty()) {
-            JsonArray skinDomainsJson = new JsonArray();
-            for (String skinDomain : normalizedSkinDomains) {
-                skinDomainsJson.add(new JsonPrimitive(skinDomain));
-            }
-            provider.setSkinDomains(skinDomainsJson.toString());
-        }
-        return provider;
-    }
-
-    static String buildCacheKey(String scope, UUID profileId) {
-        return normalizeScopePart(scope, "auto") + "|" + profileId.toString();
-    }
-
-    static String buildProviderScope(String providerName) {
-        return "provider:" + normalizeScopePart(providerName, "unknown");
-    }
-
-    static String buildServerScope(String serverAddress) {
-        return "server:" + normalizeScopePart(serverAddress, "unknown");
-    }
-
-    static String buildExplicitScope(String sessionServerBase) {
-        return "explicit:" + normalizeScopePart(sessionServerBase, "unknown");
-    }
-
-    static List<String> normalizeSkinDomains(String sessionServerBase, Iterable<String> skinDomains) {
-        LinkedHashSet<String> normalized = new LinkedHashSet<>();
-
-        String sessionHost = extractHost(sessionServerBase);
-        if (sessionHost != null) {
-            normalized.add(sessionHost);
-        }
-
-        if (skinDomains != null) {
-            for (String skinDomain : skinDomains) {
-                String normalizedDomain = normalizeSkinDomain(skinDomain);
-                if (normalizedDomain != null) {
-                    normalized.add(normalizedDomain);
-                }
-            }
-        }
-
-        return new ArrayList<>(normalized);
-    }
-
-    private static String normalizeScopePart(String value, String fallback) {
-        if (value == null) {
-            return fallback;
-        }
-        String trimmed = value.trim()
-            .toLowerCase();
-        if (trimmed.isEmpty()) {
-            return fallback;
-        }
-        while (trimmed.endsWith("/")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 1);
-        }
-        return trimmed.isEmpty() ? fallback : trimmed;
-    }
-
-    private static String normalizeSkinDomain(String domain) {
-        if (domain == null) {
-            return null;
-        }
-
-        String trimmed = domain.trim()
-            .toLowerCase();
-        if (trimmed.isEmpty()) {
-            return null;
-        }
-
-        if (trimmed.startsWith(".")) {
-            return trimmed;
-        }
-
-        if (trimmed.contains("://")) {
-            String host = extractHost(trimmed);
-            return host != null ? host : null;
-        }
-
-        int slash = trimmed.indexOf('/');
-        if (slash >= 0) {
-            trimmed = trimmed.substring(0, slash);
-        }
-
-        int colon = trimmed.indexOf(':');
-        if (colon >= 0) {
-            trimmed = trimmed.substring(0, colon);
-        }
-
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private static String extractHost(String rawUrl) {
-        if (rawUrl == null || rawUrl.trim()
+    static String buildCacheKey(ClientProvider provider, UUID profileId) {
+        String providerName = provider.getName();
+        if (providerName == null || providerName.trim()
             .isEmpty()) {
-            return null;
+            providerName = "unknown";
         }
-        try {
-            URI uri = new URI(rawUrl);
-            String host = uri.getHost();
-            return host == null ? null : host.toLowerCase();
-        } catch (Exception e) {
-            return null;
-        }
+        return providerName.trim()
+            .toLowerCase() + "|"
+            + profileId.toString();
     }
 
     // =========================================================================
@@ -827,26 +474,21 @@ public class WawelTextureResolver {
 
         final UUID profileId;
         final String displayName;
-        final TextureRequest request;
+        final ClientProvider provider;
+        final boolean allowUnsigned;
         final AtomicBoolean fetchInFlight = new AtomicBoolean(false);
 
-        volatile SessionBridge.LookupContext lookupContext;
         volatile FetchState state = FetchState.PENDING;
         volatile ResourceLocation texLocation;
         volatile long resolvedAtMs;
         volatile long lastAttemptMs;
         volatile int retryCount;
 
-        TextureEntry(UUID profileId, String displayName, TextureRequest request,
-            SessionBridge.LookupContext lookupContext) {
+        TextureEntry(UUID profileId, String displayName, ClientProvider provider, boolean allowUnsigned) {
             this.profileId = profileId;
             this.displayName = displayName;
-            this.request = request;
-            this.lookupContext = lookupContext;
-        }
-
-        ResourceLocation getDefaultTexture() {
-            return null;
+            this.provider = provider;
+            this.allowUnsigned = allowUnsigned;
         }
 
         boolean isExpired() {
@@ -868,33 +510,15 @@ public class WawelTextureResolver {
 
     private static final class SkinEntry extends TextureEntry {
 
-        @Override
-        ResourceLocation getDefaultTexture() {
-            return getDefaultSkin();
-        }
-
-        SkinEntry(UUID profileId, String displayName, TextureRequest request,
-            SessionBridge.LookupContext lookupContext) {
-            super(profileId, displayName, request, lookupContext);
+        SkinEntry(UUID profileId, String displayName, ClientProvider provider, boolean allowUnsigned) {
+            super(profileId, displayName, provider, allowUnsigned);
         }
     }
 
     private static final class CapeEntry extends TextureEntry {
 
-        CapeEntry(UUID profileId, String displayName, TextureRequest request,
-            SessionBridge.LookupContext lookupContext) {
-            super(profileId, displayName, request, lookupContext);
-        }
-    }
-
-    private static final class LookupHint {
-
-        private final String cacheKey;
-        private final SessionBridge.LookupContext lookupContext;
-
-        private LookupHint(String cacheKey, SessionBridge.LookupContext lookupContext) {
-            this.cacheKey = cacheKey;
-            this.lookupContext = lookupContext;
+        CapeEntry(UUID profileId, String displayName, ClientProvider provider, boolean allowUnsigned) {
+            super(profileId, displayName, provider, allowUnsigned);
         }
     }
 }

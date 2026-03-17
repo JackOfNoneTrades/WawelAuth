@@ -12,7 +12,6 @@ import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.api.internal.TextureRequest;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.ProviderThreadDownloadImageData;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelBuilder;
@@ -89,7 +88,11 @@ public class SkinLayers3DSetup {
         if (client == null) return null;
 
         ResourceLocation skinLocation = client.getTextureResolver()
-            .getSkin(player.getUniqueID(), player.getDisplayName(), TextureRequest.DEFAULT);
+            .getSkin(
+                player.getUniqueID(),
+                player.getDisplayName(),
+                client.resolvePlayerProvider(player.getUniqueID()),
+                false);
         if (skinLocation == null) return null;
 
         // Check if skin hasn't changed and slim matches
