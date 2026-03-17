@@ -33,6 +33,16 @@ public abstract class ParentAwareModularScreen extends CustomModularScreen {
     }
 
     @Override
+    public void onResize(int width, int height) {
+        super.onResize(width, height);
+        GuiScreen parent = getContext().getParentScreen();
+        if (parent == null || parent instanceof IMuiScreen) {
+            return;
+        }
+        parent.setWorldAndResolution(Minecraft.getMinecraft(), width, height);
+    }
+
+    @Override
     public void drawScreen() {
         drawParentScreen();
         super.drawScreen();
