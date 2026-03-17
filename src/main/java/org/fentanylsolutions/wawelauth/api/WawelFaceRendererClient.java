@@ -70,13 +70,12 @@ public class WawelFaceRendererClient {
         float baseV = 8.0F * vScale;
         drawTexQuad(x, y, baseU, baseV, sampleW, sampleH, width, height, texWidth, texHeight, alpha);
 
-        if (!legacyLayout) {
-            float hatU = 40.0F * uScale;
-            float hatV = 8.0F * vScale;
-            if (hatU + sampleW <= texWidth && hatV + sampleH <= texHeight) {
-                GL11.glEnable(GL11.GL_ALPHA_TEST);
-                drawTexQuad(x, y, hatU, hatV, sampleW, sampleH, width, height, texWidth, texHeight, alpha);
-            }
+        // Hat/overlay layer at (40,8) in both legacy and modern formats
+        float hatU = 40.0F * uScale;
+        float hatV = 8.0F * vScale;
+        if (hatU + sampleW <= texWidth && hatV + sampleH <= texHeight) {
+            GL11.glEnable(GL11.GL_ALPHA_TEST);
+            drawTexQuad(x, y, hatU, hatV, sampleW, sampleH, width, height, texWidth, texHeight, alpha);
         }
     }
 
