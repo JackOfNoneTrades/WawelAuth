@@ -12,6 +12,7 @@ import java.util.List;
  */
 public class FallbackServer {
 
+    private boolean enabled = true;
     private String name = "";
     private String apiRoot = "";
     private String sessionServerUrl = "";
@@ -20,6 +21,14 @@ public class FallbackServer {
     private String signaturePublicKeyBase64 = "";
     private List<String> skinDomains = new ArrayList<>();
     private int cacheTtlSeconds = 300;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     public String getName() {
         return name;

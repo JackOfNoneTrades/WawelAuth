@@ -1,0 +1,16 @@
+{
+  "fallbackServers": [
+    {
+      "enabled": true,
+      "name": "mojang",
+      "sessionServerUrl": "https://sessionserver.mojang.com",
+      "accountUrl": "https://authserver.mojang.com",
+      "servicesUrl": "https://api.minecraftservices.com",
+      "skinDomains": [
+        ".minecraft.net",
+        ".mojang.com"
+      ],
+      "cacheTtlSeconds": 300
+    }
+  ]
+}

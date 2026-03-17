@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.fentanylsolutions.wawelauth.wawelclient.OsConfigDir;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ClientConfig;
+import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServersConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.JsonConfigIO;
 import org.fentanylsolutions.wawelauth.wawelcore.config.LocalConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
@@ -36,6 +37,8 @@ public class Config {
     private static final String CONFIG_DIR_NAME = "wawelauth";
     private static final String LOCAL_CONFIG_FILE = "local.json";
     private static final String SERVER_CONFIG_FILE = "server.json";
+    private static final String FALLBACK_SERVERS_CONFIG_FILE = "fallback-servers.json";
+    private static final String BUNDLED_FALLBACK_SERVERS = "/assets/wawelauth/default-fallback-servers.json";
     private static final String CLIENT_CONFIG_FILE = "client.json";
 
     private static File minecraftConfigRoot;
@@ -45,6 +48,7 @@ public class Config {
     // JSON configs
     private static LocalConfig localConfig;
     private static ServerConfig serverConfig;
+    private static FallbackServersConfig fallbackServersConfig;
     private static ClientConfig clientConfig;
 
     /**
@@ -68,6 +72,15 @@ public class Config {
         serverConfig = JsonConfigIO.load(new File(dataConfigDir, SERVER_CONFIG_FILE), ServerConfig.class);
         serverConfig.validateOrThrow();
         serverConfig.ensureApiRootInSkinDomains();
+
+        // Load fallback servers from separate file. Seed from bundled default if missing.
+        File fallbackFile = new File(dataConfigDir, FALLBACK_SERVERS_CONFIG_FILE);
+        if (!fallbackFile.exists()) {
+            seedFallbackServersConfig(fallbackFile);
+        }
+        fallbackServersConfig = JsonConfigIO.load(fallbackFile, FallbackServersConfig.class);
+        serverConfig.setFallbackServers(fallbackServersConfig.getEnabledFallbackServers());
+
         clientConfig = JsonConfigIO.load(new File(dataConfigDir, CLIENT_CONFIG_FILE), ClientConfig.class);
     }
 
@@ -103,6 +116,27 @@ public class Config {
             WawelAuth.LOG.error("Failed to create config directory: {}", dir);
         }
         return dir;
+    }
+
+    private static void seedFallbackServersConfig(File destination) {
+        try (java.io.InputStream in = Config.class.getResourceAsStream(BUNDLED_FALLBACK_SERVERS)) {
+            if (in == null) {
+                WawelAuth.LOG.warn("Bundled fallback-servers.json not found, creating empty");
+                JsonConfigIO.save(destination, new FallbackServersConfig());
+                return;
+            }
+            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+            byte[] tmp = new byte[4096];
+            int read;
+            while ((read = in.read(tmp)) != -1) {
+                buf.write(tmp, 0, read);
+            }
+            java.nio.file.Files.write(destination.toPath(), buf.toByteArray());
+            WawelAuth.LOG.info("Created default {}", FALLBACK_SERVERS_CONFIG_FILE);
+        } catch (Exception e) {
+            WawelAuth.LOG.warn("Failed to seed {}: {}", FALLBACK_SERVERS_CONFIG_FILE, e.getMessage());
+            JsonConfigIO.save(destination, new FallbackServersConfig());
+        }
     }
 
     private static void importLegacyBootstrapSettings(LocalConfig target) {
