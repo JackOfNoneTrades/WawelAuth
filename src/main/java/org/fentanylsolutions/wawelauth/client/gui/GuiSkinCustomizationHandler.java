@@ -3,13 +3,12 @@ package org.fentanylsolutions.wawelauth.client.gui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiOptions;
+import net.minecraft.client.resources.I18n;
 import net.minecraftforge.client.event.GuiScreenEvent;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
-public class GuiSkinCustomizationOptions {
-
-    // todo: I18n
+public class GuiSkinCustomizationHandler {
 
     private static final int BUTTON_ID = 456987;
 
@@ -19,7 +18,8 @@ public class GuiSkinCustomizationOptions {
             int posX = event.gui.width / 2 - 155;
             int posY = event.gui.height / 6 + 48 - 6;
 
-            event.buttonList.add(new GuiButton(BUTTON_ID, posX, posY, 150, 20, "Skin Customization..."));
+            event.buttonList.add(
+                new GuiButton(BUTTON_ID, posX, posY, 150, 20, I18n.format("wawelauth.gui.skincustomization.title")));
         }
     }
 

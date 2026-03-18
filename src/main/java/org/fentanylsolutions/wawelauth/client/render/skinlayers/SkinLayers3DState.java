@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers;
 
 import net.minecraft.util.ResourceLocation;
 

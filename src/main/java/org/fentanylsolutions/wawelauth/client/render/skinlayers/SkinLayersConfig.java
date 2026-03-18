@@ -1,11 +1,9 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
 @Config(modid = "wawelauth", category = "skinlayers")
 public class SkinLayersConfig {
-
-    // todo: todo
 
     @Config.Comment("Render cape.")
     @Config.DefaultBoolean(true)

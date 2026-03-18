@@ -26,7 +26,7 @@ public final class PacketHandler {
         network = NetworkRegistry.INSTANCE.newSimpleChannel(CHANNEL_NAME);
         register(ClipboardCopyPacket.Handler.class, ClipboardCopyPacket.class, Side.CLIENT);
         register(SkinInvalidatePacket.Handler.class, SkinInvalidatePacket.class, Side.CLIENT);
-        register(PacketUpdateSkinLayers.Handler.class, PacketUpdateSkinLayers.class, Side.SERVER);
+        register(UpdateSkinLayersPacket.Handler.class, UpdateSkinLayersPacket.class, Side.SERVER);
         initialized = true;
     }
 

@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers;
 
 import java.awt.image.BufferedImage;
 import java.util.List;
@@ -14,9 +14,9 @@ import net.minecraft.util.ResourceLocation;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.ProviderThreadDownloadImageData;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelBuilder;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelCube;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelSurfaceBuilder;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelBuilder;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelCube;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelSurfaceBuilder;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
 import com.mojang.authlib.GameProfile;

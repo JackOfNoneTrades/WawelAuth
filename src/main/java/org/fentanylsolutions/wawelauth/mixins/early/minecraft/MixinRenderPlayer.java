@@ -9,9 +9,9 @@ import net.minecraft.entity.player.EntityPlayer;
 
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.SkinModelHelper;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DConfig;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DSetup;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DState;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DState;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;

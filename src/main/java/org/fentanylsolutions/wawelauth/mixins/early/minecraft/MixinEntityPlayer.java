@@ -4,8 +4,8 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
 
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.ISkinLayerExtender;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.common.ISkinLayerExtender;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
@@ -21,81 +21,109 @@ public abstract class MixinEntityPlayer extends EntityLivingBase implements ISki
 
     /**
      * @author WawelAuth
-     * @reason todo
+     * @reason Redirect to unified system
      */
     @SideOnly(Side.CLIENT)
     @Overwrite
     protected boolean getHideCape(int p_82241_1_) {
-        return SkinLayersHelper.isSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.CAPE);
+        return SkinLayersHelper
+            .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.CAPE);
     }
 
     /**
      * @author WawelAuth
-     * @reason todo
+     * @reason Redirect to unified system
      */
     @Overwrite
     protected void setHideCape(int p_82239_1_, boolean p_82239_2_) {
-        SkinLayersHelper.setSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.CAPE, p_82239_2_);
+        SkinLayersHelper
+            .setSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.CAPE, p_82239_2_);
     }
 
     @SideOnly(Side.CLIENT)
+    @Override
     public boolean wawelAuth$getHideJacket() {
-        return SkinLayersHelper.isSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.JACKET);
+        return SkinLayersHelper
+            .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.JACKET);
     }
 
     @Override
     public void wawelAuth$setHideJacket(boolean value) {
-        SkinLayersHelper.setSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.JACKET, value);
+        SkinLayersHelper
+            .setSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.JACKET, value);
     }
 
     @SideOnly(Side.CLIENT)
+    @Override
     public boolean wawelAuth$getLeftSleeve() {
-        return SkinLayersHelper.isSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.LEFT_SLEEVE);
+        return SkinLayersHelper
+            .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.LEFT_SLEEVE);
     }
 
     @Override
     public void wawelAuth$setHideLeftSleeve(boolean value) {
-        SkinLayersHelper.setSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.LEFT_SLEEVE, value);
+        SkinLayersHelper.setSkinLayerHidden(
+            ((EntityPlayer) (Object) this),
+            SkinLayersHelper.EnumPlayerModelParts.LEFT_SLEEVE,
+            value);
     }
 
     @SideOnly(Side.CLIENT)
+    @Override
     public boolean wawelAuth$getRightSleeve() {
-        return SkinLayersHelper.isSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.RIGHT_SLEEVE);
+        return SkinLayersHelper
+            .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE);
     }
 
     @Override
     public void wawelAuth$setRightSleeve(boolean value) {
-        SkinLayersHelper.setSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.RIGHT_SLEEVE, value);
+        SkinLayersHelper.setSkinLayerHidden(
+            ((EntityPlayer) (Object) this),
+            SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE,
+            value);
     }
 
     @SideOnly(Side.CLIENT)
+    @Override
     public boolean wawelAuth$getLeftPants() {
-        return SkinLayersHelper.isSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.LEFT_PANTS);
+        return SkinLayersHelper
+            .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.LEFT_PANTS);
     }
 
     @Override
     public void wawelAuth$setLeftPants(boolean value) {
-        SkinLayersHelper.setSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.LEFT_PANTS, value);
+        SkinLayersHelper.setSkinLayerHidden(
+            ((EntityPlayer) (Object) this),
+            SkinLayersHelper.EnumPlayerModelParts.LEFT_PANTS,
+            value);
     }
 
     @SideOnly(Side.CLIENT)
+    @Override
     public boolean wawelAuth$getRightPants() {
-        return SkinLayersHelper.isSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.RIGHT_PANTS);
+        return SkinLayersHelper
+            .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.RIGHT_PANTS);
     }
 
     @Override
     public void wawelAuth$setRightPants(boolean value) {
-        SkinLayersHelper.setSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.RIGHT_PANTS, value);
+        SkinLayersHelper.setSkinLayerHidden(
+            ((EntityPlayer) (Object) this),
+            SkinLayersHelper.EnumPlayerModelParts.RIGHT_PANTS,
+            value);
     }
 
     @SideOnly(Side.CLIENT)
+    @Override
     public boolean wawelAuth$getHideHat() {
-        return SkinLayersHelper.isSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.HAT);
+        return SkinLayersHelper
+            .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.HAT);
     }
 
     @Override
     public void wawelAuth$setHideHat(boolean value) {
-        SkinLayersHelper.setSkinLayerVisible(((EntityPlayer) (Object) this), SkinLayersHelper.HAT, value);
+        SkinLayersHelper
+            .setSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.HAT, value);
     }
 
 }

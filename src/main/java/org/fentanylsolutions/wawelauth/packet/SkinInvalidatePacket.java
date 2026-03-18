@@ -4,7 +4,7 @@ import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
 
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;

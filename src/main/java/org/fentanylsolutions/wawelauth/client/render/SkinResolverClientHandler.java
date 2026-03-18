@@ -12,9 +12,9 @@ import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.ISkinLayerExtender;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DConfig;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.common.ISkinLayerExtender;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -100,22 +100,22 @@ public final class SkinResolverClientHandler {
         RenderPlayer renderer = event.renderer;
         IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
 
-        if (!((ISkinLayerExtender) player).wawelAuth$getHideHat()) {
+        if (((ISkinLayerExtender) player).wawelAuth$getHideHat()) {
             renderer.modelBipedMain.bipedHeadwear.showModel = false;
         }
-        if (!((ISkinLayerExtender) player).wawelAuth$getHideJacket()) {
+        if (((ISkinLayerExtender) player).wawelAuth$getHideJacket()) {
             ext.wawelAuth$getBodyWear().showModel = false;
         }
-        if (!((ISkinLayerExtender) player).wawelAuth$getLeftSleeve()) {
+        if (((ISkinLayerExtender) player).wawelAuth$getLeftSleeve()) {
             ext.wawelAuth$getLeftArmWear().showModel = false;
         }
-        if (!((ISkinLayerExtender) player).wawelAuth$getRightSleeve()) {
+        if (((ISkinLayerExtender) player).wawelAuth$getRightSleeve()) {
             ext.wawelAuth$getRightArmWear().showModel = false;
         }
-        if (!((ISkinLayerExtender) player).wawelAuth$getLeftPants()) {
+        if (((ISkinLayerExtender) player).wawelAuth$getLeftPants()) {
             ext.wawelAuth$getLeftLegWear().showModel = false;
         }
-        if (!((ISkinLayerExtender) player).wawelAuth$getRightPants()) {
+        if (((ISkinLayerExtender) player).wawelAuth$getRightPants()) {
             ext.wawelAuth$getRightLegWear().showModel = false;
         }
 

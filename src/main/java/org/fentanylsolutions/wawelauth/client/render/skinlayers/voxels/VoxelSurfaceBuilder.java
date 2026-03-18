@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels;
 
 import java.util.HashSet;
 import java.util.Set;

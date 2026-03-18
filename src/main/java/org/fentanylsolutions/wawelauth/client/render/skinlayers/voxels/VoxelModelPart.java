@@ -1,9 +1,9 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels;
 
 import java.util.List;
 
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelCube.Polygon;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelCube.Vertex;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelCube.Polygon;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelCube.Vertex;
 
 /**
  * Cut down copy of the Vanilla ModelPart to bypass Optifine/Sodium screwing

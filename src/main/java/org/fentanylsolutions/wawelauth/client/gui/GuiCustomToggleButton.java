@@ -20,11 +20,12 @@ public class GuiCustomToggleButton extends GuiButton {
         updateText();
     }
 
-    public boolean getValue() {
+    public boolean getEnabled() {
         return this.value;
     }
 
     private void updateText() {
         this.displayString = this.prefix + ": " + (this.value ? I18n.format("options.on") : I18n.format("options.off"));
     }
+
 }
