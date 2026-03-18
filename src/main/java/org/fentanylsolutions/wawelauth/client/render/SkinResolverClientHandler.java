@@ -3,9 +3,9 @@ package org.fentanylsolutions.wawelauth.client.render;
 import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.renderer.entity.RenderPlayer;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemArmor;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.event.RenderPlayerEvent;
@@ -14,6 +14,7 @@ import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.common.ISkinLayerExtender;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -95,10 +96,30 @@ public final class SkinResolverClientHandler {
 
     @SubscribeEvent
     public void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
+        EntityPlayer player = event.entityPlayer;
+        RenderPlayer renderer = event.renderer;
+        IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
+
+        if (((ISkinLayerExtender) player).wawelAuth$getHideHat()) {
+            renderer.modelBipedMain.bipedHeadwear.showModel = false;
+        }
+        if (((ISkinLayerExtender) player).wawelAuth$getHideJacket()) {
+            ext.wawelAuth$getBodyWear().showModel = false;
+        }
+        if (((ISkinLayerExtender) player).wawelAuth$getLeftSleeve()) {
+            ext.wawelAuth$getLeftArmWear().showModel = false;
+        }
+        if (((ISkinLayerExtender) player).wawelAuth$getRightSleeve()) {
+            ext.wawelAuth$getRightArmWear().showModel = false;
+        }
+        if (((ISkinLayerExtender) player).wawelAuth$getLeftPants()) {
+            ext.wawelAuth$getLeftLegWear().showModel = false;
+        }
+        if (((ISkinLayerExtender) player).wawelAuth$getRightPants()) {
+            ext.wawelAuth$getRightLegWear().showModel = false;
+        }
+
         if (SkinLayers3DConfig.hideOverlayArmor) {
-            AbstractClientPlayer player = (AbstractClientPlayer) event.entityPlayer;
-            RenderPlayer renderer = event.renderer;
-            IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
             ItemStack[] armor = player.inventory.armorInventory;
 
             ItemStack helmet = armor[3];
@@ -120,23 +141,22 @@ public final class SkinResolverClientHandler {
                 ext.wawelAuth$getRightLegWear().showModel = false;
             }
         }
+
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
     public void onRenderPlayerPost(RenderPlayerEvent.Post event) {
-        if (SkinLayers3DConfig.hideOverlayArmor) {
-            RenderPlayer renderer = event.renderer;
-            IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
+        RenderPlayer renderer = event.renderer;
+        IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
 
-            renderer.modelBipedMain.bipedHeadwear.showModel = true;
+        renderer.modelBipedMain.bipedHeadwear.showModel = true;
 
-            ext.wawelAuth$getBodyWear().showModel = true;
-            ext.wawelAuth$getLeftArmWear().showModel = true;
-            ext.wawelAuth$getRightArmWear().showModel = true;
+        ext.wawelAuth$getBodyWear().showModel = true;
+        ext.wawelAuth$getLeftArmWear().showModel = true;
+        ext.wawelAuth$getRightArmWear().showModel = true;
 
-            ext.wawelAuth$getLeftLegWear().showModel = true;
-            ext.wawelAuth$getRightLegWear().showModel = true;
-        }
+        ext.wawelAuth$getLeftLegWear().showModel = true;
+        ext.wawelAuth$getRightLegWear().showModel = true;
     }
 
 }

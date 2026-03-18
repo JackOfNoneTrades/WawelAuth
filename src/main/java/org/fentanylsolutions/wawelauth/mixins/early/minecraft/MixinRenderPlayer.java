@@ -67,7 +67,7 @@ public class MixinRenderPlayer {
         boolean slim = model == SkinModel.SLIM;
         ext.wawelauth$setSlim(slim);
 
-        if (!SkinLayers3DConfig.enabled) {
+        if (!SkinLayers3DConfig.enabled3D) {
             SkinLayers3DSetup.updateState(uuid, null);
             return;
         }
@@ -107,7 +107,7 @@ public class MixinRenderPlayer {
             boolean slim = model == SkinModel.SLIM;
             ext.wawelauth$setSlim(slim);
 
-            if (SkinLayers3DConfig.enabled) {
+            if (SkinLayers3DConfig.enabled3D) {
                 SkinLayers3DState existing = SkinLayers3DSetup.getState(uuid);
                 SkinLayers3DState state = SkinLayers3DSetup.createOrUpdate(clientPlayer, existing, slim);
                 SkinLayers3DSetup.updateState(uuid, state);

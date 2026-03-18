@@ -288,14 +288,14 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
         }
 
         SkinLayers3DState state3d = SkinLayers3DSetup.getState(wawelauth$currentRenderingPlayerUuid);
-        if (SkinLayers3DConfig.enabled && state3d != null && state3d.initialized) {
+        if (SkinLayers3DConfig.enabled3D && state3d != null && state3d.initialized) {
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             wawelauth$render3DOrFlat(
                 state3d.rightSleeveMesh,
                 this.wawelauth$rightArmWear,
                 scale,
-                SkinLayers3DConfig.enableRightSleeve,
+                SkinLayers3DConfig.enableRightSleeve3D,
                 LAYER_PART_RIGHT_ARM);
         } else if (this.wawelauth$rightArmWear != null) {
             this.wawelauth$rightArmWear.render(scale);
@@ -317,10 +317,10 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
 
         SkinLayers3DState state3d = SkinLayers3DSetup.getState(wawelauth$currentRenderingPlayerUuid);
         this.wawelauth$savedHeadwearShowModel = this.bipedHeadwear.showModel;
-        if (SkinLayers3DConfig.enabled && state3d != null
+        if (SkinLayers3DConfig.enabled3D && state3d != null
             && state3d.initialized
             && state3d.hatMesh != null
-            && SkinLayers3DConfig.enableHat) {
+            && SkinLayers3DConfig.enableHat3D) {
             // Hide vanilla flat hat: we'll render the 3D version in renderAllOverlays
             this.bipedHeadwear.showModel = false;
         }
@@ -366,7 +366,7 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     @Unique
     private void wawelauth$renderAllOverlays(float scaleFactor) {
         SkinLayers3DState state3d = SkinLayers3DSetup.getState(wawelauth$currentRenderingPlayerUuid);
-        if (SkinLayers3DConfig.enabled && state3d != null && state3d.initialized) {
+        if (SkinLayers3DConfig.enabled3D && state3d != null && state3d.initialized) {
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -375,37 +375,37 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
                 state3d.hatMesh,
                 this.bipedHeadwear,
                 scaleFactor,
-                SkinLayers3DConfig.enableHat,
+                SkinLayers3DConfig.enableHat3D,
                 LAYER_PART_HAT);
             wawelauth$render3DOrFlat(
                 state3d.jacketMesh,
                 this.wawelauth$bodyWear,
                 scaleFactor,
-                SkinLayers3DConfig.enableJacket,
+                SkinLayers3DConfig.enableJacket3D,
                 LAYER_PART_BODY);
             wawelauth$render3DOrFlat(
                 state3d.rightSleeveMesh,
                 this.wawelauth$rightArmWear,
                 scaleFactor,
-                SkinLayers3DConfig.enableRightSleeve,
+                SkinLayers3DConfig.enableRightSleeve3D,
                 LAYER_PART_RIGHT_ARM);
             wawelauth$render3DOrFlat(
                 state3d.leftSleeveMesh,
                 this.wawelauth$leftArmWear,
                 scaleFactor,
-                SkinLayers3DConfig.enableLeftSleeve,
+                SkinLayers3DConfig.enableLeftSleeve3D,
                 LAYER_PART_LEFT_ARM);
             wawelauth$render3DOrFlat(
                 state3d.rightPantsMesh,
                 this.wawelauth$rightLegWear,
                 scaleFactor,
-                SkinLayers3DConfig.enableRightPants,
+                SkinLayers3DConfig.enableRightPants3D,
                 LAYER_PART_RIGHT_LEG);
             wawelauth$render3DOrFlat(
                 state3d.leftPantsMesh,
                 this.wawelauth$leftLegWear,
                 scaleFactor,
-                SkinLayers3DConfig.enableLeftPants,
+                SkinLayers3DConfig.enableLeftPants3D,
                 LAYER_PART_LEFT_LEG);
         } else {
             // Fall back to standard 2D overlay rendering.

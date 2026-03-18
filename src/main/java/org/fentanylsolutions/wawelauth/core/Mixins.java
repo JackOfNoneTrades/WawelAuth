@@ -62,6 +62,15 @@ public class Mixins extends FentMixins {
             .side(MiscUtil.Side.SERVER)
             .build();
 
+        registry.mixin("MixinEntityPlayer")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.BOTH)
+            .build();
+        registry.mixin("MixinGameSettings")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+
         // Client Accessors
         registry.mixin("AccessorMinecraft")
             .phase(MixinUtil.Phase.EARLY)

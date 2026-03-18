@@ -5,6 +5,7 @@ import java.io.File;
 import net.minecraftforge.common.MinecraftForge;
 
 import org.fentanylsolutions.wawelauth.client.WindowDropHandler;
+import org.fentanylsolutions.wawelauth.client.gui.GuiSkinCustomizationHandler;
 import org.fentanylsolutions.wawelauth.client.gui.GuiTransitionScheduler;
 import org.fentanylsolutions.wawelauth.client.gui.WawelAuthKeybind;
 import org.fentanylsolutions.wawelauth.client.render.SkinResolverClientHandler;
@@ -16,6 +17,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.config.LocalConfig;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 
 public class ClientProxy extends CommonProxy {
@@ -56,6 +58,11 @@ public class ClientProxy extends CommonProxy {
         WawelAuthKeybind keybind = new WawelAuthKeybind();
         ClientRegistry.registerKeyBinding(keybind.getKeyBinding());
         MinecraftForge.EVENT_BUS.register(keybind);
+    }
+
+    @Override
+    public void postInit(FMLPostInitializationEvent event) {
+        MinecraftForge.EVENT_BUS.register(new GuiSkinCustomizationHandler());
     }
 
     @Override

@@ -101,7 +101,7 @@ public class MixinTileEntitySkullRenderer {
         model.render(null, 0.0F, 0.0F, 0.0F, rotation, 0.0F, scale);
 
         // 3D hat overlay
-        if (SkinLayers3DConfig.enabled && SkinLayers3DConfig.enableSkulls) {
+        if (SkinLayers3DConfig.enabled3D && SkinLayers3DConfig.enableSkulls) {
             SkinLayers3DMesh hatMesh = SkinLayers3DSetup.getOrCreateSkullMesh(profile, skin);
             if (hatMesh != null) {
                 float voxelSize = SkinLayers3DConfig.skullVoxelSize;

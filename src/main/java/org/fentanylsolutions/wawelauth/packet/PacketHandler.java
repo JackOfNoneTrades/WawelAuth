@@ -26,6 +26,7 @@ public final class PacketHandler {
         network = NetworkRegistry.INSTANCE.newSimpleChannel(CHANNEL_NAME);
         register(ClipboardCopyPacket.Handler.class, ClipboardCopyPacket.class, Side.CLIENT);
         register(SkinInvalidatePacket.Handler.class, SkinInvalidatePacket.class, Side.CLIENT);
+        register(UpdateSkinLayersPacket.Handler.class, UpdateSkinLayersPacket.class, Side.SERVER);
         initialized = true;
     }
 
@@ -46,5 +47,12 @@ public final class PacketHandler {
             return;
         }
         network.sendToAll(message);
+    }
+
+    public static void sendToServer(IMessage message) {
+        if (!initialized || network == null || message == null) {
+            return;
+        }
+        network.sendToServer(message);
     }
 }

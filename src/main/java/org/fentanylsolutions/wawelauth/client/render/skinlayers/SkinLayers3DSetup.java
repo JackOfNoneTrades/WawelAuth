@@ -126,34 +126,34 @@ public class SkinLayers3DSetup {
             SkinLayers3DSkinData skinData = new SkinLayers3DSkinData(skinImage);
 
             // Hat: 8x8x8, UV (32,0), topPivot=false, offset=0.6
-            if (SkinLayers3DConfig.enableHat) {
+            if (SkinLayers3DConfig.enableHat3D) {
                 state.hatMesh = buildMesh(skinData, 8, 8, 8, 32, 0, false, 0.6f);
             }
 
             // Jacket: 8x12x4, UV (16,32), topPivot=true, offset=0
-            if (SkinLayers3DConfig.enableJacket) {
+            if (SkinLayers3DConfig.enableJacket3D) {
                 state.jacketMesh = buildMesh(skinData, 8, 12, 4, 16, 32, true, 0f);
             }
 
             // Right sleeve
-            if (SkinLayers3DConfig.enableRightSleeve) {
+            if (SkinLayers3DConfig.enableRightSleeve3D) {
                 int armWidth = slim ? 3 : 4;
                 state.rightSleeveMesh = buildMesh(skinData, armWidth, 12, 4, 40, 32, true, -2f);
             }
 
             // Left sleeve
-            if (SkinLayers3DConfig.enableLeftSleeve) {
+            if (SkinLayers3DConfig.enableLeftSleeve3D) {
                 int armWidth = slim ? 3 : 4;
                 state.leftSleeveMesh = buildMesh(skinData, armWidth, 12, 4, 48, 48, true, -2f);
             }
 
             // Right pants: 4x12x4, UV (0,32), topPivot=true, offset=0
-            if (SkinLayers3DConfig.enableRightPants) {
+            if (SkinLayers3DConfig.enableRightPants3D) {
                 state.rightPantsMesh = buildMesh(skinData, 4, 12, 4, 0, 32, true, 0f);
             }
 
             // Left pants: 4x12x4, UV (0,48), topPivot=true, offset=0
-            if (SkinLayers3DConfig.enableLeftPants) {
+            if (SkinLayers3DConfig.enableLeftPants3D) {
                 state.leftPantsMesh = buildMesh(skinData, 4, 12, 4, 0, 48, true, 0f);
             }
 

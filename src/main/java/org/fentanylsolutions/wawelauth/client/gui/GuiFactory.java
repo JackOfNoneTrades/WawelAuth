@@ -17,6 +17,7 @@ import net.minecraftforge.common.config.Property;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ClientConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.JsonConfigIO;
 import org.fentanylsolutions.wawelauth.wawelcore.config.LocalConfig;
@@ -146,6 +147,7 @@ public class GuiFactory implements IModGuiFactory {
             try {
                 rootElements.addAll(ConfigurationManager.getConfigElements(ClientConfig.class, true));
                 rootElements.addAll(ConfigurationManager.getConfigElements(SkinLayers3DConfig.class, true));
+                rootElements.addAll(ConfigurationManager.getConfigElements(SkinLayersConfig.class, true));
             } catch (ConfigException e) {
                 WawelAuth.LOG.error("Failed to build GTNHLib config GUI elements", e);
             }
