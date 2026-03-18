@@ -1,9 +1,9 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed;
 
 import java.awt.image.BufferedImage;
 
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelSurfaceBuilder;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelTexture;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelSurfaceBuilder;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelTexture;
 
 /**
  * VoxelTexture implementation wrapping a BufferedImage (the 64x64 skin from ImageBufferDownload).

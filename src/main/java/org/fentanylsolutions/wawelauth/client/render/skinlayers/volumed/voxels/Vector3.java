@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels;
 
 public class Vector3 {
 

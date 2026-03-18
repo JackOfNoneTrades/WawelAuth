@@ -9,9 +9,9 @@ import net.minecraft.entity.player.EntityPlayer;
 
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.SkinModelHelper;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DState;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DConfig;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DState;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -67,7 +67,7 @@ public class MixinRenderPlayer {
         boolean slim = model == SkinModel.SLIM;
         ext.wawelauth$setSlim(slim);
 
-        if (!SkinLayers3DConfig.enabled) {
+        if (!SkinLayers3DConfig.enabled3D) {
             SkinLayers3DSetup.updateState(uuid, null);
             return;
         }
@@ -107,7 +107,7 @@ public class MixinRenderPlayer {
             boolean slim = model == SkinModel.SLIM;
             ext.wawelauth$setSlim(slim);
 
-            if (SkinLayers3DConfig.enabled) {
+            if (SkinLayers3DConfig.enabled3D) {
                 SkinLayers3DState existing = SkinLayers3DSetup.getState(uuid);
                 SkinLayers3DState state = SkinLayers3DSetup.createOrUpdate(clientPlayer, existing, slim);
                 SkinLayers3DSetup.updateState(uuid, state);

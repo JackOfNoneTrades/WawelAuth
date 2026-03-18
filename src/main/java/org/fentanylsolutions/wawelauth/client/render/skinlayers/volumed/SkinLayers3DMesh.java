@@ -1,11 +1,11 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed;
 
 import java.util.List;
 
 import net.minecraft.client.renderer.Tessellator;
 
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelCube;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelModelPart;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelCube;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelModelPart;
 import org.lwjgl.opengl.GL11;
 
 /**

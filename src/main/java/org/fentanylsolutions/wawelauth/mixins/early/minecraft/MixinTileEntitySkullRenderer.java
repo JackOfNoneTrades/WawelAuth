@@ -8,9 +8,9 @@ import net.minecraft.client.renderer.tileentity.TileEntitySkullRenderer;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DMesh;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DConfig;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DMesh;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DSetup;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.lwjgl.opengl.GL11;
@@ -101,7 +101,7 @@ public class MixinTileEntitySkullRenderer {
         model.render(null, 0.0F, 0.0F, 0.0F, rotation, 0.0F, scale);
 
         // 3D hat overlay
-        if (SkinLayers3DConfig.enabled && SkinLayers3DConfig.enableSkulls) {
+        if (SkinLayers3DConfig.enabled3D && SkinLayers3DConfig.enableSkulls) {
             SkinLayers3DMesh hatMesh = SkinLayers3DSetup.getOrCreateSkullMesh(profile, skin);
             if (hatMesh != null) {
                 float voxelSize = SkinLayers3DConfig.skullVoxelSize;

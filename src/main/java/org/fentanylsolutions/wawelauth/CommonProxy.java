@@ -2,7 +2,8 @@ package org.fentanylsolutions.wawelauth;
 
 import java.io.File;
 
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayers3DConfig;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.SkinLayersConfig;
 import org.fentanylsolutions.wawelauth.packet.PacketHandler;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ClientConfig;
 import org.fentanylsolutions.wawelauth.wawelserver.CommandWawelAuth;
@@ -26,6 +27,7 @@ public class CommonProxy {
         try {
             ConfigurationManager.registerConfig(ClientConfig.class);
             ConfigurationManager.registerConfig(SkinLayers3DConfig.class);
+            ConfigurationManager.registerConfig(SkinLayersConfig.class);
         } catch (ConfigException e) {
             throw new RuntimeException(e);
         }

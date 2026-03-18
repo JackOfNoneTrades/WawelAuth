@@ -1,11 +1,11 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.Direction;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelBuilder;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.voxels.VoxelCube;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.Direction;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelBuilder;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed.voxels.VoxelCube;
 
 /**
  * 1.7.10 cube collector used by the voxel wrapper pipeline.

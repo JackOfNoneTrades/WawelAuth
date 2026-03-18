@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.client.render.skinlayers;
+package org.fentanylsolutions.wawelauth.client.render.skinlayers.volumed;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
@@ -7,7 +7,7 @@ import com.gtnewhorizon.gtnhlib.config.Config;
  * <p>
  * Field defaults match 3d-Skin-Layers upstream where applicable.
  */
-@Config(modid = "wawelauth", category = "skinlayers")
+@Config(modid = "wawelauth", category = "skinlayers3D")
 public class SkinLayers3DConfig {
 
     @Config.Comment("Enable modern skin support (64x64, slim arms, HD pass-through).")
@@ -21,31 +21,31 @@ public class SkinLayers3DConfig {
 
     @Config.Comment("Master toggle for all 3D skin layer rendering (players and skulls).")
     @Config.DefaultBoolean(true)
-    public static boolean enabled = true;
+    public static boolean enabled3D = true;
 
     @Config.Comment("Render hat layer as 3D voxels.")
     @Config.DefaultBoolean(true)
-    public static boolean enableHat = true;
+    public static boolean enableHat3D = true;
 
     @Config.Comment("Render jacket layer as 3D voxels.")
     @Config.DefaultBoolean(true)
-    public static boolean enableJacket = true;
+    public static boolean enableJacket3D = true;
 
     @Config.Comment("Render left sleeve layer as 3D voxels.")
     @Config.DefaultBoolean(true)
-    public static boolean enableLeftSleeve = true;
+    public static boolean enableLeftSleeve3D = true;
 
     @Config.Comment("Render right sleeve layer as 3D voxels.")
     @Config.DefaultBoolean(true)
-    public static boolean enableRightSleeve = true;
+    public static boolean enableRightSleeve3D = true;
 
     @Config.Comment("Render left pants layer as 3D voxels.")
     @Config.DefaultBoolean(true)
-    public static boolean enableLeftPants = true;
+    public static boolean enableLeftPants3D = true;
 
     @Config.Comment("Render right pants layer as 3D voxels.")
     @Config.DefaultBoolean(true)
-    public static boolean enableRightPants = true;
+    public static boolean enableRightPants3D = true;
 
     @Config.Comment("Base voxel size for limbs and body.")
     @Config.DefaultFloat(1.15f)
