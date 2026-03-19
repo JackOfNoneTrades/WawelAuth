@@ -261,7 +261,8 @@ wawelauth.gui.drop.texture_title=Drop image as...
 wawelauth.gui.drop.zone_skin=Skin
 wawelauth.gui.drop.zone_cape=Cape
 
-wawelauth.gui.skincustomization.title=Skin Layer Customization...
+wawelauth.gui.skincustomization.button=Skin Customization...
+wawelauth.gui.skincustomization.title=Skin Layer Customization
 wawelauth.gui.skincustomization.cape=Cape
 wawelauth.gui.skincustomization.jacket=Jacket
 wawelauth.gui.skincustomization.left_sleeve=Left Sleeve

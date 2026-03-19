@@ -19,7 +19,7 @@ public class GuiSkinCustomizationHandler {
             int posY = event.gui.height / 6 + 48 - 6;
 
             event.buttonList.add(
-                new GuiButton(BUTTON_ID, posX, posY, 150, 20, I18n.format("wawelauth.gui.skincustomization.title")));
+                new GuiButton(BUTTON_ID, posX, posY, 150, 20, I18n.format("wawelauth.gui.skincustomization.button")));
         }
     }
 
