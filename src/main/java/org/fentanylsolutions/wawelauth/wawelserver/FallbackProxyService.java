@@ -16,11 +16,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.fentanylsolutions.fentlib.util.NetUtil;
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.util.JsonUtil;
-import org.fentanylsolutions.wawelauth.wawelcore.util.StringUtil;
 import org.fentanylsolutions.wawelauth.wawelnet.BinaryResponse;
 import org.fentanylsolutions.wawelauth.wawelnet.NetException;
 import org.fentanylsolutions.wawelauth.wawelnet.RequestContext;
@@ -316,7 +317,7 @@ public class FallbackProxyService {
     }
 
     private static String normalizeUrl(String raw) {
-        return StringUtil.normalizeHttpUrl(raw);
+        return NetUtil.normalizeHttpUrl(raw);
     }
 
     private static String trimToNull(String value) {

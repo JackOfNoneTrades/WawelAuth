@@ -14,14 +14,14 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.util.ResourceLocation;
 
+import org.fentanylsolutions.fentlib.util.FileUtil;
+import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
 import org.fentanylsolutions.wawelauth.client.gui.AccountManagerScreen;
 import org.fentanylsolutions.wawelauth.client.gui.AuthButton;
 import org.fentanylsolutions.wawelauth.client.gui.FolderIconButton;
-import org.fentanylsolutions.wawelauth.client.gui.FolderOpenUtil;
-import org.fentanylsolutions.wawelauth.client.gui.GuiText;
 import org.fentanylsolutions.wawelauth.client.gui.IServerTooltipFaceHost;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
@@ -125,7 +125,7 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
             return;
         }
         if (button.id == WAWELAUTH_OPEN_FOLDER_BUTTON_ID) {
-            FolderOpenUtil.openFolder(Config.getConfigDir());
+            FileUtil.openFolder(Config.getConfigDir());
             ci.cancel();
         }
     }

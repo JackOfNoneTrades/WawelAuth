@@ -39,6 +39,9 @@ import net.minecraft.server.management.ServerConfigurationManager;
 import net.minecraft.server.management.UserListOps;
 import net.minecraft.server.management.UserListWhitelist;
 
+import org.fentanylsolutions.fentlib.util.NetUtil;
+import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.WawelFaceRendererServer;
@@ -60,8 +63,6 @@ import org.fentanylsolutions.wawelauth.wawelcore.storage.InviteDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.ProfileDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.TokenDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.UserDAO;
-import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
-import org.fentanylsolutions.wawelauth.wawelcore.util.StringUtil;
 import org.fentanylsolutions.wawelauth.wawelnet.BinaryResponse;
 import org.fentanylsolutions.wawelauth.wawelnet.HttpRouter;
 import org.fentanylsolutions.wawelauth.wawelnet.NetException;
@@ -2092,7 +2093,7 @@ public class AdminWebService {
     }
 
     private static String normalizeUrl(String raw) {
-        return StringUtil.normalizeHttpUrl(raw);
+        return NetUtil.normalizeHttpUrl(raw);
     }
 
     private static String appendPath(String base, String suffix) {

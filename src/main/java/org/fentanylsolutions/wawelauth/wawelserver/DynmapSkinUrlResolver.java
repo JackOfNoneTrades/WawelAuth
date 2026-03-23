@@ -8,11 +8,11 @@ import java.util.Collection;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;
 
+import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
 import org.fentanylsolutions.wawelauth.wawelcore.ping.WawelPingPayload;
-import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
-import org.fentanylsolutions.wawelauth.wawelcore.util.StringUtil;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;

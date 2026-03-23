@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
@@ -31,7 +32,6 @@ import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderProxySupport;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilHttpClient;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilRequestException;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientProviderDAO;
-import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

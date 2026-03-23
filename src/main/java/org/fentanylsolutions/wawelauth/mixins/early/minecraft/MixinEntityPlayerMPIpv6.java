@@ -3,7 +3,7 @@ package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.network.NetHandlerPlayServer;
 
-import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
+import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;

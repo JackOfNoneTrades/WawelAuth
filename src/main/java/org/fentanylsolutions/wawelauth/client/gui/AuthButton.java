@@ -6,6 +6,7 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.util.ResourceLocation;
 
+import org.fentanylsolutions.fentlib.util.GuiText;
 import org.lwjgl.opengl.GL11;
 
 import cpw.mods.fml.relauncher.Side;

@@ -7,7 +7,7 @@ import net.minecraft.command.WrongUsageException;
 import net.minecraft.command.server.CommandPardonIp;
 import net.minecraft.server.MinecraftServer;
 
-import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
+import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 

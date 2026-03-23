@@ -11,6 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerAddress;
 import net.minecraft.client.multiplayer.ServerData;
 
+import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
 import org.fentanylsolutions.wawelauth.wawelclient.ProviderRegistry;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;

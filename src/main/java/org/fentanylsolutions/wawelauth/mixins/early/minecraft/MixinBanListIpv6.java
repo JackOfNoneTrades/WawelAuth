@@ -4,7 +4,7 @@ import java.net.SocketAddress;
 
 import net.minecraft.server.management.BanList;
 
-import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
+import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 

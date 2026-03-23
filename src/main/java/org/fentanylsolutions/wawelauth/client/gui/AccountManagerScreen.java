@@ -21,6 +21,9 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.util.EnumChatFormatting;
 
+import org.fentanylsolutions.fentlib.util.FileUtil;
+import org.fentanylsolutions.fentlib.util.GuiText;
+import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.wawelclient.BuiltinProviders;
@@ -38,7 +41,6 @@ import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderProxySupport;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ClientConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
-import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
 import org.lwjgl.opengl.GL11;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
@@ -2554,11 +2556,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return;
         }
         String label = GuiText.tr(skin ? "wawelauth.gui.account_manager.skin" : "wawelauth.gui.account_manager.cape");
-        SystemOpenUtil.FilePickerResult result = SystemOpenUtil.pickImageFile(
+        FileUtil.FilePickerResult result = FileUtil.pickFile(
             GuiText.tr("wawelauth.gui.account_manager.select_texture_image", label),
             getTexturePickerInitialDirectory(skin));
 
-        if (result.getStatus() == SystemOpenUtil.FilePickerResult.Status.SELECTED) {
+        if (result.getStatus() == FileUtil.FilePickerResult.Status.SELECTED) {
             File picked = result.getFile();
             if (skin) {
                 selectedSkinFile = picked;
@@ -2573,7 +2575,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return;
         }
 
-        if (result.getStatus() == SystemOpenUtil.FilePickerResult.Status.CANCELLED) {
+        if (result.getStatus() == FileUtil.FilePickerResult.Status.CANCELLED) {
             return;
         }
 
@@ -2695,7 +2697,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         openFolderBtn.size(86, 18)
             .onMousePressed(btn -> {
                 File folder = getTexturePickerInitialDirectory(skin);
-                boolean opened = SystemOpenUtil.openFolder(folder);
+                boolean opened = FileUtil.openFolder(folder);
                 statusText[0] = opened
                     ? GuiText.tr("wawelauth.gui.account_manager.opened_path", trimPath(folder.getAbsolutePath(), 74))
                     : GuiText.tr("wawelauth.gui.account_manager.open_folder_failed");
@@ -2800,7 +2802,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return otherParent;
         }
 
-        return SystemOpenUtil.getDefaultFileSelectionDirectory();
+        return FileUtil.getDefaultFileSelectionDirectory();
     }
 
     private static File parentDirectory(File file) {
@@ -2815,8 +2817,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private static String defaultTexturePath(boolean skin) {
-        return new File(SystemOpenUtil.getDefaultFileSelectionDirectory(), skin ? "skin.png" : "cape.png")
-            .getAbsolutePath();
+        return new File(FileUtil.getDefaultFileSelectionDirectory(), skin ? "skin.png" : "cape.png").getAbsolutePath();
     }
 
     private static String trimPath(String path, int maxLength) {

@@ -17,14 +17,15 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ServerConfigurationManager;
 
+import org.fentanylsolutions.fentlib.util.NetUtil;
+import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.ping.WawelPingPayload;
 import org.fentanylsolutions.wawelauth.wawelcore.util.JsonUtil;
-import org.fentanylsolutions.wawelauth.wawelcore.util.NetworkAddressUtil;
-import org.fentanylsolutions.wawelauth.wawelcore.util.StringUtil;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -349,7 +350,7 @@ public final class LocalSessionVerifier {
     }
 
     private static String normalizeUrl(String raw) {
-        return StringUtil.normalizeHttpUrl(raw);
+        return NetUtil.normalizeHttpUrl(raw);
     }
 
     private static String trimToNull(String value) {

@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 
 import net.minecraft.client.Minecraft;
 
+import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.ProviderRegistry;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;

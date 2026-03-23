@@ -8,10 +8,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.util.HexUtil;
-import org.fentanylsolutions.wawelauth.wawelcore.util.StringUtil;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

@@ -1,5 +1,6 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
+import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.wawelclient.data.AccountStatus;
 
 public final class StatusColors {
