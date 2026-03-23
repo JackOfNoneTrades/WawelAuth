@@ -17,12 +17,12 @@ Highlights:
 ![screen1](images/screenshots/screen1.png)
 
 [![hub](images/badges/github.png)](https://github.com/JackOfNoneTrades/WawelAuth/releases)
+[![maven](images/badges/maven.png)](https://maven.fentanylsolutions.org/#/releases/org/fentanylsolutions/wawelauth/WawelAuth)
 ![forge](images/badges/forge.png)
 [![cord](images/badges/cord.png)](https://discord.gg/xAWCqGrguG)
 <!--[![modrinth](images/badges/modrinth.png)]()
 [![curse](images/badges/curse.png)]()
-[![mcmodcn](images/badges/mcmodcn.png)]()
-[![maven](images/badges/maven.png)]()-->
+[![mcmodcn](images/badges/mcmodcn.png)]()-->
 
 ## Dependencies
 
