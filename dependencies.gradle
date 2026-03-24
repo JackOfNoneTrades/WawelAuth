@@ -35,17 +35,17 @@
  */
 dependencies {
     // Pure runtime
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.110:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.111:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.81-GTNH:dev")
     runtimeOnlyNonPublishable("curse.maven:archaicfix-677782:6785842")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:7695645")) // 1.0.2-1.7.10
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.7:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.8:dev")
     //runtimeOnlyNonPublishable("org.fentanylsolutions.vintagedamageindicators:VintageDamageIndicators:test2")
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:skinport-234948:3212017"))
 
     // Compile + runtime
     devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.9.45:dev")
-    devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:2ae0f26-snapshot:dev")
+    devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:7ef5cc6-snapshot:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.48-1.7.10:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.2.19:dev")
     devOnlyNonPublishable(rfg.deobf("curse.maven:better-questing-238856:2950244"))
