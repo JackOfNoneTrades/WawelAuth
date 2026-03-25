@@ -8,6 +8,7 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
+import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 
 import com.cleanroommc.modularui.api.drawable.IKey;

@@ -11,27 +11,21 @@ import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiMultiplayer;
 import net.minecraft.client.gui.GuiScreen;
 
+import org.fentanylsolutions.fentlib.util.drop.DropListener;
+import org.fentanylsolutions.fentlib.util.drop.WindowDropTarget;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.client.gui.AccountManagerScreen;
 import org.fentanylsolutions.wawelauth.client.gui.ServerDropScreen;
 import org.fentanylsolutions.wawelauth.client.gui.TextureDropOverlay;
-import org.lwjgl.sdl.SDLEvents;
-import org.lwjgl.sdl.SDL_DropEvent;
-import org.lwjgl.sdl.SDL_Event;
-import org.lwjgl.sdl.SDL_EventFilterI;
 
 import com.cleanroommc.modularui.api.IMuiScreen;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 
 /**
- * Handles drag-and-drop onto the game window using SDL3's event watch system
- * (available via lwjgl3ify).
+ * WawelAuth-specific drag-and-drop handler, registered as a {@link DropListener}
+ * on FentLib's {@link WindowDropTarget}.
  * <p>
  * Two modes:
  * <ul>
@@ -39,102 +33,22 @@ import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
  * <li><b>Texture file</b> — file drops on the account manager when a skin preview is active.</li>
  * </ul>
  */
-@Lwjgl3Aware
 @SideOnly(Side.CLIENT)
-public final class WindowDropHandler {
+public final class WindowDropHandler implements DropListener {
 
     private static final String URI_SCHEME = "wawelauth-server";
     private static final String URI_ACTION = "add";
 
-    private static final WindowDropHandler INSTANCE = new WindowDropHandler();
-    private static volatile boolean registered;
-    private boolean watchInstalled;
-
-    /** Strong reference to prevent GC while SDL holds the native pointer. */
-    private SDL_EventFilterI eventWatch;
-
-    // Per-drag session state (written from SDL thread, read on main thread)
-    private volatile String pendingDropText;
-    private volatile String pendingDropFile;
-    private volatile float lastDropX;
-    private volatile float lastDropY;
-
-    /** Which handler is active for the current drag session. */
     private volatile DragMode dragMode = DragMode.NONE;
 
-    private WindowDropHandler() {}
-
-    public static synchronized void register() {
-        if (registered) return;
-        FMLCommonHandler.instance()
-            .bus()
-            .register(INSTANCE);
-        registered = true;
+    public static void register() {
+        WindowDropTarget.register();
+        WindowDropTarget.addListener(new WindowDropHandler());
     }
 
-    @SubscribeEvent
-    public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.START) return;
-        if (!watchInstalled) {
-            installEventWatch();
-        }
-    }
-
-    private void installEventWatch() {
-        eventWatch = (userdata, eventPtr) -> {
-            SDL_Event sdlEvent = SDL_Event.create(eventPtr);
-            int type = sdlEvent.type();
-
-            if (type == SDLEvents.SDL_EVENT_DROP_BEGIN) {
-                pendingDropText = null;
-                pendingDropFile = null;
-                dragMode = DragMode.NONE;
-                scheduleOnMainThread(this::onDragBegin);
-            } else if (type == SDLEvents.SDL_EVENT_DROP_TEXT) {
-                SDL_DropEvent drop = sdlEvent.drop();
-                pendingDropText = drop.dataString();
-                if (dragMode == DragMode.NONE) dragMode = DragMode.SERVER_ADD;
-            } else if (type == SDLEvents.SDL_EVENT_DROP_FILE) {
-                SDL_DropEvent drop = sdlEvent.drop();
-                pendingDropFile = drop.dataString();
-                lastDropX = drop.x();
-                lastDropY = drop.y();
-                if (dragMode == DragMode.NONE) dragMode = DragMode.TEXTURE;
-                TextureDropOverlay.setDroppedFile(pendingDropFile);
-                WawelAuth.LOG
-                    .info("[WindowDropHandler] DROP_FILE x={} y={} file={}", drop.x(), drop.y(), pendingDropFile);
-            } else if (type == SDLEvents.SDL_EVENT_DROP_POSITION) {
-                SDL_DropEvent drop = sdlEvent.drop();
-                lastDropX = drop.x();
-                lastDropY = drop.y();
-                TextureDropOverlay.updateDropPosition(drop.x(), drop.y());
-            } else if (type == SDLEvents.SDL_EVENT_DROP_COMPLETE) {
-                WawelAuth.LOG.info(
-                    "[WindowDropHandler] DROP_COMPLETE lastDropX={} lastDropY={} dragMode={}",
-                    lastDropX,
-                    lastDropY,
-                    dragMode);
-                DragMode mode = dragMode;
-                String text = pendingDropText;
-                pendingDropText = null;
-                pendingDropFile = null;
-                dragMode = DragMode.NONE;
-                scheduleOnMainThread(() -> onDragComplete(mode, text));
-            }
-
-            return true;
-        };
-
-        SDLEvents.SDL_AddEventWatch(eventWatch, 0L);
-        watchInstalled = true;
-        WawelAuth.LOG.info("[WindowDropHandler] SDL drop event watch installed");
-    }
-
-    // -- Drag begin --
-
-    private void onDragBegin() {
-        // Texture screen check first — it's more specific, and its parent
-        // is often the multiplayer menu which would also match server-add.
+    @Override
+    public void onDragBegin() {
+        dragMode = DragMode.NONE;
         if (isOnTextureScreen()) {
             TextureDropOverlay.show();
         } else if (isOnServerAddScreen()) {
@@ -142,17 +56,35 @@ public final class WindowDropHandler {
         }
     }
 
-    // -- Drag complete --
+    @Override
+    public void onDropText(String text) {
+        if (dragMode == DragMode.NONE) dragMode = DragMode.SERVER_ADD;
+    }
 
-    private void onDragComplete(DragMode mode, String text) {
+    @Override
+    public void onDropFile(String filePath, float sdlX, float sdlY) {
+        if (dragMode == DragMode.NONE) dragMode = DragMode.TEXTURE;
+        TextureDropOverlay.setDroppedFile(filePath);
+        WawelAuth.LOG.info("[WindowDropHandler] DROP_FILE x={} y={} file={}", sdlX, sdlY, filePath);
+    }
+
+    @Override
+    public void onDragPosition(float sdlX, float sdlY) {
+        TextureDropOverlay.updateDropPosition(sdlX, sdlY);
+    }
+
+    @Override
+    public void onDragComplete(WindowDropTarget.DropResult result) {
+        DragMode mode = dragMode;
+        dragMode = DragMode.NONE;
+
         if (mode == DragMode.TEXTURE || isOnTextureScreen()) {
             TextureDropOverlay.complete();
-            // Also dismiss server hint in case it was open
             ServerDropScreen.dismissHint();
             return;
         }
 
-        // Server add flow
+        String text = result.getText();
         ServerDropScreen.dismissHintThenRun(() -> {
             if (text == null || text.isEmpty()) return;
             if (!isOnServerAddScreen()) return;
@@ -224,11 +156,6 @@ public final class WindowDropHandler {
             // UTF-8 is always supported
         }
         return result;
-    }
-
-    private static void scheduleOnMainThread(Runnable action) {
-        Minecraft.getMinecraft()
-            .func_152344_a(action); // addScheduledTask
     }
 
     // -- Types --

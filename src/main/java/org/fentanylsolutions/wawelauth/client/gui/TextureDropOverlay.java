@@ -3,9 +3,10 @@ package org.fentanylsolutions.wawelauth.client.gui;
 import java.io.File;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScaledResolution;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
+import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
+import org.fentanylsolutions.fentlib.util.drop.WindowDropTarget;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 
 import com.cleanroommc.modularui.drawable.Rectangle;
@@ -116,23 +117,6 @@ public final class TextureDropOverlay {
         });
     }
 
-    /**
-     * Convert SDL logical-point coordinates to Minecraft GUI-scaled coordinates.
-     * SDL coords: 0..logicalWindowWidth (points)
-     * GUI coords: 0..scaledWidth (Minecraft GUI units)
-     */
-    private static float[] sdlToGui(float sx, float sy) {
-        float pixelScale = org.lwjgl.opengl.Display.getPixelScaleFactor();
-        Minecraft mc = Minecraft.getMinecraft();
-        ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
-        // SDL logical -> framebuffer pixels -> GUI scaled
-        float fbX = sx * pixelScale;
-        float fbY = sy * pixelScale;
-        float guiX = fbX / sr.getScaleFactor();
-        float guiY = fbY / sr.getScaleFactor();
-        return new float[] { guiX, guiY };
-    }
-
     private static boolean isInsideArea(Area area, float guiX, float guiY) {
         return guiX >= area.x && guiX < area.ex() && guiY >= area.y && guiY < area.ey();
     }
@@ -239,7 +223,7 @@ public final class TextureDropOverlay {
             }
 
             // Hit-test SDL cursor against zone widget bounds
-            float[] gui = sdlToGui(sdlX, sdlY);
+            float[] gui = WindowDropTarget.sdlToGuiCoords(sdlX, sdlY);
             if (skinZoneWidget != null && isInsideArea(skinZoneWidget.getArea(), gui[0], gui[1])) {
                 hoveredZone = 1;
             } else if (capeZoneWidget != null && isInsideArea(capeZoneWidget.getArea(), gui[0], gui[1])) {

@@ -4,9 +4,9 @@ import java.io.File;
 
 import net.minecraftforge.common.MinecraftForge;
 
+import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
 import org.fentanylsolutions.wawelauth.client.WindowDropHandler;
 import org.fentanylsolutions.wawelauth.client.gui.GuiSkinCustomizationHandler;
-import org.fentanylsolutions.wawelauth.client.gui.GuiTransitionScheduler;
 import org.fentanylsolutions.wawelauth.client.gui.WawelAuthKeybind;
 import org.fentanylsolutions.wawelauth.client.render.SkinResolverClientHandler;
 import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeClientHandler;
@@ -15,7 +15,6 @@ import org.fentanylsolutions.wawelauth.wawelclient.WawelPingClientHooks;
 import org.fentanylsolutions.wawelauth.wawelcore.config.LocalConfig;
 
 import cpw.mods.fml.client.registry.ClientRegistry;
-import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -49,10 +48,8 @@ public class ClientProxy extends CommonProxy {
         AnimatedCapeClientHandler.register();
         SkinResolverClientHandler.register();
 
-        // Window drag-and-drop detection — requires lwjgl3ify (SDL3)
-        if (Loader.isModLoaded("lwjgl3ify")) {
-            WindowDropHandler.register();
-        }
+        // Window drag-and-drop detection (lwjgl3ify check is inside FentLib)
+        WindowDropHandler.register();
 
         // Register keybind for account manager
         WawelAuthKeybind keybind = new WawelAuthKeybind();
