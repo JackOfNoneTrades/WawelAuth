@@ -6,12 +6,15 @@ import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemArmor;
+import net.minecraft.item.ItemStack;
 
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.SkinModelHelper;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DState;
+import org.fentanylsolutions.wawelauth.common.ISkinLayerExtender;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -117,6 +120,17 @@ public class MixinRenderPlayer {
         } else {
             SkinLayers3DSetup.updateState(uuid, null);
         }
+
+        // Apply right sleeve visibility for first-person arm
+        if (((ISkinLayerExtender) player).wawelAuth$getRightSleeve()) {
+            ext.wawelAuth$getRightArmWear().showModel = false;
+        }
+        if (SkinLayers3DConfig.hideOverlayArmor) {
+            ItemStack chest = player.inventory.armorInventory[2];
+            if (chest != null && chest.getItem() instanceof ItemArmor) {
+                ext.wawelAuth$getRightArmWear().showModel = false;
+            }
+        }
     }
 
     /**
@@ -124,6 +138,8 @@ public class MixinRenderPlayer {
      */
     @Inject(method = "renderFirstPersonArm", at = @At("TAIL"))
     private void wawelauth$renderFirstPersonArmWear(EntityPlayer player, CallbackInfo ci) {
-        ((IModelBipedModernExt) this.modelBipedMain).wawelauth$renderRightArmWear(0.0625F);
+        IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
+        ext.wawelauth$renderRightArmWear(0.0625F);
+        ext.wawelAuth$getRightArmWear().showModel = true;
     }
 }
