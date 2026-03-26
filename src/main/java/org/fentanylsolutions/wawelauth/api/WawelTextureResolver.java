@@ -2,6 +2,7 @@ package org.fentanylsolutions.wawelauth.api;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
@@ -25,12 +26,17 @@ import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConf
 import org.fentanylsolutions.wawelauth.wawelclient.BuiltinProviders;
 import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
+import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.InsecureTextureException;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
+import com.mojang.authlib.properties.Property;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -66,6 +72,7 @@ public class WawelTextureResolver {
     private final SessionBridge sessionBridge;
     private final ConcurrentHashMap<String, SkinEntry> skinEntries = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CapeEntry> capeEntries = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, SkinModel> resolvedSkinModels = new ConcurrentHashMap<>();
     private final ThreadPoolExecutor executor;
     private final AtomicInteger threadCounter = new AtomicInteger(0);
 
@@ -88,6 +95,12 @@ public class WawelTextureResolver {
         if (profileId == null || provider == null) return getDefaultSkin();
         String cacheKey = buildCacheKey(provider, profileId);
         return getSkinInternal(cacheKey, profileId, displayName, provider, allowUnsigned);
+    }
+
+    /** Retrieve the skin model resolved during texture fetch, or null if not yet fetched. */
+    public SkinModel getResolvedSkinModel(UUID profileId, ClientProvider provider) {
+        if (profileId == null || provider == null) return null;
+        return resolvedSkinModels.get(buildCacheKey(provider, profileId));
     }
 
     /** Resolve a player cape, or null if none. */
@@ -128,6 +141,8 @@ public class WawelTextureResolver {
             .removeIf(k -> k.endsWith(suffix));
         capeEntries.keySet()
             .removeIf(k -> k.endsWith(suffix));
+        resolvedSkinModels.keySet()
+            .removeIf(k -> k.endsWith(suffix));
         sessionBridge.invalidateProfileCache(profileId);
     }
 
@@ -137,6 +152,7 @@ public class WawelTextureResolver {
     public void invalidateAll() {
         skinEntries.clear();
         capeEntries.clear();
+        resolvedSkinModels.clear();
     }
 
     // =========================================================================
@@ -161,6 +177,7 @@ public class WawelTextureResolver {
         executor.shutdownNow();
         skinEntries.clear();
         capeEntries.clear();
+        resolvedSkinModels.clear();
     }
 
     // =========================================================================
@@ -332,6 +349,13 @@ public class WawelTextureResolver {
             return;
         }
 
+        if (isSkin) {
+            SkinModel model = extractSkinModelFromProfile(profile);
+            if (model != null) {
+                resolvedSkinModels.put(buildCacheKey(provider, profileId), model);
+            }
+        }
+
         // Parse textures via authlib (mixin handles signature/domain checks)
         MinecraftSessionService sessionService = Minecraft.getMinecraft()
             .func_152347_ac();
@@ -444,6 +468,34 @@ public class WawelTextureResolver {
             .getTextureManager()
             .getTexture(texLocation);
         return SkinTextureState.isUsable(textureObject);
+    }
+
+    private static SkinModel extractSkinModelFromProfile(GameProfile profile) {
+        try {
+            Collection<Property> textures = profile.getProperties()
+                .get("textures");
+            if (textures == null || textures.isEmpty()) return null;
+
+            for (Property property : textures) {
+                if (property == null) continue;
+                String value = property.getValue();
+                if (value == null || value.isEmpty()) continue;
+
+                String json = new String(org.apache.commons.codec.binary.Base64.decodeBase64(value), "UTF-8");
+                JsonObject root = new JsonParser().parse(json)
+                    .getAsJsonObject();
+                JsonObject tex = root.getAsJsonObject("textures");
+                if (tex == null) continue;
+                JsonObject skin = tex.getAsJsonObject("SKIN");
+                if (skin == null) continue;
+                JsonObject metadata = skin.getAsJsonObject("metadata");
+                if (metadata == null) return SkinModel.CLASSIC;
+                JsonElement model = metadata.get("model");
+                if (model == null || !model.isJsonPrimitive()) return SkinModel.CLASSIC;
+                return SkinModel.fromYggdrasil(model.getAsString());
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     static String buildCacheKey(ClientProvider provider, UUID profileId) {

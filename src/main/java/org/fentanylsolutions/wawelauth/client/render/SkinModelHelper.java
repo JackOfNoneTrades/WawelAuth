@@ -11,6 +11,7 @@ import net.minecraft.client.resources.SkinManager;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
+import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 
 import com.google.gson.JsonElement;
@@ -47,6 +48,12 @@ public final class SkinModelHelper {
             return offlineLocal;
         }
 
+        SkinModel fromResolver = resolveFromTextureResolver(player);
+        if (fromResolver != null) {
+            debugResolution(player, fromResolver, "texture_resolver");
+            return fromResolver;
+        }
+
         SkinModel fromSkinManager = resolveFromSkinManager(player);
         if (fromSkinManager != null) {
             debugResolution(player, fromSkinManager, "skin_manager");
@@ -77,6 +84,17 @@ public final class SkinModelHelper {
         }
         return client.getSessionBridge()
             .resolveOfflineLocalSkinModel(player.getUniqueID());
+    }
+
+    private static SkinModel resolveFromTextureResolver(AbstractClientPlayer player) {
+        WawelClient client = WawelClient.instance();
+        if (client == null || player == null) {
+            return null;
+        }
+        ClientProvider provider = client.resolvePlayerProvider(player.getUniqueID());
+        if (provider == null) return null;
+        return client.getTextureResolver()
+            .getResolvedSkinModel(player.getUniqueID(), provider);
     }
 
     private static SkinModel resolveFromSkinManager(AbstractClientPlayer player) {
