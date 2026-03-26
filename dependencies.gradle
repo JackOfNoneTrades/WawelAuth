@@ -39,7 +39,7 @@ dependencies {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.81-GTNH:dev")
     runtimeOnlyNonPublishable("curse.maven:archaicfix-677782:6785842")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:7695645")) // 1.0.2-1.7.10
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.9:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.11:dev")
     //runtimeOnlyNonPublishable("org.fentanylsolutions.vintagedamageindicators:VintageDamageIndicators:test2")
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:skinport-234948:3212017"))
 
