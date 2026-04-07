@@ -62,6 +62,10 @@ public class CommonProxy {
         }
 
         if (config.getEffectiveApiRoot() == null) {
+            if (allowMissingPublicBaseUrlInCi()) {
+                logMissingPublicBaseUrlCiBypass(config);
+                return;
+            }
             failMissingPublicBaseUrlStartup(config);
             return;
         }
@@ -138,6 +142,38 @@ public class CommonProxy {
         WawelAuth.LOG.error("============================================================");
         FMLCommonHandler.instance()
             .exitJava(1, false);
+    }
+
+    private void logMissingPublicBaseUrlCiBypass(ServerConfig config) {
+        WawelAuth.LOG.warn("============================================================");
+        WawelAuth.LOG.warn("Wawel Auth CI mode detected; skipping publicBaseUrl startup hard-stop.");
+        WawelAuth.LOG.warn("publicBaseUrl is still required for real dedicated-server deployments.");
+        WawelAuth.LOG.warn("Current server.json values:");
+        WawelAuth.LOG.warn(
+            "  publicBaseUrl={}",
+            config.getPublicBaseUrl()
+                .isEmpty() ? "<empty>" : config.getPublicBaseUrl());
+        WawelAuth.LOG.warn(
+            "  apiRoot={}",
+            config.getApiRoot()
+                .isEmpty() ? "<root>" : config.getApiRoot());
+        WawelAuth.LOG.warn("This bypass exists only for CI smoke tests. Configure publicBaseUrl for real use.");
+        WawelAuth.LOG.warn("============================================================");
+    }
+
+    private boolean allowMissingPublicBaseUrlInCi() {
+        return isTruthyEnv("WAWELAUTH_CI") || isTruthyEnv("GITHUB_ACTIONS");
+    }
+
+    private boolean isTruthyEnv(String name) {
+        String value = System.getenv(name);
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.trim();
+        return "1".equals(normalized) || "true".equalsIgnoreCase(normalized)
+            || "yes".equalsIgnoreCase(normalized)
+            || "on".equalsIgnoreCase(normalized);
     }
 
     private void failOfflineModeStartup() {
