@@ -135,7 +135,7 @@ public class ProfileService {
 
     private ProfileProperty buildTexturesProperty(WawelProfile profile, boolean signed) {
         String apiRoot = Config.server()
-            .getApiRoot();
+            .getEffectiveApiRoot();
 
         TextureData textureData = new TextureData(System.currentTimeMillis(), profile.getUuid(), profile.getName());
 

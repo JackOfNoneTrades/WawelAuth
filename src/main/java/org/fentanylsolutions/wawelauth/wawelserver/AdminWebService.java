@@ -228,7 +228,9 @@ public class AdminWebService {
         out.put("requireEncryption", requireEncryption);
         out.put("publicKeyBase64", requireEncryption ? keyManager.getPublicKeyBase64() : null);
         out.put("serverName", serverConfig.getServerName());
+        out.put("publicBaseUrl", serverConfig.getPublicBaseUrl());
         out.put("apiRoot", serverConfig.getApiRoot());
+        out.put("effectiveApiRoot", serverConfig.getEffectiveApiRoot());
         out.put(
             "implementationName",
             serverConfig.getMeta()
@@ -882,6 +884,11 @@ public class AdminWebService {
         String value = readOptionalString(body, "serverName");
         if (value != null) {
             serverConfig.setServerName(value);
+        }
+
+        value = readOptionalString(body, "publicBaseUrl");
+        if (value != null) {
+            serverConfig.setPublicBaseUrl(value);
         }
 
         value = readOptionalString(body, "apiRoot");
@@ -1541,7 +1548,9 @@ public class AdminWebService {
     private Map<String, Object> buildServerConfigResponse() {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("serverName", serverConfig.getServerName());
+        out.put("publicBaseUrl", serverConfig.getPublicBaseUrl());
         out.put("apiRoot", serverConfig.getApiRoot());
+        out.put("effectiveApiRoot", serverConfig.getEffectiveApiRoot());
         out.put("publicPagePath", serverConfig.getPublicPagePath());
         out.put("publicInfoApiPath", serverConfig.getPublicInfoApiPath());
         out.put("serverAddress", serverConfig.getServerAddress());
@@ -2018,7 +2027,7 @@ public class AdminWebService {
     }
 
     private String resolveLocalApiRoot() {
-        String configured = normalizeUrl(serverConfig.getApiRoot());
+        String configured = normalizeUrl(serverConfig.getEffectiveApiRoot());
         if (configured != null) {
             return configured;
         }

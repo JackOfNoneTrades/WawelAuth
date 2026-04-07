@@ -29,10 +29,16 @@ public class ServerConfig {
     private String serverName = "A Wawel Auth Server";
 
     /**
-     * Public-facing API root URL (e.g. "https://auth.example.com").
-     * Used to construct texture URLs and the ALI metadata response.
+     * Public-facing base URL used to build the auth API root
+     * (e.g. "auth.example.com:25565" or "https://auth.example.com").
      */
-    private String apiRoot = "";
+    private String publicBaseUrl = "";
+
+    /**
+     * Relative auth API mount path under {@link #publicBaseUrl}
+     * (e.g. "auth" -> "/auth").
+     */
+    private String apiRoot = "auth";
     private boolean enablePublicPage = true;
     private boolean enablePublicInfoApi = true;
     private String publicPagePath = "/";
@@ -44,8 +50,8 @@ public class ServerConfig {
      * Domains from which clients should accept texture URLs.
      * IMPORTANT: If this is empty and your server serves textures,
      * clients will reject those URLs. Set this to your server's domain
-     * (e.g. ["auth.example.com"]). If apiRoot is set, the server module
-     * will auto-add its host to this list at runtime.
+     * (e.g. ["auth.example.com"]). If publicBaseUrl is set, the server
+     * module will auto-add its host to this list at runtime.
      */
     private List<String> skinDomains = new ArrayList<>();
 
@@ -99,12 +105,42 @@ public class ServerConfig {
         this.serverName = serverName;
     }
 
+    public String getPublicBaseUrl() {
+        return normalizePublicBaseUrl(publicBaseUrl);
+    }
+
+    public void setPublicBaseUrl(String publicBaseUrl) {
+        this.publicBaseUrl = normalizePublicBaseUrl(publicBaseUrl);
+    }
+
     public String getApiRoot() {
-        return apiRoot;
+        return normalizeConfiguredApiRoot(apiRoot);
     }
 
     public void setApiRoot(String apiRoot) {
-        this.apiRoot = apiRoot;
+        this.apiRoot = normalizeConfiguredApiRoot(apiRoot);
+    }
+
+    /**
+     * Public-facing full API root URL for authlib-injector and texture URLs.
+     * Built from publicBaseUrl + apiRoot.
+     */
+    public String getEffectiveApiRoot() {
+        if (hasAbsoluteLikeApiRoot()) {
+            return null;
+        }
+
+        String base = getPublicBaseUrl();
+        if (base.isEmpty()) {
+            return null;
+        }
+
+        String prefix = getApiRoutePrefix();
+        return prefix.isEmpty() ? base : base + prefix;
+    }
+
+    public boolean hasAbsoluteLikeApiRoot() {
+        return looksLikeAbsoluteUrl(apiRoot);
     }
 
     /**
@@ -154,12 +190,12 @@ public class ServerConfig {
     }
 
     /**
-     * Route prefix implied by apiRoot's path component.
+     * Route prefix implied by the relative apiRoot config.
      * <p>
      * Examples:
-     * - "https://auth.example.com" -> ""
-     * - "https://auth.example.com/auth" -> "/auth"
-     * - "https://auth.example.com/auth/" -> "/auth"
+     * - "" -> ""
+     * - "auth" -> "/auth"
+     * - "auth/v2" -> "/auth/v2"
      */
     public String getApiRoutePrefix() {
         return normalizeApiRoutePrefix(apiRoot);
@@ -224,34 +260,100 @@ public class ServerConfig {
     }
 
     /**
-     * Ensures the apiRoot's host is in skinDomains. Call this at server startup
+     * Ensures the effective API root host is in skinDomains. Call this at
+     * server startup
      * after config is loaded, so clients accept texture URLs from this server.
      */
     public void ensureApiRootInSkinDomains() {
-        if (apiRoot == null || apiRoot.isEmpty()) return;
+        String effectiveApiRoot = getEffectiveApiRoot();
+        if (effectiveApiRoot == null || effectiveApiRoot.isEmpty()) return;
         try {
-            String host = new URI(apiRoot).getHost();
+            String host = new URI(effectiveApiRoot).getHost();
             if (host != null && !getSkinDomains().contains(host)) {
                 getSkinDomains().add(host);
             }
         } catch (Exception e) {
-            WawelAuth.LOG
-                .warn("Invalid apiRoot '{}', could not extract host for skinDomains: {}", apiRoot, e.getMessage());
+            WawelAuth.LOG.warn(
+                "Invalid effective API root '{}', could not extract host for skinDomains: {}",
+                effectiveApiRoot,
+                e.getMessage());
         }
     }
 
     public static String normalizeApiRoutePrefix(String rawApiRoot) {
-        String raw = rawApiRoot == null ? null : rawApiRoot.trim();
-        if (raw == null || raw.isEmpty()) {
+        String raw = normalizeConfiguredApiRoot(rawApiRoot);
+        if (raw.isEmpty()) {
             return "";
         }
 
-        try {
-            URI uri = new URI(raw);
-            return normalizePathPrefix(uri.getPath());
-        } catch (Exception ignored) {
-            return normalizePathPrefix(raw);
+        if (looksLikeAbsoluteUrl(raw)) {
+            try {
+                URI uri = new URI(raw);
+                return normalizePathPrefix(uri.getPath());
+            } catch (Exception ignored) {
+                return "";
+            }
         }
+
+        return "/" + raw;
+    }
+
+    public static String normalizePublicBaseUrl(String rawBaseUrl) {
+        String value = rawBaseUrl == null ? "" : rawBaseUrl.trim();
+        while (value.endsWith("/") && !value.isEmpty()) {
+            value = value.substring(0, value.length() - 1);
+        }
+        if (value.isEmpty()) {
+            return "";
+        }
+        if (!looksLikeAbsoluteUrl(value)) {
+            value = "http://" + value;
+        }
+        return value;
+    }
+
+    private static String normalizeConfiguredApiRoot(String rawApiRoot) {
+        String raw = rawApiRoot == null ? "" : rawApiRoot.trim();
+        if (raw.isEmpty()) {
+            return "";
+        }
+        if (looksLikeAbsoluteUrl(raw)) {
+            return raw;
+        }
+        return normalizeRelativePath(raw);
+    }
+
+    private static String normalizeRelativePath(String rawPath) {
+        String path = rawPath == null ? "" : rawPath.trim();
+        while (path.startsWith("./")) {
+            path = path.substring(2);
+        }
+        while (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        while (path.endsWith("/") && !path.isEmpty()) {
+            path = path.substring(0, path.length() - 1);
+        }
+        if (path.isEmpty()) {
+            return "";
+        }
+
+        String[] segments = path.split("/+");
+        StringBuilder normalized = new StringBuilder();
+        for (String segment : segments) {
+            if (segment == null || segment.isEmpty()) {
+                continue;
+            }
+            if (normalized.length() > 0) {
+                normalized.append('/');
+            }
+            normalized.append(segment);
+        }
+        return normalized.toString();
+    }
+
+    private static boolean looksLikeAbsoluteUrl(String value) {
+        return value != null && value.contains("://");
     }
 
     public static String normalizePublicPagePath(String rawPath) {

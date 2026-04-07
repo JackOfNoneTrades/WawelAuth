@@ -65,7 +65,7 @@ public final class WawelPingPayload {
         boolean yggdrasilEnabled = config.isLocalAuthEnabled();
         payload.addProperty(KEY_PROVIDES_YGGDRASIL_SERVICE, yggdrasilEnabled);
 
-        String apiRoot = normalizeUrl(config.getApiRoot());
+        String apiRoot = normalizeUrl(config.getEffectiveApiRoot());
         if (apiRoot != null) {
             payload.addProperty(KEY_API_ROOT, apiRoot);
         }

@@ -189,7 +189,7 @@ public final class LocalSessionVerifier {
         String apiRoot = WawelPingPayload.normalizeUrl(
             Config.server() == null ? null
                 : Config.server()
-                    .getApiRoot());
+                    .getEffectiveApiRoot());
         if (apiRoot != null) {
             return apiRoot;
         }

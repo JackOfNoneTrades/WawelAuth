@@ -82,6 +82,7 @@
 
         el.configForm = document.getElementById("configForm");
         el.cfgServerName = document.getElementById("cfgServerName");
+        el.cfgPublicBaseUrl = document.getElementById("cfgPublicBaseUrl");
         el.cfgApiRoot = document.getElementById("cfgApiRoot");
         el.cfgPublicPagePath = document.getElementById("cfgPublicPagePath");
         el.cfgPublicInfoApiPath = document.getElementById("cfgPublicInfoApiPath");
@@ -461,7 +462,9 @@
             state.configLoaded = true;
             state.bootstrap = Object.assign({}, state.bootstrap || {}, {
                 serverName: (response && response.serverName) || "",
+                publicBaseUrl: (response && response.publicBaseUrl) || "",
                 apiRoot: (response && response.apiRoot) || "",
+                effectiveApiRoot: (response && response.effectiveApiRoot) || "",
                 implementationName: (response && response.meta && response.meta.implementationName) || "",
                 registrationPolicy: (response && response.registration && response.registration.policy) || ""
             });
@@ -480,7 +483,7 @@
         }
 
         const serverName = data.serverName || "Unknown Server";
-        const apiRoot = data.apiRoot || "(unset apiRoot)";
+        const apiRoot = data.effectiveApiRoot || "(unset publicBaseUrl)";
         el.serverLine.textContent = `${serverName} · ${apiRoot}`;
         renderFooter(data);
     }
@@ -636,6 +639,7 @@
     function buildConfigPayload() {
         const payload = {
             serverName: (el.cfgServerName.value || "").trim(),
+            publicBaseUrl: (el.cfgPublicBaseUrl.value || "").trim(),
             apiRoot: (el.cfgApiRoot.value || "").trim(),
             publicPagePath: (el.cfgPublicPagePath.value || "").trim(),
             publicInfoApiPath: (el.cfgPublicInfoApiPath.value || "").trim(),
@@ -706,6 +710,7 @@
         const textures = cfg.textures || {};
 
         el.cfgServerName.value = cfg.serverName || "";
+        el.cfgPublicBaseUrl.value = cfg.publicBaseUrl || "";
         el.cfgApiRoot.value = cfg.apiRoot || "";
         el.cfgPublicPagePath.value = cfg.publicPagePath || "/";
         el.cfgPublicInfoApiPath.value = cfg.publicInfoApiPath || "";

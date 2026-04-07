@@ -55,7 +55,7 @@ public class MixinServerConfigurationManagerJoinSync {
             Config.server() != null && Config.server()
                 .isLocalAuthEnabled()
                 && Config.server()
-                    .getApiRoot() != null
+                    .getEffectiveApiRoot() != null
                 && publicKeyBase64 != null,
             Config.server() != null ? Config.server()
                 .getFallbackServers()
@@ -63,7 +63,7 @@ public class MixinServerConfigurationManagerJoinSync {
                 + (Config.server()
                     .isLocalAuthEnabled()
                     && Config.server()
-                        .getApiRoot() != null ? 1 : 0)
+                        .getEffectiveApiRoot() != null ? 1 : 0)
                 : 0);
 
         // Send all player-provider associations to the joining player

@@ -120,10 +120,16 @@
                             <label for="cfgServerName">Server Name</label>
                             <input id="cfgServerName" type="text">
 
-                            <label for="cfgApiRoot">API Root</label>
-                            <input id="cfgApiRoot" type="text" placeholder="http://host:25565/auth">
+                            <label for="cfgPublicBaseUrl">Public Base URL</label>
+                            <input id="cfgPublicBaseUrl" type="text" placeholder="auth.example.com:25565">
                             <p class="muted field-note">
-                                The path part of <code>apiRoot</code> is the auth API mount point. Use a path like <code>/auth</code> for authlib-injector metadata and endpoints.
+                                Public URL prefix used for authlib-injector metadata and texture links. If no scheme is provided, Wawel Auth assumes <code>http://</code>.
+                            </p>
+
+                            <label for="cfgApiRoot">API Root</label>
+                            <input id="cfgApiRoot" type="text" placeholder="auth">
+                            <p class="muted field-note">
+                                Relative auth API mount path appended to <code>publicBaseUrl</code>. Use a path like <code>auth</code> or <code>auth/v2</code>. Leave empty to mount at <code>/</code>.
                             </p>
 
                             <label for="cfgPublicPagePath">Public Page Path</label>

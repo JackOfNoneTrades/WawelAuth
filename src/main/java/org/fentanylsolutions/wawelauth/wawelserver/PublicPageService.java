@@ -137,7 +137,7 @@ public final class PublicPageService {
     private void warnOnOverlaps() {
         if ((apiPrefix == null || apiPrefix.isEmpty()) && "/".equals(publicPath)) {
             WawelAuth.LOG.warn(
-                "Public page path '/' conflicts with the auth API root. Set apiRoot to a prefixed URL like '/auth' to free '/'.");
+                "Public page path '/' conflicts with the auth API root. Set apiRoot to a prefixed path like 'auth' to free '/'.");
         } else if (publicPath.equals(apiPrefix) || (!"/".equals(publicPath)
             && (publicPath.startsWith("/admin") || publicPath.startsWith("/api/wawelauth/admin")))) {
                 WawelAuth.LOG.warn(
@@ -278,7 +278,7 @@ public final class PublicPageService {
             Collections.unmodifiableList(new ArrayList<>(resolveFallbacks())),
             trimToNull(serverConfig.getServerAddress()),
             resolveAdvertisedServerAddressWarning(),
-            trimToNull(serverConfig.getApiRoot()),
+            trimToNull(serverConfig.getEffectiveApiRoot()),
             trimToNull(
                 serverConfig.getMeta()
                     .getServerHomepage()),
@@ -668,7 +668,7 @@ public final class PublicPageService {
         }
         String apiRoot = trimToNull(
             server.getServerConfig()
-                .getApiRoot());
+                .getEffectiveApiRoot());
         return apiRoot == null ? null : apiRoot + "/textures/" + profile.getSkinHash();
     }
 

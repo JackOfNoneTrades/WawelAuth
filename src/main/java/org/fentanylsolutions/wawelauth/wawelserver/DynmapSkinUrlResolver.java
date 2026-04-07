@@ -148,7 +148,7 @@ public final class DynmapSkinUrlResolver {
             WawelPingPayload.normalizeUrl(
                 Config.server() == null ? null
                     : Config.server()
-                        .getApiRoot()));
+                        .getEffectiveApiRoot()));
         if (configured != null) {
             return configured;
         }
