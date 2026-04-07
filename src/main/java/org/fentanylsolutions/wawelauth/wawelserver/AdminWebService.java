@@ -143,6 +143,11 @@ public class AdminWebService {
     }
 
     public void registerRoutes(HttpRouter router) {
+        if (!isAdminEnabled()) {
+            WawelAuth.LOG.info("Admin web UI is disabled; not mounting /admin routes.");
+            return;
+        }
+
         router.get("/admin", this::serveIndex);
         router.get("/admin/", this::serveIndex);
         router.get("/admin/app.js", this::serveAppJs);
