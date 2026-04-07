@@ -35,19 +35,19 @@
  */
 dependencies {
     // Pure runtime
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.113:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.81-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.116:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.88-GTNH:dev")
     runtimeOnlyNonPublishable("curse.maven:archaicfix-677782:6785842")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:7695645")) // 1.0.2-1.7.10
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.11:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.16:dev")
     //runtimeOnlyNonPublishable("org.fentanylsolutions.vintagedamageindicators:VintageDamageIndicators:test2")
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:skinport-234948:3212017"))
 
     // Compile + runtime
-    devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.9.45:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.9.48:dev")
     devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:ccf390f-snapshot:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.48-1.7.10:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.2.19:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.52-1.7.10:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.2.20:dev")
     devOnlyNonPublishable(rfg.deobf("curse.maven:better-questing-238856:2950244"))
 
     // Pure compile
@@ -55,7 +55,7 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.15:dev")
     compileOnly("org.lwjgl:lwjgl-sdl:3.4.1")
     compileOnly("com.github.GTNewHorizons:GTNH-Web-Map:0.3.46:dev")
-    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.23:dev")
+    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.26:dev")
     compileOnly("com.github.GTNewHorizons:Botania:1.13.16-GTNH:dev")
     compileOnly(rfg.deobf("curse.maven:forgeservertools-64744:2225866"))
 
