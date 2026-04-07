@@ -2,17 +2,22 @@
 
 ![logo](images/logo_combined.png)
 
-Authentication for Minecraft 1.7.10. Use Microsoft or any Yggdrasil-compatible provider, or run your own auth server alongside the game server. Includes modern and HD skins, animated capes, and optional 3D skin layers.
+Authentication mod for Minecraft 1.7.10. Use Microsoft or any Yggdrasil-compatible provider, or run your own auth server alongside the game server. Includes modern and HD skins, animated capes, and optional 3D skin layers.
 
-Highlights:
+Some highlights of what **Wawel Auth** allows you to do:
 
-* log into Microsoft and other Yggdrasil-compatible providers
-* manage per-server account selection
-* host a local Yggdrasil-compatible auth server on the same port as the Minecraft server
-* proxy fallback auth providers such as Microsoft, Ely.by, Drasl, or any other authlib-injector-compatible service
-* serve skins, capes, animated capes, and modern / HD skins
-* render optional 3D skin layers on the client
-* expose an admin web UI for server-side management
+* Login into any Yggdrasil-compatible provider on the client (Microsoft, [ely.by](https://ely.by/), [drasl](https://github.com/unmojang/drasl), ...)
+* Bind accounts to servers
+* Host an account and skin provider directly on the game server
+* Allow any Yggdrasil-compatible provider to join your server
+* Modern and HD skin support
+* Animated capes for Wawel Auth accounts
+* 3D skin layers implementation
+* Admin web UI for server-side management
+
+**Wawel Auth** does not need to be installed on the client, nor on the server to benefit from a lot of features.
+You can setup a server that allows Microsoft and ely.by users, without clients having to do anything special.
+Clients can also benefit from account management, modern skins, and 3d skin layers, even if a server doesn't run **Wawel Auth**.
 
 ![screen1](images/screenshots/screen1.png)
 
@@ -20,6 +25,7 @@ Highlights:
 [![maven](images/badges/maven.png)](https://maven.fentanylsolutions.org/#/releases/org/fentanylsolutions/wawelauth/WawelAuth)
 ![forge](images/badges/forge.png)
 [![cord](images/badges/cord.png)](https://discord.gg/xAWCqGrguG)
+
 <!--[![modrinth](images/badges/modrinth.png)]()
 [![curse](images/badges/curse.png)]()
 [![mcmodcn](images/badges/mcmodcn.png)]()-->
@@ -29,88 +35,57 @@ Highlights:
 * [UniMixins](https://modrinth.com/mod/unimixins) [![curse](images/icons/curse.png)](https://www.curseforge.com/minecraft/mc-mods/unimixins) [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/unimixins/versions) [![git](images/icons/git.png)](https://github.com/LegacyModdingMC/UniMixins/releases)
 * [FentLib](https://github.com/JackOfNoneTrades/FentLib) [![git](images/icons/git.png)](https://github.com/JackOfNoneTrades/FentLib)
 * [ModularUI2](https://github.com/GTNewHorizons/ModularUI2) [![git](images/icons/git.png)](https://github.com/GTNewHorizons/ModularUI2) (Client only)
-* [Optional] [TabFaces](https://github.com/JackOfNoneTrades/TabFaces) [![curse](images/icons/curse.png)](https://github.com/JackOfNoneTrades/TabFaces/blob/master/images/badges/forge.png) [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/tabfaces) [![git](images/icons/git.png)](https://github.com/JackOfNoneTrades/TabFaces/releases): shows account faces in supported UI elements
-
-## Core features
-
-### Client
-
-* built-in Microsoft OAuth login
-* custom Yggdrasil / authlib-injector providers by URL
-* per-server account binding in the multiplayer server list
-* optional auto-selection when exactly one account matches a server
-* skin and cape upload / reset where supported
-* 3D skin layers
-* modern skin handling for 64x64 and HD skins
-* animated cape support
-
-### Server
-
-* a local Yggdrasil-compatible auth server on the same port as Minecraft (HTTP + Minecraft multiplexing on a single port)
-* local account registration, invites, and textures
-* fallback auth providers for session and profile verification (+ skins/capes)
-* an admin web UI at `/admin`
-* provider-aware whitelist and op / deop commands
 
 ## Client Setup And Use
 
-### Files and locations
+**Wawel Auth** stores a small Minecraft instance-bound config file under `config/wawelauth/local.json`.
+Most other settings, however, are shared across all Minecraft instances (can be disabled using `useOsConfigDir`).
+Those settings live in files stored under the following locations:
+* Windows: `%APPDATA%/wawelauth/`
+* macOS: `~/Library/Application Support/wawelauth/`
+* Linux: `$XDG_DATA_HOME/wawelauth/` or `~/.local/share/wawelauth/`
 
-* `local.json` is always stored at `config/wawelauth/local.json`
-* `local.json` contains `debugMode` and `useOsConfigDir`
-* if `useOsConfigDir=true`, client data is looked for in the following locations:
-  * Windows: `%APPDATA%/wawelauth/`
-  * macOS: `~/Library/Application Support/wawelauth/`
-  * Linux: `$XDG_DATA_HOME/wawelauth/` or `~/.local/share/wawelauth/`
-* otherwise client data stays in `config/wawelauth/`
-* the client uses:
-  * `client.json`
-  * `skinlayers.json`
-  * `accounts.db`
+The main menu is opened with the `Auth` button in the multiplayer screen.
+From there, you can add auth providers, and accounts.
 
-### Adding accounts
-
+Some things of note:
 * Microsoft is built in.
 * Any Yggdrasil / authlib-injector provider can be added by URL.
-* `Manage Local Auth...` is the quickest way to use local accounts on a Wawel Auth server.
+* The `Manage Local Auth...` button is the quickest way to use local accounts on a Wawel Auth server.
 * Adding the same local server manually as a normal provider is also supported.
-
-### Skins and capes
-
-The client UI can preview, upload, and reset textures when the selected provider supports it.
-
-Skin management buttons can be suppressed per provider through `client.json`, in the case a provider does not provide these functions. This is purely cosmetic.
-The following options let you configure this:
-* `disableSkinUpload`
-* `disableCapeUpload`
-* `disableTextureReset`
+* Skin management buttons can be suppressed per provider through `client.json`, in the case a provider does not provide these functions. This is purely cosmetic.
+  The following options let you configure this:
+  * `disableSkinUpload`
+  * `disableCapeUpload`
+  * `disableTextureReset`
 
 The `disable*` lists are regexes matched against provider name or API root.
 
-Animated capes are only supported by Wawel Auth servers, and are in the `minecraftcapes[.]net` format.
+* Animated capes are only supported by Wawel Auth servers, and are in the `minecraftcapes.net` format.
+
+> [!NOTE]
+> You can also drag and drop skins and capes, if using Java 17+.
 
 ## Server Setup And Use
 
 ### Files and locations
 
-* dedicated servers always use `config/wawelauth/` to store their config, and state data
-* that state directory contains the SQLite database, generated keys, and stored textures
+* Dedicated servers always use `config/wawelauth/` to store their config, and state data
+* That state directory contains the SQLite database, generated keys, and stored textures
 
----
-**NOTE**
-
-* Your private server key is sensitive information, never share it.
-* It is important to not change your server keys, if not absolutely necessary. Wawel Auth client users will need to trust the key again, and authlib-injector users will refuse to connect to a server whose public key has changed.
-
----
+> [!WARNING]
+> * Your private server key is sensitive information, never share it.
+> * It is important to not change your server keys, if not absolutely necessary. Wawel Auth client users will need to trust the key again, and authlib-injector users will refuse to connect to a server whose public key has changed.
 
 ### Example local-only setup
 
+`server.json`
 ```json
 {
-  "enabled": true,
+  "wawelAuthEnabled": true,
   "serverName": "My WawelAuth Server",
-  "apiRoot": "server-ip:server-port",
+  "publicBaseUrl": "auth.example.com:25565",
+  "apiRoot": "auth",
   "admin": {
     "enabled": true,
     "token": "strong_password_best_if_randomly_generated"
@@ -118,12 +93,18 @@ Animated capes are only supported by Wawel Auth servers, and are in the `minecra
 }
 ```
 
-Then:
-
 1. set `online-mode=true` in `server.properties`
-2. set `apiRoot` to the real public URL clients use (can be IP:PORT, or your domain)
-3. set an admin token through `server.admin.token` or `WAWELAUTH_ADMIN_TOKEN`
-4. restart the server
+2. set `publicBaseUrl` to the real public base URL clients use
+3. leave `apiRoot` as a relative path such as `auth`
+4. set an admin token through `server.admin.token` or `WAWELAUTH_ADMIN_TOKEN`
+5. restart the server
+
+Notes:
+
+* if `publicBaseUrl` has no scheme, Wawel Auth assumes `http://`
+* with the example above, the auth API is published at `http://auth.example.com:25565/auth`
+* on dedicated servers, Wawel Auth now hard-stops before world load if `online-mode=false`, `publicBaseUrl` is missing, or `apiRoot` is configured as a full URL
+* for CI smoke tests only, `WAWELAUTH_CI=true` or `GITHUB_ACTIONS=true` bypasses the missing-`publicBaseUrl` hard stop
 
 ### Important server settings
 
@@ -142,12 +123,21 @@ It manages users, textures, invites, whitelist, ops, `server.json`, and `server.
 
 ### Fallback providers
 
-Fallback providers are defined in `server.fallbackServers` and checked in order.
+Fallback providers are defined in `fallback-servers.json` and checked in order.
 
-Rules:
+```json
+{
+  "fallbackServers": [
+    ...
+  ]
+}
+```
 
-* `name` must not contain whitespace
-* `name` is used in commands such as `player@provider`
+> [!WARNING]
+> `name` must not contain whitespaces.
+
+> [!TIP]
+> `name` is used in provider-scoped commands such as `/op player@provider`.
 
 #### Microsoft fallback example
 
@@ -203,12 +193,9 @@ Rules:
 
 Regular whitelist and op commands are disabled.
 
----
-**NOTE**
 
-Plain authlib-injector clients (or vanilla) can authenticate against a Wawel Auth server, but mixed-provider skin handling only works if the client and server run Wawel Auth.
-
----
+> [!WARNING]
+> Plain authlib-injector clients (or vanilla) can authenticate against a Wawel Auth server, but mixed-provider skin handling only works if the client and server run Wawel Auth.
 
 ## Interoperability Notes
 
@@ -221,7 +208,7 @@ Plain authlib-injector clients (or vanilla) can authenticate against a Wawel Aut
 
 ## Credits
 
-* Inspired by [last MIT commit](https://github.com/tr7zw/3d-Skin-Layers/commit/1830e6ed7b86550afc2ed2695391a09ca70285e2) of [3D Skin Layers Mod](https://github.com/tr7zw/3d-Skin-Layers)
+* Skin layer implementation inspired by [last MIT commit](https://github.com/tr7zw/3d-Skin-Layers/commit/1830e6ed7b86550afc2ed2695391a09ca70285e2) of [3D Skin Layers Mod](https://github.com/tr7zw/3d-Skin-Layers)
 * [Catalogue-Vintage](https://github.com/RuiXuqi/Catalogue-Vintage) for folder icon and system-open inspiration
 * [GT:NH buildscript](https://github.com/GTNewHorizons/ExampleMod1.7.10)
 * [Background image](https://www.pinterest.com/pin/367536019569661725/)
