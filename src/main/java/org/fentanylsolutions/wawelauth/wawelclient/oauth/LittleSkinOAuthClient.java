@@ -16,7 +16,7 @@ public class LittleSkinOAuthClient extends ProviderOAuthClient {
     private static final String DEVICE_CODE_URL = "https://open.littleskin.cn/oauth/device_code";
     private static final String TOKEN_URL = "https://open.littleskin.cn/oauth/token";
     private static final String MINECRAFT_TOKEN_URL = "https://littleskin.cn/api/yggdrasil/authserver/oauth";
-    private static final String CLIENT_ID = "__LITTLESKIN_CLIENT_ID__";
+    private static final String CLIENT_ID = "1383";
     private static final String SCOPES = "openid offline_access Yggdrasil.PlayerProfiles.Select Yggdrasil.MinecraftToken.Create";
 
     @Override
