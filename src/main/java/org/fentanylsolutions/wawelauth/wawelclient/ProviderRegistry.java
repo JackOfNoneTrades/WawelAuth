@@ -56,6 +56,8 @@ public class ProviderRegistry {
 
     static {
         Map<String, String> resources = new LinkedHashMap<>();
+        resources.put("elyby.json", "/assets/wawelauth/default-providers/elyby.json");
+        resources.put("littleskin.json", "/assets/wawelauth/default-providers/littleskin.json");
         resources.put("microsoft.json", "/assets/wawelauth/default-providers/microsoft.json");
         SEEDED_DEFAULT_PROVIDER_RESOURCES = Collections.unmodifiableMap(resources);
     }
@@ -673,15 +675,11 @@ public class ProviderRegistry {
         if (directory == null) {
             return;
         }
-        File[] jsonFiles = directory.listFiles(
-            (dir, name) -> name != null && name.toLowerCase()
-                .endsWith(".json"));
-        if (jsonFiles != null && jsonFiles.length > 0) {
-            return;
-        }
-
         for (Map.Entry<String, String> entry : SEEDED_DEFAULT_PROVIDER_RESOURCES.entrySet()) {
-            copyBundledFile(entry.getValue(), new File(directory, entry.getKey()));
+            File destination = new File(directory, entry.getKey());
+            if (!destination.exists()) {
+                copyBundledFile(entry.getValue(), destination);
+            }
         }
     }
 

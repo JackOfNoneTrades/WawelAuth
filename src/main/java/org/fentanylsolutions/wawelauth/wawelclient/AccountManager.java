@@ -22,6 +22,8 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderType;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilHttpClient;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilRequestException;
 import org.fentanylsolutions.wawelauth.wawelclient.oauth.MicrosoftOAuthClient;
+import org.fentanylsolutions.wawelauth.wawelclient.oauth.ProviderOAuthClient;
+import org.fentanylsolutions.wawelauth.wawelclient.oauth.ProviderOAuthClients;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientAccountDAO;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientProviderDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
@@ -224,6 +226,27 @@ public class AccountManager {
                 future.completeExceptionally(e);
             }
         }, "WawelAuth-MicrosoftLogin");
+        worker.setDaemon(true);
+        worker.start();
+        return future;
+    }
+
+    public CompletableFuture<ClientAccount> authenticateOAuth(String providerName, String loginHint,
+        Consumer<String> statusSink) {
+        return authenticateOAuth(providerName, loginHint, statusSink, null);
+    }
+
+    public CompletableFuture<ClientAccount> authenticateOAuth(String providerName, String loginHint,
+        Consumer<String> statusSink, Consumer<String> deviceCodeSink) {
+        CompletableFuture<ClientAccount> future = new CompletableFuture<>();
+        Thread worker = new Thread(() -> {
+            try {
+                ClientAccount result = doAuthenticateOAuth(providerName, loginHint, statusSink, deviceCodeSink);
+                future.complete(result);
+            } catch (Exception e) {
+                future.completeExceptionally(e);
+            }
+        }, "WawelAuth-ProviderOAuthLogin");
         worker.setDaemon(true);
         worker.start();
         return future;
@@ -902,6 +925,56 @@ public class AccountManager {
         return account;
     }
 
+    private ClientAccount doAuthenticateOAuth(String providerName, String loginHint, Consumer<String> statusSink,
+        Consumer<String> deviceCodeSink) throws IOException {
+        ClientProvider provider = providerDAO.findByName(providerName);
+        if (provider == null) {
+            throw new IllegalArgumentException("Unknown provider: " + providerName);
+        }
+        provider = applyRuntimeProviderOverrides(provider);
+        ProviderOAuthClient oauthClient = ProviderOAuthClients.resolve(provider);
+        if (oauthClient == null) {
+            throw new IllegalArgumentException("OAuth login is not supported for provider: " + providerName);
+        }
+
+        Consumer<String> status = statusSink != null ? statusSink : s -> {};
+        Consumer<String> deviceCode = deviceCodeSink != null ? deviceCodeSink : s -> {};
+        ProviderOAuthClient.LoginResult result = oauthClient.loginInteractive(provider, loginHint, status, deviceCode);
+
+        long now = System.currentTimeMillis();
+        ClientAccount account = new ClientAccount();
+        account.setProviderName(providerName);
+        account.setUserUuid(UuidUtil.toUnsigned(result.getProfileUuid()));
+        account.setProfileUuid(result.getProfileUuid());
+        account.setProfileName(result.getProfileName());
+        account.setAccessToken(result.getAccessToken());
+        account.setRefreshToken(result.getRefreshToken());
+        account.setClientToken(result.getClientToken());
+        account.setUserPropertiesJson(null);
+        account.setStatus(AccountStatus.VALID);
+        account.setConsecutiveFailures(0);
+        account.setCreatedAt(now);
+        account.setLastValidatedAt(now);
+        account.setTokenIssuedAt(now);
+        account.setLastError(null);
+        account.setLastErrorAt(0L);
+        account.setLastRefreshAttemptAt(now);
+
+        ClientAccount existing = accountDAO.findByProviderAndProfile(providerName, result.getProfileUuid());
+        if (existing != null) {
+            account.setId(existing.getId());
+            account.setCreatedAt(existing.getCreatedAt());
+            accountDAO.update(account);
+        } else {
+            long id = accountDAO.create(account);
+            account.setId(id);
+        }
+        statusCache.put(account.getId(), account.getStatus());
+
+        WawelAuth.LOG.info("Authenticated OAuth account '{}' on provider '{}'", account.getProfileName(), providerName);
+        return account;
+    }
+
     /**
      * Validate → Refresh lifecycle for a single account.
      * Returns the resulting status.
@@ -920,6 +993,9 @@ public class AccountManager {
 
         if (isMicrosoftManagedMojangAccount(provider, account)) {
             return doValidateOrRefreshMicrosoft(account, provider);
+        }
+        if (isProviderOauthManagedAccount(provider, account)) {
+            return doValidateOrRefreshProviderOauth(account, provider);
         }
 
         long now = System.currentTimeMillis();
@@ -1138,9 +1214,125 @@ public class AccountManager {
         }
     }
 
+    private AccountStatus doValidateOrRefreshProviderOauth(ClientAccount account, ClientProvider provider) {
+        provider = applyRuntimeProviderOverrides(provider);
+        ProviderOAuthClient oauthClient = ProviderOAuthClients.resolve(provider);
+        if (oauthClient == null) {
+            markStatus(account, AccountStatus.EXPIRED, "OAuth provider handler not found");
+            return AccountStatus.EXPIRED;
+        }
+
+        long now = System.currentTimeMillis();
+        account.setLastRefreshAttemptAt(now);
+
+        WawelAuth.debug(
+            "Validating OAuth account " + account.getId()
+                + " ("
+                + account.getProfileName()
+                + ") on provider '"
+                + provider.getName()
+                + "' using proxy "
+                + org.fentanylsolutions.wawelauth.wawelclient.http.ProviderProxySupport
+                    .describeProxySettings(provider.getProxySettings()));
+
+        try {
+            if (oauthClient.supportsProfileValidation()) {
+                ProviderOAuthClient.MinecraftProfile profile = oauthClient
+                    .fetchProfile(account.getAccessToken(), provider);
+                account.setUserUuid(UuidUtil.toUnsigned(profile.getUuid()));
+                account.setProfileUuid(profile.getUuid());
+                account.setProfileName(profile.getName());
+            } else {
+                JsonObject validateBody = new JsonObject();
+                validateBody.addProperty("accessToken", account.getAccessToken());
+                if (account.getClientToken() != null) {
+                    validateBody.addProperty("clientToken", account.getClientToken());
+                }
+                httpClient.postJson(provider, provider.authUrl("/validate"), validateBody);
+            }
+            account.setStatus(AccountStatus.VALID);
+            account.setLastValidatedAt(now);
+            account.setConsecutiveFailures(0);
+            account.setLastError(null);
+            accountDAO.update(account);
+            statusCache.put(account.getId(), AccountStatus.VALID);
+            WawelAuth.debug("OAuth account " + account.getId() + " (" + account.getProfileName() + ") validated OK");
+            return AccountStatus.VALID;
+        } catch (ProviderOAuthClient.HttpStatusException e) {
+            if (!isAuthFailureStatus(e.getStatusCode())) {
+                markUnverified(account, e.getMessage());
+                return AccountStatus.UNVERIFIED;
+            }
+        } catch (YggdrasilRequestException e) {
+            if (!isAuthFailureStatus(e.getHttpStatus())) {
+                markUnverified(account, e.getMessage());
+                return AccountStatus.UNVERIFIED;
+            }
+        } catch (IOException e) {
+            markUnverified(account, e.getMessage());
+            return AccountStatus.UNVERIFIED;
+        }
+
+        if (account.getRefreshToken() == null || account.getRefreshToken()
+            .trim()
+            .isEmpty()) {
+            markStatus(account, AccountStatus.EXPIRED, "Missing OAuth refresh token");
+            return AccountStatus.EXPIRED;
+        }
+
+        try {
+            ProviderOAuthClient.LoginResult refreshed = oauthClient.refreshFromToken(
+                account.getRefreshToken(),
+                provider,
+                account.getProfileUuid(),
+                account.getProfileName(),
+                account.getAccessToken(),
+                s -> {});
+
+            account.setAccessToken(refreshed.getAccessToken());
+            account.setRefreshToken(refreshed.getRefreshToken());
+            account.setClientToken(refreshed.getClientToken());
+            account.setUserUuid(UuidUtil.toUnsigned(refreshed.getProfileUuid()));
+            account.setProfileUuid(refreshed.getProfileUuid());
+            account.setProfileName(refreshed.getProfileName());
+            account.setStatus(AccountStatus.REFRESHED);
+            account.setLastValidatedAt(now);
+            account.setConsecutiveFailures(0);
+            account.setLastError(null);
+            account.setTokenIssuedAt(now);
+            accountDAO.update(account);
+            statusCache.put(account.getId(), AccountStatus.REFRESHED);
+            WawelAuth.debug("OAuth account " + account.getId() + " (" + account.getProfileName() + ") refreshed OK");
+            return AccountStatus.REFRESHED;
+        } catch (ProviderOAuthClient.HttpStatusException e) {
+            if (isAuthFailureStatus(e.getStatusCode())) {
+                markStatus(account, AccountStatus.EXPIRED, e.getMessage());
+                WawelAuth.LOG.warn(
+                    "OAuth account '{}' on '{}' expired: re-authentication required",
+                    account.getProfileName(),
+                    account.getProviderName());
+                return AccountStatus.EXPIRED;
+            }
+            markUnverified(account, e.getMessage());
+            return AccountStatus.UNVERIFIED;
+        } catch (IOException e) {
+            markUnverified(account, e.getMessage());
+            return AccountStatus.UNVERIFIED;
+        }
+    }
+
     private static boolean isMicrosoftManagedMojangAccount(ClientProvider provider, ClientAccount account) {
         return provider != null && account != null
             && BuiltinProviders.isMojangProvider(provider.getName())
+            && account.getRefreshToken() != null
+            && !account.getRefreshToken()
+                .trim()
+                .isEmpty();
+    }
+
+    private static boolean isProviderOauthManagedAccount(ClientProvider provider, ClientAccount account) {
+        return provider != null && account != null
+            && ProviderOAuthClients.resolve(provider) != null
             && account.getRefreshToken() != null
             && !account.getRefreshToken()
                 .trim()

@@ -1,8 +1,6 @@
 package org.fentanylsolutions.wawelauth.packet;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.util.ChatComponentText;
+import org.fentanylsolutions.wawelauth.client.ClipboardHelper;
 
 import cpw.mods.fml.common.network.ByteBufUtils;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
@@ -41,16 +39,7 @@ public final class ClipboardCopyPacket implements IMessage {
             if (!ctx.side.isClient()) {
                 return null;
             }
-
-            Minecraft minecraft = Minecraft.getMinecraft();
-            minecraft.func_152344_a(() -> { // Minecraft.addScheduledTask
-                if (message.text != null && !message.text.isEmpty()) {
-                    GuiScreen.setClipboardString(message.text);
-                }
-                if (message.description != null && !message.description.isEmpty() && minecraft.thePlayer != null) {
-                    minecraft.thePlayer.addChatMessage(new ChatComponentText(message.description));
-                }
-            });
+            ClipboardHelper.copyToClipboard(message.text, message.description);
             return null;
         }
     }

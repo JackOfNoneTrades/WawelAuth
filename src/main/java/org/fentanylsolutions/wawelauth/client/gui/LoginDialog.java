@@ -6,8 +6,10 @@ import net.minecraft.client.Minecraft;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.client.ClipboardHelper;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
+import org.fentanylsolutions.wawelauth.wawelclient.oauth.ProviderOAuthClients;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IKey;
@@ -27,6 +29,8 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class LoginDialog {
 
+    private static final int STATUS_MAX_WIDTH_PX = 214;
+
     private final Consumer<ClientAccount> onResult;
     private final IPanelHandler panelHandler;
     private String providerName;
@@ -40,6 +44,8 @@ public final class LoginDialog {
             String provider = this.providerName != null ? this.providerName : "";
             String providerLabel = ProviderDisplayName.displayName(provider);
             boolean supportsMicrosoftLogin = ProviderDisplayName.isMicrosoftProvider(provider);
+            boolean supportsProviderOAuth = ProviderOAuthClients.supports(provider);
+            boolean supportsOauthLogin = supportsMicrosoftLogin || supportsProviderOAuth;
             boolean offlineAccountLogin = ProviderDisplayName.isOfflineProvider(provider);
             boolean directMicrosoftLogin = supportsMicrosoftLogin && this.forceMicrosoftLogin;
             Dialog<ClientAccount> dialog = new Dialog<>("wawelauth_login", this.onResult);
@@ -55,11 +61,13 @@ public final class LoginDialog {
             String[] errorText = { initMsg != null ? initMsg : "" };
             boolean[] isError = { initMsg == null };
             boolean[] busy = { false };
+            String[] oauthDeviceCode = { null };
 
             ButtonWidget<?> loginBtn = new ButtonWidget<>();
             ButtonWidget<?> cancelBtn = new ButtonWidget<>();
-            ButtonWidget<?> microsoftBtn = new ButtonWidget<>();
-            Runnable[] startMicrosoftLogin = new Runnable[1];
+            ButtonWidget<?> oauthBtn = new ButtonWidget<>();
+            ButtonWidget<?> copyBtn = new ButtonWidget<>();
+            Runnable[] startOauthLogin = new Runnable[1];
 
             cancelBtn.size(56, 18)
                 .onMousePressed(mouseButton -> {
@@ -71,6 +79,7 @@ public final class LoginDialog {
             Runnable doLogin = () -> {
                 if (busy[0]) return;
                 isError[0] = true;
+                oauthDeviceCode[0] = null;
 
                 if (provider.isEmpty()) {
                     errorText[0] = GuiText.tr("wawelauth.gui.login.error.no_provider");
@@ -117,70 +126,148 @@ public final class LoginDialog {
             passwordField.onEnterPressed(doLogin);
 
             loginBtn.size(56, 18)
+                .setEnabledIf(widget -> !busy[0])
                 .onMousePressed(mouseButton -> {
                     doLogin.run();
                     return true;
                 });
             GuiText.fitButtonLabel(loginBtn, 56, "wawelauth.gui.common.login");
 
-            startMicrosoftLogin[0] = () -> {
+            startOauthLogin[0] = () -> {
                 if (busy[0]) return;
-                isError[0] = true;
+                isError[0] = false;
+                oauthDeviceCode[0] = null;
 
-                if (!supportsMicrosoftLogin) {
-                    errorText[0] = GuiText.tr("wawelauth.gui.login.error.microsoft_only");
+                if (!supportsOauthLogin) {
+                    isError[0] = true;
+                    errorText[0] = GuiText.tr("wawelauth.gui.login.error.oauth_only");
                     return;
                 }
 
                 busy[0] = true;
-                errorText[0] = GuiText.tr("wawelauth.gui.login.status.microsoft_opening");
+                errorText[0] = GuiText.tr(
+                    supportsMicrosoftLogin ? "wawelauth.gui.login.status.microsoft_opening"
+                        : "wawelauth.gui.login.status.oauth_opening");
 
-                WawelClient.instance()
-                    .getAccountManager()
-                    .authenticateMicrosoft(
-                        provider,
-                        status -> Minecraft.getMinecraft()
-                            .func_152344_a(() -> errorText[0] = status))
-                    .whenComplete((account, err) -> {
-                        Minecraft.getMinecraft()
-                            .func_152344_a(() -> {
-                                busy[0] = false;
-                                if (err != null) {
-                                    Throwable cause = err.getCause() != null ? err.getCause() : err;
-                                    errorText[0] = cause.getMessage();
-                                    WawelAuth.debug("Microsoft login failed: " + cause.getMessage());
-                                } else {
-                                    dialog.closeWith(account);
-                                }
-                            });
-                    });
+                if (supportsMicrosoftLogin) {
+                    WawelClient.instance()
+                        .getAccountManager()
+                        .authenticateMicrosoft(
+                            provider,
+                            status -> Minecraft.getMinecraft()
+                                .func_152344_a(() -> {
+                                    isError[0] = false;
+                                    errorText[0] = status;
+                                }))
+                        .whenComplete((account, err) -> {
+                            Minecraft.getMinecraft()
+                                .func_152344_a(() -> {
+                                    busy[0] = false;
+                                    if (err != null) {
+                                        Throwable cause = err.getCause() != null ? err.getCause() : err;
+                                        isError[0] = true;
+                                        errorText[0] = cause.getMessage();
+                                        WawelAuth.debug("Microsoft login failed: " + cause.getMessage());
+                                    } else {
+                                        dialog.closeWith(account);
+                                    }
+                                });
+                        });
+                } else {
+                    WawelClient.instance()
+                        .getAccountManager()
+                        .authenticateOAuth(
+                            provider,
+                            usernameField.getText()
+                                .trim(),
+                            status -> Minecraft.getMinecraft()
+                                .func_152344_a(() -> {
+                                    isError[0] = false;
+                                    errorText[0] = status;
+                                }),
+                            deviceCode -> Minecraft.getMinecraft()
+                                .func_152344_a(
+                                    () -> {
+                                        oauthDeviceCode[0] = deviceCode != null && !deviceCode.trim()
+                                            .isEmpty() ? deviceCode.trim() : null;
+                                    }))
+                        .whenComplete((account, err) -> {
+                            Minecraft.getMinecraft()
+                                .func_152344_a(() -> {
+                                    busy[0] = false;
+                                    oauthDeviceCode[0] = err != null ? null : oauthDeviceCode[0];
+                                    if (err != null) {
+                                        Throwable cause = err.getCause() != null ? err.getCause() : err;
+                                        isError[0] = true;
+                                        errorText[0] = cause.getMessage();
+                                        WawelAuth.debug("OAuth login failed: " + cause.getMessage());
+                                    } else {
+                                        dialog.closeWith(account);
+                                    }
+                                });
+                        });
+                }
             };
 
-            microsoftBtn.size(70, 18)
+            oauthBtn.size(70, 18)
+                .setEnabledIf(widget -> !busy[0])
                 .onMousePressed(mouseButton -> {
                     if (busy[0]) return true;
 
-                    if (!supportsMicrosoftLogin) {
-                        errorText[0] = GuiText.tr("wawelauth.gui.login.error.microsoft_only");
+                    if (!supportsOauthLogin) {
+                        errorText[0] = GuiText.tr("wawelauth.gui.login.error.oauth_only");
                         return true;
                     }
-                    startMicrosoftLogin[0].run();
+                    startOauthLogin[0].run();
                     return true;
                 });
-            GuiText.fitButtonLabel(microsoftBtn, 70, "wawelauth.gui.common.microsoft");
+            GuiText.fitButtonLabel(
+                oauthBtn,
+                70,
+                supportsMicrosoftLogin ? "wawelauth.gui.common.microsoft" : "wawelauth.gui.common.oauth");
+
+            copyBtn.size(50, 18)
+                .setEnabledIf(widget -> oauthDeviceCode[0] != null)
+                .onMousePressed(mouseButton -> {
+                    if (oauthDeviceCode[0] == null) {
+                        return true;
+                    }
+                    ClipboardHelper.copyToClipboard(
+                        oauthDeviceCode[0],
+                        GuiText.tr("wawelauth.gui.login.status.oauth_code_copied"));
+                    return true;
+                });
+            GuiText.fitButtonLabel(copyBtn, 50, "wawelauth.gui.common.copy");
+            copyBtn.tooltipDynamic(tooltip -> {
+                if (oauthDeviceCode[0] != null) {
+                    tooltip.addLine(IKey.str(oauthDeviceCode[0]));
+                }
+            });
+            copyBtn.tooltipAutoUpdate(true);
 
             Row buttonRow = new Row();
             buttonRow.widthRel(1.0f)
                 .height(20)
-                .mainAxisAlignment(Alignment.MainAxis.CENTER);
+                .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                .collapseDisabledChild();
             buttonRow.child(cancelBtn);
             if (!directMicrosoftLogin) {
-                buttonRow.child(new Widget<>().size(6, 18))
+                buttonRow.child(
+                    new Widget<>().size(6, 18)
+                        .setEnabledIf(widget -> !busy[0]))
                     .child(loginBtn);
             }
-            if (supportsMicrosoftLogin && !directMicrosoftLogin) {
-                buttonRow.child(new Widget<>().size(6, 18))
-                    .child(microsoftBtn);
+            if (supportsOauthLogin && !directMicrosoftLogin) {
+                buttonRow.child(
+                    new Widget<>().size(6, 18)
+                        .setEnabledIf(widget -> !busy[0]))
+                    .child(oauthBtn);
+            }
+            if (supportsProviderOAuth && !directMicrosoftLogin) {
+                buttonRow.child(
+                    new Widget<>().size(6, 18)
+                        .setEnabledIf(widget -> oauthDeviceCode[0] != null))
+                    .child(copyBtn);
             }
 
             Column root = new Column();
@@ -221,10 +308,23 @@ public final class LoginDialog {
             }
 
             root.child(
-                new TextWidget<>(IKey.dynamic(() -> errorText[0])).color(() -> isError[0] ? 0xFFFF5555 : 0xFF55FF55)
-                    .widthRel(1.0f)
-                    .height(12)
-                    .margin(0, 2))
+                new TextWidget<>(
+                    IKey.dynamic(
+                        () -> GuiText
+                            .ellipsizeToPixelWidth(errorText[0] != null ? errorText[0] : "", STATUS_MAX_WIDTH_PX)))
+                                .tooltipDynamic(tooltip -> {
+                                    String fullText = errorText[0];
+                                    if (fullText != null
+                                        && !GuiText.ellipsizeToPixelWidth(fullText, STATUS_MAX_WIDTH_PX)
+                                            .equals(fullText)) {
+                                        tooltip.addLine(IKey.str(fullText));
+                                    }
+                                })
+                                .tooltipAutoUpdate(true)
+                                .color(() -> isError[0] ? 0xFFFF5555 : 0xFF55FF55)
+                                .widthRel(1.0f)
+                                .height(12)
+                                .margin(0, 2))
                 .child(new Widget<>().size(1, 4))
                 .child(buttonRow);
 
@@ -233,7 +333,7 @@ public final class LoginDialog {
 
             if (directMicrosoftLogin) {
                 Minecraft.getMinecraft()
-                    .func_152344_a(startMicrosoftLogin[0]);
+                    .func_152344_a(startOauthLogin[0]);
             }
 
             return dialog;
