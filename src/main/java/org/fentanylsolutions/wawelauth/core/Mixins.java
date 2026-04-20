@@ -13,13 +13,13 @@ public class Mixins extends FentMixins {
         // Minecraft Accessors
         registry.mixin("AccessorNetworkSystem")
             .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.BOTH)
+            .side(MiscUtil.Side.SERVER)
             .build();
 
         // Minecraft Mixins
         registry.mixin("MixinNetworkSystem")
             .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.BOTH)
+            .side(MiscUtil.Side.SERVER)
             .build();
         registry.mixin("MixinNetHandlerLoginServerAuthThread")
             .phase(MixinUtil.Phase.EARLY)
