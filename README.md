@@ -171,6 +171,24 @@ Fallback providers are defined in `fallback-servers.json` and checked in order.
 }
 ```
 
+### LittleSkin fallback example
+
+```json
+{
+  "enabled": true,
+  "name": "littleskin",
+  "apiRoot": "https://littleskin.cn/api/yggdrasil",
+  "sessionServerUrl": "https://littleskin.cn/api/yggdrasil/sessionserver",
+  "accountUrl": "https://littleskin.cn/api/yggdrasil/authserver",
+  "servicesUrl": "https://littleskin.cn/api/yggdrasil",
+  "signaturePublicKeyBase64": "",
+  "skinDomains": [
+    "littleskin.cn"
+  ],
+  "cacheTtlSeconds": 300
+}
+```
+
 ## Commands
 
 ### `/wawelauth`
