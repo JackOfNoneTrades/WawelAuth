@@ -2,8 +2,11 @@ package org.fentanylsolutions.wawelauth.api;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.util.ResourceLocation;
 
+import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.client.render.SkinTextureState;
 import org.lwjgl.opengl.GL11;
 
 import cpw.mods.fml.relauncher.Side;
@@ -45,11 +48,19 @@ public class WawelFaceRendererClient {
      * @param alpha  opacity (0.0 = transparent, 1.0 = opaque)
      */
     public static void drawFace(ResourceLocation skin, float x, float y, int width, int height, float alpha) {
-        if (skin == null) skin = WawelTextureResolver.getDefaultSkin();
+        skin = resolveBindableSkin(skin);
+        if (skin == null) {
+            return;
+        }
 
-        Minecraft.getMinecraft()
-            .getTextureManager()
-            .bindTexture(skin);
+        try {
+            Minecraft.getMinecraft()
+                .getTextureManager()
+                .bindTexture(skin);
+        } catch (RuntimeException e) {
+            WawelAuth.debug("Failed to bind face texture '" + skin + "': " + e.getMessage());
+            return;
+        }
 
         int texWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
         int texHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
@@ -77,6 +88,21 @@ public class WawelFaceRendererClient {
             GL11.glEnable(GL11.GL_ALPHA_TEST);
             drawTexQuad(x, y, hatU, hatV, sampleW, sampleH, width, height, texWidth, texHeight, alpha);
         }
+    }
+
+    private static ResourceLocation resolveBindableSkin(ResourceLocation skin) {
+        ResourceLocation fallback = WawelTextureResolver.getDefaultSkin();
+        if (skin == null) {
+            return fallback;
+        }
+        if (skin.equals(fallback) || skin.equals(WawelTextureResolver.getLegacyDefaultSkin())) {
+            return skin;
+        }
+
+        ITextureObject textureObject = Minecraft.getMinecraft()
+            .getTextureManager()
+            .getTexture(skin);
+        return SkinTextureState.isReadyForRender(textureObject) ? skin : fallback;
     }
 
     /**

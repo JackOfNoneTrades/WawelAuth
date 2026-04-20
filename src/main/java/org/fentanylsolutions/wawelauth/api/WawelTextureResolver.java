@@ -467,7 +467,7 @@ public class WawelTextureResolver {
         ITextureObject textureObject = Minecraft.getMinecraft()
             .getTextureManager()
             .getTexture(texLocation);
-        return SkinTextureState.isUsable(textureObject);
+        return SkinTextureState.isReadyForRender(textureObject);
     }
 
     private static SkinModel extractSkinModelFromProfile(GameProfile profile) {
