@@ -19,6 +19,10 @@ public class SkinLayers3DConfig {
     @Config.DefaultBoolean(true)
     public static boolean hideOverlayArmor = true;
 
+    @Config.Comment("Allow first-person 3D sleeve layers to render even when armor would normally hide overlays.")
+    @Config.DefaultBoolean(false)
+    public static boolean showFirstPerson3DLayersWithArmor = false;
+
     @Config.Comment("Master toggle for all 3D skin layer rendering (players and skulls).")
     @Config.DefaultBoolean(true)
     public static boolean enabled3D = true;

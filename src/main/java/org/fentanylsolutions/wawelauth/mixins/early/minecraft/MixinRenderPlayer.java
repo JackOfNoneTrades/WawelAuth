@@ -96,6 +96,7 @@ public class MixinRenderPlayer {
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         UUID uuid = player.getUniqueID();
         ext.wawelauth$setCurrentPlayerUuid(uuid);
+        SkinLayers3DState state = null;
 
         if (!SkinLayers3DConfig.modernSkinSupport) {
             ext.wawelauth$setSlim(false);
@@ -112,7 +113,7 @@ public class MixinRenderPlayer {
 
             if (SkinLayers3DConfig.enabled3D) {
                 SkinLayers3DState existing = SkinLayers3DSetup.getState(uuid);
-                SkinLayers3DState state = SkinLayers3DSetup.createOrUpdate(clientPlayer, existing, slim);
+                state = SkinLayers3DSetup.createOrUpdate(clientPlayer, existing, slim);
                 SkinLayers3DSetup.updateState(uuid, state);
             } else {
                 SkinLayers3DSetup.updateState(uuid, null);
@@ -128,7 +129,16 @@ public class MixinRenderPlayer {
         if (SkinLayers3DConfig.hideOverlayArmor) {
             ItemStack chest = player.inventory.armorInventory[2];
             if (chest != null && chest.getItem() instanceof ItemArmor) {
-                ext.wawelAuth$getRightArmWear().showModel = false;
+                boolean allowFirstPerson3DWithArmor = SkinLayers3DConfig.showFirstPerson3DLayersWithArmor
+                    && SkinLayers3DConfig.enabled3D
+                    && SkinLayers3DConfig.enableRightSleeve3D
+                    && state != null
+                    && state.initialized
+                    && state.rightSleeveMesh != null
+                    && state.rightSleeveMesh.isCompiled();
+                if (!allowFirstPerson3DWithArmor) {
+                    ext.wawelAuth$getRightArmWear().showModel = false;
+                }
             }
         }
     }
