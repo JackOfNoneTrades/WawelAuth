@@ -20,15 +20,15 @@ public class ClientConfig {
 
     @Config.Comment("Regex patterns matched against provider name/API root. Skin upload is disabled for matches.")
     @Config.DefaultStringList({ "ely\\.by" })
-    public static String[] disableSkinUpload = { "ely\\.by" };
+    public static String[] disableSkinUpload = { "ely\\.by", "littleskin\\.cn" };
 
     @Config.Comment("Regex patterns matched against provider name/API root. Cape upload is disabled for matches.")
     @Config.DefaultStringList({ "ely\\.by", "^Mojang$" })
-    public static String[] disableCapeUpload = { "ely\\.by", "^Mojang$" };
+    public static String[] disableCapeUpload = { "ely\\.by", "^Mojang$", "littleskin\\.cn" };
 
     @Config.Comment("Regex patterns matched against provider name/API root. Texture reset is disabled for matches.")
     @Config.DefaultStringList({ "ely\\.by" })
-    public static String[] disableTextureReset = { "ely\\.by" };
+    public static String[] disableTextureReset = { "ely\\.by", "littleskin\\.cn" };
 
     @Config.Ignore
     private static transient List<Pattern> compiledSkinPatterns;
