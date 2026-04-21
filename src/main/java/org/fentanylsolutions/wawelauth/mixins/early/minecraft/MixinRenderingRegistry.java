@@ -38,7 +38,7 @@ public class MixinRenderingRegistry {
                 }
                 if (modelBiped instanceof IModelBipedModernExt bipedExtended) {
                     if (wawelAuth$rendererCopiesPlayerSkin(renderer)) {
-                        bipedExtended.wawelauth$initModern();
+                        bipedExtended.initModern();
                     }
                 }
             });

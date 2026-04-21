@@ -2,28 +2,28 @@ package org.fentanylsolutions.wawelauth.common;
 
 public interface ISkinLayerExtender {
 
+    boolean wawelAuth$getHideHat();
+
+    void wawelAuth$setHideHat(boolean value);
+
     boolean wawelAuth$getHideJacket();
 
     void wawelAuth$setHideJacket(boolean value);
 
-    boolean wawelAuth$getLeftSleeve();
+    boolean wawelAuth$getHideLeftSleeve();
 
     void wawelAuth$setHideLeftSleeve(boolean value);
 
-    boolean wawelAuth$getRightSleeve();
+    boolean wawelAuth$getHideRightSleeve();
 
-    void wawelAuth$setRightSleeve(boolean value);
+    void wawelAuth$setHideRightSleeve(boolean value);
 
-    boolean wawelAuth$getLeftPants();
+    boolean wawelAuth$getHideLeftPants();
 
-    void wawelAuth$setLeftPants(boolean value);
+    void wawelAuth$setHideLeftPants(boolean value);
 
-    boolean wawelAuth$getRightPants();
+    boolean wawelAuth$getHideRightPants();
 
-    void wawelAuth$setRightPants(boolean value);
-
-    boolean wawelAuth$getHideHat();
-
-    void wawelAuth$setHideHat(boolean value);
+    void wawelAuth$setHideRightPants(boolean value);
 
 }

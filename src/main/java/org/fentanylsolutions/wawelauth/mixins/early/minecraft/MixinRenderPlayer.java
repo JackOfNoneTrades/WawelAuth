@@ -41,7 +41,7 @@ public class MixinRenderPlayer {
     @Inject(method = "<init>", at = @At("RETURN"))
     private void wawelauth$initModernModel(CallbackInfo ci) {
         if (SkinLayers3DConfig.modernSkinSupport) {
-            ((IModelBipedModernExt) this.modelBipedMain).wawelauth$initModern();
+            ((IModelBipedModernExt) this.modelBipedMain).initModern();
         }
     }
 
@@ -55,20 +55,20 @@ public class MixinRenderPlayer {
         float partialTicks, CallbackInfo ci) {
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         UUID uuid = player.getUniqueID();
-        ext.wawelauth$setCurrentPlayerUuid(uuid);
+        ext.setCurrentPlayerUuid(uuid);
 
         if (!SkinLayers3DConfig.modernSkinSupport) {
-            ext.wawelauth$setSlim(false);
+            ext.setSlim(false);
             SkinLayers3DSetup.updateState(uuid, null);
             return;
         }
-        if (!ext.wawelauth$isModern()) {
-            ext.wawelauth$initModern();
+        if (!ext.isModern()) {
+            ext.initModern();
         }
 
         SkinModel model = SkinModelHelper.getSkinModel(player);
         boolean slim = model == SkinModel.SLIM;
-        ext.wawelauth$setSlim(slim);
+        ext.setSlim(slim);
 
         if (!SkinLayers3DConfig.enabled3D) {
             SkinLayers3DSetup.updateState(uuid, null);
@@ -95,21 +95,21 @@ public class MixinRenderPlayer {
     private void wawelauth$setSlimFirstPersonArm(EntityPlayer player, CallbackInfo ci) {
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         UUID uuid = player.getUniqueID();
-        ext.wawelauth$setCurrentPlayerUuid(uuid);
+        ext.setCurrentPlayerUuid(uuid);
         SkinLayers3DState state = null;
 
         if (!SkinLayers3DConfig.modernSkinSupport) {
-            ext.wawelauth$setSlim(false);
+            ext.setSlim(false);
             SkinLayers3DSetup.updateState(uuid, null);
             return;
         }
-        if (!ext.wawelauth$isModern()) {
-            ext.wawelauth$initModern();
+        if (!ext.isModern()) {
+            ext.initModern();
         }
         if (player instanceof AbstractClientPlayer clientPlayer) {
             SkinModel model = SkinModelHelper.getSkinModel(clientPlayer);
             boolean slim = model == SkinModel.SLIM;
-            ext.wawelauth$setSlim(slim);
+            ext.setSlim(slim);
 
             if (SkinLayers3DConfig.enabled3D) {
                 SkinLayers3DState existing = SkinLayers3DSetup.getState(uuid);
@@ -123,9 +123,11 @@ public class MixinRenderPlayer {
         }
 
         // Apply right sleeve visibility for first-person arm
-        if (((ISkinLayerExtender) player).wawelAuth$getRightSleeve()) {
-            ext.wawelAuth$getRightArmWear().showModel = false;
+        if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()) {
+            ext.getRightArmWear().showModel = false;
         }
+
+        // TODO: find a better solution instead of disabling
         if (SkinLayers3DConfig.hideOverlayArmor) {
             ItemStack chest = player.inventory.armorInventory[2];
             if (chest != null && chest.getItem() instanceof ItemArmor) {
@@ -137,19 +139,33 @@ public class MixinRenderPlayer {
                     && state.rightSleeveMesh != null
                     && state.rightSleeveMesh.isCompiled();
                 if (!allowFirstPerson3DWithArmor) {
-                    ext.wawelAuth$getRightArmWear().showModel = false;
+                    ext.getRightArmWear().showModel = false;
                 }
             }
         }
+
     }
 
     /**
-     * Render the right arm overlay layer after the first-person arm base renders.
+     * Renders right arm overlay layer before first-person arm base renders
      */
-    @Inject(method = "renderFirstPersonArm", at = @At("TAIL"))
-    private void wawelauth$renderFirstPersonArmWear(EntityPlayer player, CallbackInfo ci) {
+    @Inject(
+        method = "renderFirstPersonArm",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/model/ModelRenderer;render(F)V",
+            shift = At.Shift.BEFORE))
+    private void wawelauth$renderFirstPersonArmWearPre(EntityPlayer player, CallbackInfo ci) {
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
-        ext.wawelauth$renderRightArmWear(0.0625F);
-        ext.wawelAuth$getRightArmWear().showModel = true;
+        ext.render3DRightArmWear(0.0625F);
+    }
+
+    /**
+     * Returns right arm overlay layer visibility after first-person arm base renders
+     */
+    @Inject(method = "renderFirstPersonArm", at = @At(value = "TAIL"))
+    private void wawelauth$renderFirstPersonArmWearPost(EntityPlayer player, CallbackInfo ci) {
+        IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
+        ext.getRightArmWear().showModel = true;
     }
 }

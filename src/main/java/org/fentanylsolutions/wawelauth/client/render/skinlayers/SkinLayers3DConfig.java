@@ -23,7 +23,7 @@ public class SkinLayers3DConfig {
     @Config.DefaultBoolean(false)
     public static boolean showFirstPerson3DLayersWithArmor = false;
 
-    @Config.Comment("Master toggle for all 3D skin layer rendering (players and skulls).")
+    @Config.Comment("Master toggle for all 3D skin layer rendering (players and skulls). Not compatible with SmartMoving.")
     @Config.DefaultBoolean(true)
     public static boolean enabled3D = true;
 

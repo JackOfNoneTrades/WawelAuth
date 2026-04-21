@@ -9,7 +9,7 @@ import net.minecraft.client.model.ModelRenderer;
  * <p>
  * Cast any ModelBiped to this interface to access modern 64x64 skin features.
  * Non-player ModelBiped instances (zombies, skeletons, armor) have
- * {@link #wawelauth$isModern()} → false; all methods are no-ops for them.
+ * {@link #isModern()} → false; all methods are no-ops for them.
  */
 public interface IModelBipedModernExt {
 
@@ -19,33 +19,33 @@ public interface IModelBipedModernExt {
      * creates 5 overlay layers and slim arm variants.
      * Called once from MixinRenderPlayer's constructor.
      */
-    void wawelauth$initModern();
+    void initModern();
 
     /**
      * Swap between slim (3px) and classic (4px) arm ModelRenderers.
      * No-op if the current state already matches the requested mode.
      */
-    void wawelauth$setSlim(boolean slim);
+    void setSlim(boolean slim);
 
     /**
      * Returns true if this model has been initialized for modern 64x64 rendering.
      */
-    boolean wawelauth$isModern();
+    boolean isModern();
 
     /**
-     * Render the right arm overlay layer (for first-person arm rendering).
+     * Renders the 3d right arm overlay mesh (for first-person arm rendering).
      */
-    void wawelauth$renderRightArmWear(float scale);
+    void render3DRightArmWear(float scale);
 
-    void wawelauth$setCurrentPlayerUuid(UUID uuid);
+    void setCurrentPlayerUuid(UUID uuid);
 
-    ModelRenderer wawelAuth$getBodyWear();
+    ModelRenderer getBodyWear();
 
-    ModelRenderer wawelAuth$getRightArmWear();
+    ModelRenderer getRightArmWear();
 
-    ModelRenderer wawelAuth$getLeftArmWear();
+    ModelRenderer getLeftArmWear();
 
-    ModelRenderer wawelAuth$getRightLegWear();
+    ModelRenderer getRightLegWear();
 
-    ModelRenderer wawelAuth$getLeftLegWear();
+    ModelRenderer getLeftLegWear();
 }

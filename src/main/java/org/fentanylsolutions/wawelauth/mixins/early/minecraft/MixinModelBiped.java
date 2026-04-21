@@ -20,6 +20,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import cpw.mods.fml.common.Loader;
+
 /**
  * Injects modern 64x64 skin support into vanilla ModelBiped.
  * <p>
@@ -30,6 +32,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Non-player ModelBiped instances (zombies, skeletons, armor) are unaffected:
  * modernEnabled stays false, and all injections are no-ops.
  */
+@SuppressWarnings("AddedMixinMembersNamePattern") // Using @Unique already prevents collisions
 @Mixin(ModelBiped.class)
 public abstract class MixinModelBiped extends ModelBase implements IModelBipedModernExt {
 
@@ -48,52 +51,44 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     public ModelRenderer bipedRightLeg;
     @Shadow
     public ModelRenderer bipedLeftLeg;
-    @Shadow
-    public ModelRenderer bipedEars;
-    @Shadow
-    public ModelRenderer bipedCloak;
 
     // -- Overlay layers --
     @Unique
-    private ModelRenderer wawelauth$bodyWear;
+    private ModelRenderer bodyWear;
     @Unique
-    private ModelRenderer wawelauth$rightArmWear;
+    private ModelRenderer rightLegWear;
     @Unique
-    private ModelRenderer wawelauth$leftArmWear;
-    @Unique
-    private ModelRenderer wawelauth$rightLegWear;
-    @Unique
-    private ModelRenderer wawelauth$leftLegWear;
+    private ModelRenderer leftLegWear;
 
-    // -- Classic (4px) arm references --
+    // -- Classic (4px) arm variants --
     @Unique
-    private ModelRenderer wawelauth$classicRightArm;
+    private ModelRenderer classicRightArm;
     @Unique
-    private ModelRenderer wawelauth$classicLeftArm;
+    private ModelRenderer classicLeftArm;
     @Unique
-    private ModelRenderer wawelauth$classicRightArmWear;
+    private ModelRenderer classicRightArmWear;
     @Unique
-    private ModelRenderer wawelauth$classicLeftArmWear;
+    private ModelRenderer classicLeftArmWear;
 
     // -- Slim (3px) arm variants --
     @Unique
-    private ModelRenderer wawelauth$slimRightArm;
+    private ModelRenderer slimRightArm;
     @Unique
-    private ModelRenderer wawelauth$slimLeftArm;
+    private ModelRenderer slimLeftArm;
     @Unique
-    private ModelRenderer wawelauth$slimRightArmWear;
+    private ModelRenderer slimRightArmWear;
     @Unique
-    private ModelRenderer wawelauth$slimLeftArmWear;
+    private ModelRenderer slimLeftArmWear;
 
     // -- State --
     @Unique
-    private boolean wawelauth$modernEnabled = false;
+    private boolean modernEnabled = false;
     @Unique
-    private boolean wawelauth$currentSlim = false;
+    private boolean currentSlim = false;
 
     // -- 3D skin layers state --
     @Unique
-    private UUID wawelauth$currentRenderingPlayerUuid = null;
+    private UUID currentRenderingPlayerUuid = null;
     @Unique
     private static final int LAYER_PART_HAT = 0;
     @Unique
@@ -108,332 +103,289 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     private static final int LAYER_PART_LEFT_LEG = 5;
 
     @Override
-    public ModelRenderer wawelAuth$getBodyWear() {
-        return this.wawelauth$bodyWear;
-    }
-
-    @Override
-    public ModelRenderer wawelAuth$getRightArmWear() {
-        return this.wawelauth$rightArmWear;
-    }
-
-    @Override
-    public ModelRenderer wawelAuth$getLeftArmWear() {
-        return this.wawelauth$leftArmWear;
-    }
-
-    @Override
-    public ModelRenderer wawelAuth$getRightLegWear() {
-        return this.wawelauth$rightLegWear;
-    }
-
-    @Override
-    public ModelRenderer wawelAuth$getLeftLegWear() {
-        return this.wawelauth$leftLegWear;
-    }
-
-    @Override
-    public void wawelauth$initModern() {
+    public void initModern() {
         ModelBiped self = (ModelBiped) (Object) this;
 
-        // Set texture dimensions to 64x64 BEFORE creating any new ModelRenderers
-        // so they pick up the correct texture size in their constructor.
+        float scale = 0.0F;
+        float overlay = 0.25F;
+
         self.textureWidth = 64;
         self.textureHeight = 64;
 
-        float scale = 0.0F;
+        /* Main Skin */
 
-        // -- Rebuild all vanilla parts with 64x64 UV mapping --
-        // Head (0,0)
-        this.bipedHead = new ModelRenderer(self, 0, 0);
+        this.remapUV(bipedHead, 0, 0);
         this.bipedHead.addBox(-4.0F, -8.0F, -4.0F, 8, 8, 8, scale);
-        this.bipedHead.setRotationPoint(0.0F, 0.0F, 0.0F);
 
-        // Hat overlay (32,0)
-        this.bipedHeadwear = new ModelRenderer(self, 32, 0);
-        this.bipedHeadwear.addBox(-4.0F, -8.0F, -4.0F, 8, 8, 8, scale + 0.5F);
-        this.bipedHeadwear.setRotationPoint(0.0F, 0.0F, 0.0F);
-
-        // Body (16,16)
-        this.bipedBody = new ModelRenderer(self, 16, 16);
+        this.remapUV(bipedBody, 16, 16);
         this.bipedBody.addBox(-4.0F, 0.0F, -2.0F, 8, 12, 4, scale);
-        this.bipedBody.setRotationPoint(0.0F, 0.0F, 0.0F);
 
-        // Right arm: classic 4px (40,16)
-        this.bipedRightArm = new ModelRenderer(self, 40, 16);
-        this.bipedRightArm.addBox(-3.0F, -2.0F, -2.0F, 4, 12, 4, scale);
-        this.bipedRightArm.setRotationPoint(-5.0F, 2.0F, 0.0F);
+        this.remapUV(bipedRightArm, 40, 16);
 
-        // Left arm: dedicated UV, NOT mirrored (32,48)
-        this.bipedLeftArm = new ModelRenderer(self, 32, 48);
-        this.bipedLeftArm.addBox(-1.0F, -2.0F, -2.0F, 4, 12, 4, scale);
-        this.bipedLeftArm.setRotationPoint(5.0F, 2.0F, 0.0F);
+        this.classicRightArm = new ModelRenderer(self, 40, 16);
+        this.classicRightArm.addBox(-3.0F, -2.0F, -2.0F, 4, 12, 4, scale);
 
-        // Right leg (0,16)
-        this.bipedRightLeg = new ModelRenderer(self, 0, 16);
+        this.slimRightArm = new ModelRenderer(self, 40, 16);
+        this.slimRightArm.addBox(-2.0F, -2.0F, -2.0F, 3, 12, 4, scale);
+        this.slimRightArm.setRotationPoint(0.0F, 0.5F, 0.0F);
+
+        this.remapUV(bipedLeftArm, 32, 48);
+
+        this.classicLeftArm = new ModelRenderer(self, 32, 48);
+        this.classicLeftArm.addBox(-1.0F, -2.0F, -2.0F, 4, 12, 4, scale);
+
+        this.slimLeftArm = new ModelRenderer(self, 32, 48);
+        this.slimLeftArm.addBox(-1.0F, -2.0F, -2.0F, 3, 12, 4, scale);
+        this.slimLeftArm.setRotationPoint(0.0F, 0.5F, 0.0F);
+
+        this.remapUV(bipedRightLeg, 0, 16);
         this.bipedRightLeg.addBox(-2.0F, 0.0F, -2.0F, 4, 12, 4, scale);
-        this.bipedRightLeg.setRotationPoint(-1.9F, 12.0F, 0.0F);
 
-        // Left leg: dedicated UV, NOT mirrored (16,48)
-        this.bipedLeftLeg = new ModelRenderer(self, 16, 48);
+        this.remapUV(bipedLeftLeg, 16, 48);
         this.bipedLeftLeg.addBox(-2.0F, 0.0F, -2.0F, 4, 12, 4, scale);
-        this.bipedLeftLeg.setRotationPoint(1.9F, 12.0F, 0.0F);
 
-        // Cloak (0,0): same as vanilla
-        this.bipedCloak = new ModelRenderer(self, 0, 0);
-        // Cape textures are 64x32, not 64x64.
-        this.bipedCloak.setTextureSize(64, 32);
-        this.bipedCloak.addBox(-5.0F, 0.0F, -1.0F, 10, 16, 1, scale);
+        this.remapUV(bipedHeadwear, 32, 0);
+        this.bipedHeadwear.addBox(-4.0F, -8.0F, -4.0F, 8, 8, 8, scale + 0.5F);
 
-        // Ears (24,0): same as vanilla
-        this.bipedEars = new ModelRenderer(self, 24, 0);
-        this.bipedEars.addBox(-3.0F, -6.0F, -1.0F, 6, 6, 1, scale);
+        /* Skin Overlay */
 
-        // -- Create 5 overlay layers (all with +0.25F expansion) --
-        float overlay = 0.25F;
+        this.bodyWear = new ModelRenderer(self, 16, 32);
+        this.bodyWear.addBox(-4.0F, 0.0F, -2.0F, 8, 12, 4, scale + overlay);
 
-        // Body wear (16,32)
-        this.wawelauth$bodyWear = new ModelRenderer(self, 16, 32);
-        this.wawelauth$bodyWear.addBox(-4.0F, 0.0F, -2.0F, 8, 12, 4, scale + overlay);
-        this.wawelauth$bodyWear.setRotationPoint(0.0F, 0.0F, 0.0F);
+        this.classicRightArmWear = new ModelRenderer(self, 40, 32);
+        this.classicRightArmWear.addBox(-3.0F, -2.0F, -2.0F, 4, 12, 4, scale + overlay);
 
-        // Right arm wear (40,32)
-        ModelRenderer rightArmWear = new ModelRenderer(self, 40, 32);
-        rightArmWear.addBox(-3.0F, -2.0F, -2.0F, 4, 12, 4, scale + overlay);
-        rightArmWear.setRotationPoint(-5.0F, 2.0F, 0.0F);
-        this.wawelauth$rightArmWear = rightArmWear;
+        this.slimRightArmWear = new ModelRenderer(self, 40, 32);
+        this.slimRightArmWear.addBox(-2.0F, -2.0F, -2.0F, 3, 12, 4, scale + overlay);
+        this.slimRightArmWear.setRotationPoint(0.0F, 0.5F, 0.0F);
 
-        // Left arm wear (48,48)
-        ModelRenderer leftArmWear = new ModelRenderer(self, 48, 48);
-        leftArmWear.addBox(-1.0F, -2.0F, -2.0F, 4, 12, 4, scale + overlay);
-        leftArmWear.setRotationPoint(5.0F, 2.0F, 0.0F);
-        this.wawelauth$leftArmWear = leftArmWear;
+        this.classicLeftArmWear = new ModelRenderer(self, 48, 48);
+        this.classicLeftArmWear.addBox(-1.0F, -2.0F, -2.0F, 4, 12, 4, scale + overlay);
 
-        // Right leg wear (0,32)
-        this.wawelauth$rightLegWear = new ModelRenderer(self, 0, 32);
-        this.wawelauth$rightLegWear.addBox(-2.0F, 0.0F, -2.0F, 4, 12, 4, scale + overlay);
-        this.wawelauth$rightLegWear.setRotationPoint(-1.9F, 12.0F, 0.0F);
+        this.slimLeftArmWear = new ModelRenderer(self, 48, 48);
+        this.slimLeftArmWear.addBox(-1.0F, -2.0F, -2.0F, 3, 12, 4, scale + overlay);
+        this.slimLeftArmWear.setRotationPoint(0.0F, 0.5F, 0.0F);
 
-        // Left leg wear (0,48)
-        this.wawelauth$leftLegWear = new ModelRenderer(self, 0, 48);
-        this.wawelauth$leftLegWear.addBox(-2.0F, 0.0F, -2.0F, 4, 12, 4, scale + overlay);
-        this.wawelauth$leftLegWear.setRotationPoint(1.9F, 12.0F, 0.0F);
+        this.rightLegWear = new ModelRenderer(self, 0, 32);
+        this.rightLegWear.addBox(-2.0F, 0.0F, -2.0F, 4, 12, 4, scale + overlay);
 
-        // -- Save classic arm references --
-        this.wawelauth$classicRightArm = this.bipedRightArm;
-        this.wawelauth$classicLeftArm = this.bipedLeftArm;
-        this.wawelauth$classicRightArmWear = this.wawelauth$rightArmWear;
-        this.wawelauth$classicLeftArmWear = this.wawelauth$leftArmWear;
+        this.leftLegWear = new ModelRenderer(self, 0, 48);
+        this.leftLegWear.addBox(-2.0F, 0.0F, -2.0F, 4, 12, 4, scale + overlay);
 
-        // -- Create slim (3px) arm variants --
-        // Slim right arm (40,16): box width 3 instead of 4
-        this.wawelauth$slimRightArm = new ModelRenderer(self, 40, 16);
-        this.wawelauth$slimRightArm.addBox(-2.0F, -2.0F, -2.0F, 3, 12, 4, scale);
-        this.wawelauth$slimRightArm.setRotationPoint(-5.0F, 2.5F, 0.0F);
+        /* Kindergarten */
 
-        // Slim left arm (32,48): box width 3
-        this.wawelauth$slimLeftArm = new ModelRenderer(self, 32, 48);
-        this.wawelauth$slimLeftArm.addBox(-1.0F, -2.0F, -2.0F, 3, 12, 4, scale);
-        this.wawelauth$slimLeftArm.setRotationPoint(5.0F, 2.5F, 0.0F);
+        this.bipedBody.addChild(bodyWear);
 
-        // Slim right arm wear (40,32)
-        this.wawelauth$slimRightArmWear = new ModelRenderer(self, 40, 32);
-        this.wawelauth$slimRightArmWear.addBox(-2.0F, -2.0F, -2.0F, 3, 12, 4, scale + overlay);
-        this.wawelauth$slimRightArmWear.setRotationPoint(-5.0F, 2.5F, 0.0F);
+        this.classicRightArm.addChild(classicRightArmWear);
+        this.classicLeftArm.addChild(classicLeftArmWear);
+        this.slimRightArm.addChild(slimRightArmWear);
+        this.slimLeftArm.addChild(slimLeftArmWear);
 
-        // Slim left arm wear (48,48)
-        this.wawelauth$slimLeftArmWear = new ModelRenderer(self, 48, 48);
-        this.wawelauth$slimLeftArmWear.addBox(-1.0F, -2.0F, -2.0F, 3, 12, 4, scale + overlay);
-        this.wawelauth$slimLeftArmWear.setRotationPoint(5.0F, 2.5F, 0.0F);
+        this.bipedRightArm.addChild(classicRightArm);
+        this.bipedRightArm.addChild(slimRightArm);
+        this.bipedLeftArm.addChild(classicLeftArm);
+        this.bipedLeftArm.addChild(slimLeftArm);
 
-        this.wawelauth$modernEnabled = true;
-        this.wawelauth$currentSlim = false;
+        this.bipedRightLeg.addChild(rightLegWear);
+        this.bipedLeftLeg.addChild(leftLegWear);
+
+        this.modernEnabled = true;
+        this.currentSlim = false;
     }
 
     @Override
-    public void wawelauth$setSlim(boolean slim) {
-        if (!this.wawelauth$modernEnabled) return;
-        if (slim == this.wawelauth$currentSlim) return;
+    public void setSlim(boolean slim) {
+        if (!this.modernEnabled) return;
 
-        if (slim) {
-            this.bipedRightArm = this.wawelauth$slimRightArm;
-            this.bipedLeftArm = this.wawelauth$slimLeftArm;
-            this.wawelauth$rightArmWear = this.wawelauth$slimRightArmWear;
-            this.wawelauth$leftArmWear = this.wawelauth$slimLeftArmWear;
-        } else {
-            this.bipedRightArm = this.wawelauth$classicRightArm;
-            this.bipedLeftArm = this.wawelauth$classicLeftArm;
-            this.wawelauth$rightArmWear = this.wawelauth$classicRightArmWear;
-            this.wawelauth$leftArmWear = this.wawelauth$classicLeftArmWear;
-        }
+        this.currentSlim = slim;
 
-        this.wawelauth$currentSlim = slim;
+        this.classicRightArm.showModel = !slim;
+        this.classicLeftArm.showModel = !slim;
+
+        this.slimRightArm.showModel = slim;
+        this.slimLeftArm.showModel = slim;
     }
 
-    @Override
-    public boolean wawelauth$isModern() {
-        return this.wawelauth$modernEnabled;
+    @Unique
+    private void remapUV(ModelRenderer renderer, int texOffsetX, int texOffsetY) {
+        renderer.setTextureSize(64, 64);
+        renderer.cubeList.clear();
+        renderer.setTextureOffset(texOffsetX, texOffsetY);
     }
 
-    @Override
-    public void wawelauth$setCurrentPlayerUuid(UUID uuid) {
-        this.wawelauth$currentRenderingPlayerUuid = uuid;
+    @Unique
+    private boolean is3DEnabled() {
+        return SkinLayers3DConfig.enabled3D && this.modernEnabled
+            && SkinLayers3DConfig.modernSkinSupport
+            && !Loader.isModLoaded("SmartMoving");
     }
 
-    @Override
-    public void wawelauth$renderRightArmWear(float scale) {
-        if (!this.wawelauth$modernEnabled || !SkinLayers3DConfig.modernSkinSupport) return;
-        if (this.bipedRightArm != null && this.wawelauth$rightArmWear != null) {
-            wawelauth$copyAngles(this.bipedRightArm, this.wawelauth$rightArmWear);
-        }
+    @Unique
+    boolean headWearSaved;
+    @Unique
+    boolean bodyWearSaved;
+    @Unique
+    boolean rightArmWearSaved;
+    @Unique
+    boolean leftArmWearSaved;
+    @Unique
+    boolean rightLegWearSaved;
+    @Unique
+    boolean leftLegWearSaved;
 
-        SkinLayers3DState state3d = SkinLayers3DSetup.getState(wawelauth$currentRenderingPlayerUuid);
-        if (SkinLayers3DConfig.enabled3D && state3d != null && state3d.initialized) {
+    @Override
+    public void render3DRightArmWear(float scale) {
+        if (!is3DEnabled()) return;
+
+        ModelRenderer rightArmWear = this.getRightArmWear();
+        boolean rightArmWearSaved = rightArmWear.showModel;
+        rightArmWear.showModel = false;
+
+        SkinLayers3DState state3d = SkinLayers3DSetup.getState(currentRenderingPlayerUuid);
+        if (state3d != null && state3d.initialized) {
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            wawelauth$render3DOrFlat(
+            renderMesh(
                 state3d.rightSleeveMesh,
-                this.wawelauth$rightArmWear,
+                this.bipedRightArm,
                 scale,
-                SkinLayers3DConfig.enableRightSleeve3D,
+                SkinLayers3DConfig.enableRightSleeve3D && rightArmWearSaved,
                 LAYER_PART_RIGHT_ARM);
-        } else if (this.wawelauth$rightArmWear != null) {
-            this.wawelauth$rightArmWear.render(scale);
         }
     }
 
-    // Saved showModel state for bipedHeadwear when suppressed for 3D rendering
-    @Unique
-    private boolean wawelauth$savedHeadwearShowModel;
-
     /**
-     * Before vanilla render: suppress bipedHeadwear when 3D hat is active,
-     * since our overlay method will render the 3D version instead.
+     * Before vanilla render: suppress overlay rendering when 3D is active.
      */
     @Inject(method = "render", at = @At("HEAD"))
-    private void wawelauth$preRender(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks,
-        float netHeadYaw, float headPitch, float scaleFactor, CallbackInfo ci) {
-        if (!this.wawelauth$modernEnabled || !SkinLayers3DConfig.modernSkinSupport) return;
+    private void preRender(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
+        float headPitch, float scaleFactor, CallbackInfo ci) {
+        if (!is3DEnabled()) return;
 
-        SkinLayers3DState state3d = SkinLayers3DSetup.getState(wawelauth$currentRenderingPlayerUuid);
-        this.wawelauth$savedHeadwearShowModel = this.bipedHeadwear.showModel;
-        if (SkinLayers3DConfig.enabled3D && state3d != null
-            && state3d.initialized
-            && state3d.hatMesh != null
-            && SkinLayers3DConfig.enableHat3D) {
-            // Hide vanilla flat hat: we'll render the 3D version in renderAllOverlays
-            this.bipedHeadwear.showModel = false;
+        ModelRenderer rightArmWear = this.getRightArmWear();
+        ModelRenderer leftArmWear = this.getLeftArmWear();
+
+        headWearSaved = this.bipedHeadwear.showModel;
+        bodyWearSaved = this.bodyWear.showModel;
+        rightArmWearSaved = rightArmWear.showModel;
+        leftArmWearSaved = leftArmWear.showModel;
+        rightLegWearSaved = this.rightLegWear.showModel;
+        leftLegWearSaved = this.leftLegWear.showModel;
+
+        SkinLayers3DState state3d = SkinLayers3DSetup.getState(currentRenderingPlayerUuid);
+        if (state3d != null && state3d.initialized) {
+            if (state3d.hatMesh != null && SkinLayers3DConfig.enableHat3D) {
+                this.bipedHeadwear.showModel = false;
+            }
+            if (state3d.jacketMesh != null && SkinLayers3DConfig.enableJacket3D) {
+                this.bodyWear.showModel = false;
+            }
+            if (state3d.rightSleeveMesh != null && SkinLayers3DConfig.enableRightSleeve3D) {
+                rightArmWear.showModel = false;
+            }
+            if (state3d.leftSleeveMesh != null && SkinLayers3DConfig.enableLeftSleeve3D) {
+                leftArmWear.showModel = false;
+            }
+            if (state3d.rightPantsMesh != null && SkinLayers3DConfig.enableRightPants3D) {
+                this.rightLegWear.showModel = false;
+            }
+            if (state3d.leftPantsMesh != null && SkinLayers3DConfig.enableLeftPants3D) {
+                this.leftLegWear.showModel = false;
+            }
         }
     }
 
     /**
-     * Render all overlay layers after the base model renders.
+     * Render all 3D overlay layers after the base model renders
      */
     @Inject(method = "render", at = @At("TAIL"))
-    private void wawelauth$renderOverlays(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks,
+    private void render3DOverlays(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks,
         float netHeadYaw, float headPitch, float scaleFactor, CallbackInfo ci) {
-        if (!this.wawelauth$modernEnabled || !SkinLayers3DConfig.modernSkinSupport) return;
-
-        // Restore bipedHeadwear showModel
-        this.bipedHeadwear.showModel = this.wawelauth$savedHeadwearShowModel;
+        if (!is3DEnabled()) return;
 
         if (this.isChild) {
             GL11.glPushMatrix();
             GL11.glScalef(1.0F / 2.0F, 1.0F / 2.0F, 1.0F / 2.0F);
             GL11.glTranslatef(0.0F, 24.0F * scaleFactor, 0.0F);
-            wawelauth$renderAllOverlays(scaleFactor);
+            render3D(
+                scaleFactor,
+                headWearSaved,
+                bodyWearSaved,
+                rightArmWearSaved,
+                leftArmWearSaved,
+                rightLegWearSaved,
+                leftLegWearSaved);
             GL11.glPopMatrix();
         } else {
-            wawelauth$renderAllOverlays(scaleFactor);
+            render3D(
+                scaleFactor,
+                headWearSaved,
+                bodyWearSaved,
+                rightArmWearSaved,
+                leftArmWearSaved,
+                rightLegWearSaved,
+                leftLegWearSaved);
         }
     }
 
-    /**
-     * Sync overlay layer rotation angles after vanilla setRotationAngles.
-     */
-    @Inject(method = "setRotationAngles", at = @At("TAIL"))
-    private void wawelauth$syncOverlayAngles(float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
-        float headPitch, float scaleFactor, Entity entity, CallbackInfo ci) {
-        if (!this.wawelauth$modernEnabled || !SkinLayers3DConfig.modernSkinSupport) return;
-
-        wawelauth$copyAngles(this.bipedBody, this.wawelauth$bodyWear);
-        wawelauth$copyAngles(this.bipedRightArm, this.wawelauth$rightArmWear);
-        wawelauth$copyAngles(this.bipedLeftArm, this.wawelauth$leftArmWear);
-        wawelauth$copyAngles(this.bipedRightLeg, this.wawelauth$rightLegWear);
-        wawelauth$copyAngles(this.bipedLeftLeg, this.wawelauth$leftLegWear);
-    }
-
     @Unique
-    private void wawelauth$renderAllOverlays(float scaleFactor) {
-        SkinLayers3DState state3d = SkinLayers3DSetup.getState(wawelauth$currentRenderingPlayerUuid);
-        if (SkinLayers3DConfig.enabled3D && state3d != null && state3d.initialized) {
+    private void render3D(float scaleFactor, boolean headWear, boolean bodyWear, boolean rightArmWear,
+        boolean leftArmWear, boolean rightLegWear, boolean leftLegWear) {
+        SkinLayers3DState state3d = SkinLayers3DSetup.getState(currentRenderingPlayerUuid);
+        if (state3d != null && state3d.initialized) {
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-            // Render 3D meshes where available, fall back to 2D for disabled parts
-            wawelauth$render3DOrFlat(
+            renderMesh(
                 state3d.hatMesh,
-                this.bipedHeadwear,
+                this.bipedHead,
                 scaleFactor,
-                SkinLayers3DConfig.enableHat3D,
+                SkinLayers3DConfig.enableHat3D && headWear,
                 LAYER_PART_HAT);
-            wawelauth$render3DOrFlat(
+            renderMesh(
                 state3d.jacketMesh,
-                this.wawelauth$bodyWear,
+                this.bipedBody,
                 scaleFactor,
-                SkinLayers3DConfig.enableJacket3D,
+                SkinLayers3DConfig.enableJacket3D && bodyWear,
                 LAYER_PART_BODY);
-            wawelauth$render3DOrFlat(
+            renderMesh(
                 state3d.rightSleeveMesh,
-                this.wawelauth$rightArmWear,
+                this.bipedRightArm,
                 scaleFactor,
-                SkinLayers3DConfig.enableRightSleeve3D,
+                SkinLayers3DConfig.enableRightSleeve3D && rightArmWear,
                 LAYER_PART_RIGHT_ARM);
-            wawelauth$render3DOrFlat(
+            renderMesh(
                 state3d.leftSleeveMesh,
-                this.wawelauth$leftArmWear,
+                this.bipedLeftArm,
                 scaleFactor,
-                SkinLayers3DConfig.enableLeftSleeve3D,
+                SkinLayers3DConfig.enableLeftSleeve3D && leftArmWear,
                 LAYER_PART_LEFT_ARM);
-            wawelauth$render3DOrFlat(
+            renderMesh(
                 state3d.rightPantsMesh,
-                this.wawelauth$rightLegWear,
+                this.bipedRightLeg,
                 scaleFactor,
-                SkinLayers3DConfig.enableRightPants3D,
+                SkinLayers3DConfig.enableRightPants3D && rightLegWear,
                 LAYER_PART_RIGHT_LEG);
-            wawelauth$render3DOrFlat(
+            renderMesh(
                 state3d.leftPantsMesh,
-                this.wawelauth$leftLegWear,
+                this.bipedLeftLeg,
                 scaleFactor,
-                SkinLayers3DConfig.enableLeftPants3D,
+                SkinLayers3DConfig.enableLeftPants3D && leftLegWear,
                 LAYER_PART_LEFT_LEG);
-        } else {
-            // Fall back to standard 2D overlay rendering.
-            // Note: bipedHeadwear is NOT rendered here: vanilla ModelBiped.render() already handles it.
-            if (this.wawelauth$bodyWear != null) this.wawelauth$bodyWear.render(scaleFactor);
-            if (this.wawelauth$rightArmWear != null) this.wawelauth$rightArmWear.render(scaleFactor);
-            if (this.wawelauth$leftArmWear != null) this.wawelauth$leftArmWear.render(scaleFactor);
-            if (this.wawelauth$rightLegWear != null) this.wawelauth$rightLegWear.render(scaleFactor);
-            if (this.wawelauth$leftLegWear != null) this.wawelauth$leftLegWear.render(scaleFactor);
         }
     }
 
     /**
-     * Render a 3D mesh if available and enabled, otherwise fall back to the 2D flat overlay.
-     * Copies rotation/position from the corresponding vanilla ModelRenderer to the mesh.
+     * Render a 3D mesh if available and enabled.
      */
     @Unique
-    private void wawelauth$render3DOrFlat(SkinLayers3DMesh mesh, ModelRenderer fallback, float scaleFactor,
-        boolean enabled, int part) {
-        if (enabled && mesh != null && mesh.isCompiled() && fallback != null) {
-            // Respect vanilla showModel toggles (hat, etc).
-            if (!fallback.showModel) {
-                return;
-            }
+    private void renderMesh(SkinLayers3DMesh mesh, ModelRenderer source, float scaleFactor, boolean enabled, int part) {
+        if (enabled && mesh != null && mesh.isCompiled() && source != null) {
 
-            // Sync rotation and position from the corresponding vanilla ModelRenderer.
-            mesh.setPosition(fallback.rotationPointX, fallback.rotationPointY, fallback.rotationPointZ);
-            mesh.setRotation(fallback.rotateAngleX, fallback.rotateAngleY, fallback.rotateAngleZ);
+            // Sync position / offset / rotation from the corresponding vanilla ModelRenderer
+            mesh.setPosition(source.rotationPointX, source.rotationPointY, source.rotationPointZ);
+            mesh.setOffset(source.offsetX, source.offsetY, source.offsetZ);
+            mesh.setRotation(source.rotateAngleX, source.rotateAngleY, source.rotateAngleZ);
 
             float scaleX;
             float scaleY;
@@ -458,14 +410,14 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
                     scaleX = SkinLayers3DConfig.baseVoxelSize;
                     scaleY = 1.035F;
                     scaleZ = SkinLayers3DConfig.baseVoxelSize;
-                    offsetX = this.wawelauth$currentSlim ? -0.499F : -0.998F;
+                    offsetX = this.currentSlim ? -0.499F : -0.998F;
                     offsetY = -0.1F;
                     break;
                 case LAYER_PART_LEFT_ARM:
                     scaleX = SkinLayers3DConfig.baseVoxelSize;
                     scaleY = 1.035F;
                     scaleZ = SkinLayers3DConfig.baseVoxelSize;
-                    offsetX = this.wawelauth$currentSlim ? 0.499F : 0.998F;
+                    offsetX = this.currentSlim ? 0.499F : 0.998F;
                     offsetY = -0.1F;
                     break;
                 case LAYER_PART_RIGHT_LEG:
@@ -483,19 +435,42 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
             }
 
             mesh.render(scaleFactor, scaleX, scaleY, scaleZ, offsetX, offsetY, offsetZ);
-        } else if (fallback != null) {
-            fallback.render(scaleFactor);
         }
     }
 
-    @Unique
-    private static void wawelauth$copyAngles(ModelRenderer source, ModelRenderer dest) {
-        if (source == null || dest == null) return;
-        dest.rotateAngleX = source.rotateAngleX;
-        dest.rotateAngleY = source.rotateAngleY;
-        dest.rotateAngleZ = source.rotateAngleZ;
-        dest.rotationPointX = source.rotationPointX;
-        dest.rotationPointY = source.rotationPointY;
-        dest.rotationPointZ = source.rotationPointZ;
+    @Override
+    public boolean isModern() {
+        return this.modernEnabled;
     }
+
+    @Override
+    public void setCurrentPlayerUuid(UUID uuid) {
+        this.currentRenderingPlayerUuid = uuid;
+    }
+
+    @Override
+    public ModelRenderer getBodyWear() {
+        return this.bodyWear;
+    }
+
+    @Override
+    public ModelRenderer getRightArmWear() {
+        return this.currentSlim ? this.slimRightArmWear : this.classicRightArmWear;
+    }
+
+    @Override
+    public ModelRenderer getLeftArmWear() {
+        return this.currentSlim ? this.slimLeftArmWear : this.classicLeftArmWear;
+    }
+
+    @Override
+    public ModelRenderer getRightLegWear() {
+        return this.rightLegWear;
+    }
+
+    @Override
+    public ModelRenderer getLeftLegWear() {
+        return this.leftLegWear;
+    }
+
 }

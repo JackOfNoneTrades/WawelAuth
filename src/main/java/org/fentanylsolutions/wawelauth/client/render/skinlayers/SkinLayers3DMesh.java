@@ -64,12 +64,15 @@ public class SkinLayers3DMesh extends VoxelModelPart {
      * Render this mesh with per-axis scaling and local translation offsets.
      * Offsets are in model-space units (pixels), applied before rotation/scaling.
      */
-    public void render(float scale, float scaleX, float scaleY, float scaleZ, float offsetX, float offsetY,
-        float offsetZ) {
+    public void render(float scale, float scaleX, float scaleY, float scaleZ, float localOffsetX, float localOffsetY,
+        float localOffsetZ) {
         if (displayList == -1 || !visible) return;
         GL11.glPushMatrix();
         // Translate to rotation point (matching ModelRenderer convention).
-        GL11.glTranslatef((x + offsetX) * scale, (y + offsetY) * scale, (z + offsetZ) * scale);
+        GL11.glTranslatef(
+            (x + offsetX + localOffsetX) * scale,
+            (y + offsetY + localOffsetY) * scale,
+            (z + offsetZ + localOffsetZ) * scale);
         // Apply rotations (ZYX order, matching ModelRenderer).
         if (zRot != 0) GL11.glRotatef(zRot * (180F / (float) Math.PI), 0, 0, 1);
         if (yRot != 0) GL11.glRotatef(yRot * (180F / (float) Math.PI), 0, 1, 0);

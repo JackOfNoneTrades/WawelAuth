@@ -55,7 +55,7 @@ public abstract class MixinEntityPlayer extends EntityLivingBase implements ISki
 
     @SideOnly(Side.CLIENT)
     @Override
-    public boolean wawelAuth$getLeftSleeve() {
+    public boolean wawelAuth$getHideLeftSleeve() {
         return SkinLayersHelper
             .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.LEFT_SLEEVE);
     }
@@ -70,13 +70,13 @@ public abstract class MixinEntityPlayer extends EntityLivingBase implements ISki
 
     @SideOnly(Side.CLIENT)
     @Override
-    public boolean wawelAuth$getRightSleeve() {
+    public boolean wawelAuth$getHideRightSleeve() {
         return SkinLayersHelper
             .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE);
     }
 
     @Override
-    public void wawelAuth$setRightSleeve(boolean value) {
+    public void wawelAuth$setHideRightSleeve(boolean value) {
         SkinLayersHelper.setSkinLayerHidden(
             ((EntityPlayer) (Object) this),
             SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE,
@@ -85,13 +85,13 @@ public abstract class MixinEntityPlayer extends EntityLivingBase implements ISki
 
     @SideOnly(Side.CLIENT)
     @Override
-    public boolean wawelAuth$getLeftPants() {
+    public boolean wawelAuth$getHideLeftPants() {
         return SkinLayersHelper
             .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.LEFT_PANTS);
     }
 
     @Override
-    public void wawelAuth$setLeftPants(boolean value) {
+    public void wawelAuth$setHideLeftPants(boolean value) {
         SkinLayersHelper.setSkinLayerHidden(
             ((EntityPlayer) (Object) this),
             SkinLayersHelper.EnumPlayerModelParts.LEFT_PANTS,
@@ -100,13 +100,13 @@ public abstract class MixinEntityPlayer extends EntityLivingBase implements ISki
 
     @SideOnly(Side.CLIENT)
     @Override
-    public boolean wawelAuth$getRightPants() {
+    public boolean wawelAuth$getHideRightPants() {
         return SkinLayersHelper
             .isSkinLayerHidden(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.RIGHT_PANTS);
     }
 
     @Override
-    public void wawelAuth$setRightPants(boolean value) {
+    public void wawelAuth$setHideRightPants(boolean value) {
         SkinLayersHelper.setSkinLayerHidden(
             ((EntityPlayer) (Object) this),
             SkinLayersHelper.EnumPlayerModelParts.RIGHT_PANTS,

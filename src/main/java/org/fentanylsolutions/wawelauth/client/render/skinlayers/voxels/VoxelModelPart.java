@@ -14,6 +14,9 @@ public abstract class VoxelModelPart {
     protected float x;
     protected float y;
     protected float z;
+    protected float offsetX;
+    protected float offsetY;
+    protected float offsetZ;
     protected float xRot;
     protected float yRot;
     protected float zRot;
@@ -57,6 +60,12 @@ public abstract class VoxelModelPart {
         this.x = f;
         this.y = g;
         this.z = h;
+    }
+
+    public void setOffset(float x, float y, float z) {
+        this.offsetX = x;
+        this.offsetY = y;
+        this.offsetZ = z;
     }
 
     public void setRotation(float f, float g, float h) {

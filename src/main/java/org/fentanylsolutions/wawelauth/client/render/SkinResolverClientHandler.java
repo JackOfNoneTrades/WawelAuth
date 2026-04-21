@@ -104,21 +104,22 @@ public final class SkinResolverClientHandler {
             renderer.modelBipedMain.bipedHeadwear.showModel = false;
         }
         if (((ISkinLayerExtender) player).wawelAuth$getHideJacket()) {
-            ext.wawelAuth$getBodyWear().showModel = false;
+            ext.getBodyWear().showModel = false;
         }
-        if (((ISkinLayerExtender) player).wawelAuth$getLeftSleeve()) {
-            ext.wawelAuth$getLeftArmWear().showModel = false;
+        if (((ISkinLayerExtender) player).wawelAuth$getHideLeftSleeve()) {
+            ext.getLeftArmWear().showModel = false;
         }
-        if (((ISkinLayerExtender) player).wawelAuth$getRightSleeve()) {
-            ext.wawelAuth$getRightArmWear().showModel = false;
+        if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()) {
+            ext.getRightArmWear().showModel = false;
         }
-        if (((ISkinLayerExtender) player).wawelAuth$getLeftPants()) {
-            ext.wawelAuth$getLeftLegWear().showModel = false;
+        if (((ISkinLayerExtender) player).wawelAuth$getHideLeftPants()) {
+            ext.getLeftLegWear().showModel = false;
         }
-        if (((ISkinLayerExtender) player).wawelAuth$getRightPants()) {
-            ext.wawelAuth$getRightLegWear().showModel = false;
+        if (((ISkinLayerExtender) player).wawelAuth$getHideRightPants()) {
+            ext.getRightLegWear().showModel = false;
         }
 
+        // TODO: find a better solution instead of disabling
         if (SkinLayers3DConfig.hideOverlayArmor) {
             ItemStack[] armor = player.inventory.armorInventory;
 
@@ -131,14 +132,14 @@ public final class SkinResolverClientHandler {
                 renderer.modelBipedMain.bipedHeadwear.showModel = false;
             }
             if (chest != null && chest.getItem() instanceof ItemArmor) {
-                ext.wawelAuth$getBodyWear().showModel = false;
-                ext.wawelAuth$getLeftArmWear().showModel = false;
-                ext.wawelAuth$getRightArmWear().showModel = false;
+                ext.getBodyWear().showModel = false;
+                ext.getLeftArmWear().showModel = false;
+                ext.getRightArmWear().showModel = false;
             }
             if ((legs != null && legs.getItem() instanceof ItemArmor)
                 || (boots != null && boots.getItem() instanceof ItemArmor)) {
-                ext.wawelAuth$getLeftLegWear().showModel = false;
-                ext.wawelAuth$getRightLegWear().showModel = false;
+                ext.getLeftLegWear().showModel = false;
+                ext.getRightLegWear().showModel = false;
             }
         }
 
@@ -150,13 +151,11 @@ public final class SkinResolverClientHandler {
         IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
 
         renderer.modelBipedMain.bipedHeadwear.showModel = true;
-
-        ext.wawelAuth$getBodyWear().showModel = true;
-        ext.wawelAuth$getLeftArmWear().showModel = true;
-        ext.wawelAuth$getRightArmWear().showModel = true;
-
-        ext.wawelAuth$getLeftLegWear().showModel = true;
-        ext.wawelAuth$getRightLegWear().showModel = true;
+        ext.getBodyWear().showModel = true;
+        ext.getLeftArmWear().showModel = true;
+        ext.getRightArmWear().showModel = true;
+        ext.getLeftLegWear().showModel = true;
+        ext.getRightLegWear().showModel = true;
     }
 
 }

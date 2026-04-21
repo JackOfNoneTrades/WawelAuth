@@ -65,7 +65,10 @@ dependencies {
     // Test
     testImplementation("junit:junit:4.13.2")
 
-    /*implementation(rfg.deobf("net.smart:SmartMoving:1.7.10-15.8.2-maka"))
+    /*
+    implementation(rfg.deobf("net.smart:SmartMoving:1.7.10-15.8.2-maka"))
     implementation(rfg.deobf("api.player:PlayerAPI:1.7.10-1.4.1-maka"))
-    implementation(rfg.deobf("net.smart:SmartRender:1.7.10-2.1"))*/
+    implementation(rfg.deobf("net.smart:SmartRender:1.7.10-2.1"))
+    */
+    
 }
