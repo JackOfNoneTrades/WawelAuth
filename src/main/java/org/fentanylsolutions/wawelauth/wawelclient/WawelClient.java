@@ -7,6 +7,8 @@ import net.minecraft.client.Minecraft;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
+import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
+import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilHttpClient;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientAccountDAO;
@@ -188,7 +190,8 @@ public class WawelClient {
      */
     public ClientProvider resolvePlayerProvider(UUID playerUuid) {
         // In-world on WA server: check connection cache
-        if (Minecraft.getMinecraft().theWorld != null && connectionProviderCache.isActive()) {
+        if (!PreviewEntityRenderContext.isRenderingInGui && Minecraft.getMinecraft().theWorld != null
+            && connectionProviderCache.isActive()) {
             ClientProvider connectionProvider = connectionProviderCache.getPlayerProvider(playerUuid);
             if (connectionProvider != null) {
                 return connectionProvider;
@@ -196,13 +199,13 @@ public class WawelClient {
         }
 
         // In-world but no per-player match: use active account's provider
-        if (Minecraft.getMinecraft().theWorld != null) {
+        if (!PreviewEntityRenderContext.isRenderingInGui && Minecraft.getMinecraft().theWorld != null) {
             return sessionBridge.getActiveProvider();
         }
 
         // Not in-world: check local accounts
         if (playerUuid != null && accountDAO != null) {
-            for (org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount account : accountDAO.listAll()) {
+            for (ClientAccount account : accountDAO.listAll()) {
                 if (account != null && playerUuid.equals(account.getProfileUuid())) {
                     String providerName = account.getProviderName();
                     if (providerName != null && !providerName.trim()

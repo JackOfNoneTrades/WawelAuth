@@ -233,22 +233,6 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.LATE)
             .side(MiscUtil.Side.BOTH)
             .build();
-
-        registry.mixin("MixinSmartMovingFactory")
-            .modid("SmartMoving")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinSmartStatisticsFactory")
-            .modid("SmartMoving")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinSmartRenderRender")
-            .modid("SmartMoving")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
     }
 
     public static java.util.List<String> getEarlyMixinsForLoader() {

@@ -25,6 +25,8 @@ import org.fentanylsolutions.fentlib.util.FileUtil;
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.client.fakeworld.DummyWorldClient;
+import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.wawelclient.BuiltinProviders;
 import org.fentanylsolutions.wawelauth.wawelclient.ProviderRegistry;
@@ -51,7 +53,9 @@ import com.cleanroommc.modularui.drawable.Rectangle;
 import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
+import com.cleanroommc.modularui.screen.viewport.GuiContext;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
+import com.cleanroommc.modularui.theme.WidgetTheme;
 import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.value.StringValue;
 import com.cleanroommc.modularui.widget.Widget;
@@ -291,19 +295,43 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     new Row().widthRel(1.0f)
                         .height(77)
                         .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                        .child(
-                            new EntityDisplayWidget(() -> previewFrontEntity).doesLookAtMouse(true)
-                                .preDraw(entity -> { prepareEntityPreview((PlayerPreviewEntity) entity, false); })
-                                .asWidget()
-                                .size(72, 76)
-                                .invisible())
+                        .child(new EntityDisplayWidget(() -> previewFrontEntity) {
+
+                            @Override
+                            public void draw(GuiContext context, int x, int y, int width, int height,
+                                WidgetTheme widgetTheme) {
+                                PreviewEntityRenderContext.isRenderingInGui = true;
+                                try {
+                                    super.draw(context, x, y, width, height, widgetTheme);
+                                } finally {
+                                    PreviewEntityRenderContext.isRenderingInGui = false;
+                                }
+                            }
+                        }.doesLookAtMouse(true)
+                            .preDraw(entity -> { prepareEntityPreview((PlayerPreviewEntity) entity, false); })
+                            .postDraw(entity -> { postEntityPreview(); })
+                            .asWidget()
+                            .size(72, 76)
+                            .invisible())
                         .child(new Widget<>().size(6, 76))
-                        .child(
-                            new EntityDisplayWidget(() -> previewBackEntity).doesLookAtMouse(false)
-                                .preDraw(entity -> { prepareEntityPreview((PlayerPreviewEntity) entity, true); })
-                                .asWidget()
-                                .size(72, 76)
-                                .invisible())
+                        .child(new EntityDisplayWidget(() -> previewBackEntity) {
+
+                            @Override
+                            public void draw(GuiContext context, int x, int y, int width, int height,
+                                WidgetTheme widgetTheme) {
+                                PreviewEntityRenderContext.isRenderingInGui = true;
+                                try {
+                                    super.draw(context, x, y, width, height, widgetTheme);
+                                } finally {
+                                    PreviewEntityRenderContext.isRenderingInGui = false;
+                                }
+                            }
+                        }.doesLookAtMouse(false)
+                            .preDraw(entity -> { prepareEntityPreview((PlayerPreviewEntity) entity, true); })
+                            .postDraw(entity -> { postEntityPreview(); })
+                            .asWidget()
+                            .size(72, 76)
+                            .invisible())
                         .child(new Widget<>().size(40, 76)))
                 .child(
                     new Row().widthRel(1.0f)
@@ -2196,6 +2224,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         entity.rotationYawHead = yaw;
         entity.prevRotationYawHead = yaw;
         entity.rotationPitch = 0.0F;
+
+        mc.theWorld = DummyWorldClient.INSTANCE;
+        mc.renderViewEntity = entity;
+    }
+
+    private void postEntityPreview() {
+        Minecraft mc = Minecraft.getMinecraft();
+        mc.theWorld = null;
+        mc.renderViewEntity = null;
     }
 
     private void applyCapePreviewVisibility() {
