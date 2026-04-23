@@ -25,6 +25,7 @@ import org.fentanylsolutions.fentlib.util.FileUtil;
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.client.fakeworld.DummyEntityClientPlayerMP;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyWorldClient;
 import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
@@ -2225,14 +2226,16 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         entity.prevRotationYawHead = yaw;
         entity.rotationPitch = 0.0F;
 
-        mc.theWorld = DummyWorldClient.INSTANCE;
         mc.renderViewEntity = entity;
+        mc.theWorld = DummyWorldClient.INSTANCE;
+        mc.thePlayer = DummyEntityClientPlayerMP.INSTANCE;
     }
 
     private void postEntityPreview() {
         Minecraft mc = Minecraft.getMinecraft();
-        mc.theWorld = null;
         mc.renderViewEntity = null;
+        mc.theWorld = null;
+        mc.thePlayer = null;
     }
 
     private void applyCapePreviewVisibility() {

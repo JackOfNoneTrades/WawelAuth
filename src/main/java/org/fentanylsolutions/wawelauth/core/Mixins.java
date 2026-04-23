@@ -168,12 +168,6 @@ public class Mixins extends FentMixins {
             .build();
 
         // Compat
-        registry.mixin("MixinModEventHandlerClient")
-            .modid("hbm")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
         registry.mixin("MixinPlayerHeadIcon")
             .modid("serverutilities")
             .extraModid("ServerUtilities")
