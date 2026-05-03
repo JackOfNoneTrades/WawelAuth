@@ -25,6 +25,8 @@ import org.fentanylsolutions.fentlib.util.FileUtil;
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.client.compat.EtFuturumCompat;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyEntityClientPlayerMP;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyWorldClient;
 import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
@@ -80,6 +82,35 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class AccountManagerScreen extends ParentAwareModularScreen {
 
+    private enum PreviewBackMode {
+
+        NONE("wawelauth.gui.account_manager.preview_none"),
+        CAPE("wawelauth.gui.account_manager.preview_cape"),
+        ELYTRA("wawelauth.gui.account_manager.preview_elytra");
+
+        private final String translationKey;
+
+        PreviewBackMode(String translationKey) {
+            this.translationKey = translationKey;
+        }
+
+        public String translationKey() {
+            return translationKey;
+        }
+
+        public PreviewBackMode next(boolean allowElytra) {
+            switch (this) {
+                case NONE:
+                    return CAPE;
+                case CAPE:
+                    return allowElytra ? ELYTRA : NONE;
+                case ELYTRA:
+                default:
+                    return NONE;
+            }
+        }
+    }
+
     private static final UITexture PROVIDER_SETTINGS_TEXTURE = UITexture.fullImage("wawelauth", "gui/gears");
     private static final long STATUS_UI_REFRESH_INTERVAL_MS = 1000L;
     private static final int PROVIDER_NAME_MAX_WIDTH_PX = 84;
@@ -120,7 +151,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private String pendingCredentialDeletePassword;
     private boolean texturePathDialogForSkin;
     private String texturePathDialogInitialPath;
-    private boolean capePreviewEnabled = true;
+    private PreviewBackMode capePreviewMode = PreviewBackMode.CAPE;
     private File selectedSkinFile;
     private File selectedCapeFile;
     private boolean skinUploadSlim;
@@ -341,14 +372,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         .child(
                             new ButtonWidget<>().size(64, 12)
                                 .margin(3, 0)
-                                .overlay(
-                                    IKey.dynamic(
-                                        () -> GuiText.tr(
-                                            capePreviewEnabled ? "wawelauth.gui.account_manager.cape_toggle_on"
-                                                : "wawelauth.gui.account_manager.cape_toggle_off")))
+                                .overlay(IKey.dynamic(() -> GuiText.tr(capePreviewMode.translationKey())))
                                 .onMousePressed(mouseButton -> {
-                                    capePreviewEnabled = !capePreviewEnabled;
-                                    applyCapePreviewVisibility();
+                                    capePreviewMode = normalizeCapePreviewMode(capePreviewMode)
+                                        .next(EtFuturumCompat.isPreviewElytraAvailable());
+                                    applyCapePreviewMode();
                                     return true;
                                 }))))
             .child(new TextWidget<>(IKey.dynamic(() -> {
@@ -927,7 +955,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             GameProfile profile = new GameProfile(account.getProfileUuid(), account.getProfileName());
             previewFrontEntity = new PlayerPreviewEntity(profile);
             previewBackEntity = new PlayerPreviewEntity(profile);
-            applyCapePreviewVisibility();
+            applyCapePreviewMode();
             loadSkinForAccount(account);
         } else {
             clearPreview();
@@ -2066,7 +2094,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 .getProvider(account.getProviderName()));
         if (ProviderDisplayName.isOfflineProvider(account.getProviderName())) {
             loadOfflinePreviewModel(account);
-            applyCapePreviewVisibility();
+            applyCapePreviewMode();
             return;
         }
         WawelAuth.debug("Preview fetch profile via fillProfileFromProvider: " + UuidUtil.toUnsigned(uuid));
@@ -2179,7 +2207,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     previewBackEntity.setForcedSkinModel(model);
                     foundSkin = true;
                 }
-                applyCapePreviewVisibility();
+                applyCapePreviewMode();
                 break;
             }
             if (!foundTextures) {
@@ -2238,13 +2266,28 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         mc.thePlayer = null;
     }
 
-    private void applyCapePreviewVisibility() {
-        if (previewFrontEntity != null) {
-            previewFrontEntity.setCapeVisible(capePreviewEnabled);
+    private PreviewBackMode normalizeCapePreviewMode(PreviewBackMode mode) {
+        if (mode == PreviewBackMode.ELYTRA && !EtFuturumCompat.isPreviewElytraAvailable()) {
+            return PreviewBackMode.CAPE;
         }
-        if (previewBackEntity != null) {
-            previewBackEntity.setCapeVisible(capePreviewEnabled);
+        return mode;
+    }
+
+    private void applyCapePreviewMode() {
+        capePreviewMode = normalizeCapePreviewMode(capePreviewMode);
+        applyCapePreviewMode(previewFrontEntity);
+        applyCapePreviewMode(previewBackEntity);
+    }
+
+    private void applyCapePreviewMode(PlayerPreviewEntity entity) {
+        if (entity == null) {
+            return;
         }
+
+        boolean useElytra = capePreviewMode == PreviewBackMode.ELYTRA;
+        entity.setCapeVisible(capePreviewMode != PreviewBackMode.NONE);
+        SkinLayersHelper.setSkinLayerHidden(entity, SkinLayersHelper.EnumPlayerModelParts.CAPE, useElytra);
+        EtFuturumCompat.applyPreviewElytra(entity, useElytra);
     }
 
     private Dialog<Boolean> buildCredentialDialog() {
