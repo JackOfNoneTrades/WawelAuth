@@ -429,7 +429,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         final ProviderRegistry.ProbeOutcome[] serverStatusOutcome = { ProviderRegistry.ProbeOutcome.NEUTRAL };
         final boolean[] busy = { false };
 
-        TextFieldWidget hostField = new TextFieldWidget()
+        TextFieldWidget hostField = new SafeTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_address"));
         hostField.width(214)
             .height(18)
@@ -437,7 +437,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             .margin(0, 2);
         hostField.value(new StringValue(initialSettings.getHost() != null ? initialSettings.getHost() : ""));
 
-        TextFieldWidget portField = new TextFieldWidget()
+        TextFieldWidget portField = new SafeTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_port"));
         portField.width(64)
             .height(18)
@@ -446,7 +446,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         portField
             .value(new StringValue(initialSettings.getPort() != null ? String.valueOf(initialSettings.getPort()) : ""));
 
-        TextFieldWidget usernameField = new TextFieldWidget()
+        TextFieldWidget usernameField = new SafeTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_username"));
         usernameField.widthRel(1.0f)
             .height(18)

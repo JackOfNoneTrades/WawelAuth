@@ -15,13 +15,12 @@ import com.cleanroommc.modularui.theme.TextFieldTheme;
 import com.cleanroommc.modularui.theme.WidgetThemeEntry;
 import com.cleanroommc.modularui.widgets.textfield.TextFieldHandler;
 import com.cleanroommc.modularui.widgets.textfield.TextFieldRenderer;
-import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 @SideOnly(Side.CLIENT)
-public class PasswordFieldWidget extends TextFieldWidget {
+public class PasswordFieldWidget extends SafeTextFieldWidget {
 
     private final PasswordTextFieldRenderer passwordRenderer;
     private Runnable onEnterPressed;

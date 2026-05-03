@@ -1246,7 +1246,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         final String[] statusText = {
             managedProvider ? GuiText.tr("wawelauth.gui.account_manager.provider_managed_locked") : "" };
 
-        TextFieldWidget nameField = new TextFieldWidget()
+        TextFieldWidget nameField = new SafeTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.provider_name"));
         nameField.widthRel(1.0f)
             .height(18)
@@ -1460,7 +1460,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         final ProviderRegistry.ProbeOutcome[] providerStatusOutcome = { ProviderRegistry.ProbeOutcome.NEUTRAL };
         final boolean[] busy = { false };
 
-        TextFieldWidget hostField = new TextFieldWidget()
+        TextFieldWidget hostField = new SafeTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_address"));
         hostField.width(214)
             .height(18)
@@ -1468,7 +1468,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .margin(0, 2);
         hostField.value(new StringValue(initialSettings.getHost() != null ? initialSettings.getHost() : ""));
 
-        TextFieldWidget portField = new TextFieldWidget()
+        TextFieldWidget portField = new SafeTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_port"));
         portField.width(64)
             .height(18)
@@ -1477,7 +1477,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         portField
             .value(new StringValue(initialSettings.getPort() != null ? String.valueOf(initialSettings.getPort()) : ""));
 
-        TextFieldWidget usernameField = new TextFieldWidget()
+        TextFieldWidget usernameField = new SafeTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_username"));
         usernameField.widthRel(1.0f)
             .height(18)
@@ -2723,7 +2723,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         dialog.setCloseOnOutOfBoundsClick(false);
 
         final String[] statusText = { "" };
-        TextFieldWidget pathField = new TextFieldWidget()
+        TextFieldWidget pathField = new SafeTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.path_hint", label.toLowerCase()));
         pathField.widthRel(1.0f)
             .height(18)

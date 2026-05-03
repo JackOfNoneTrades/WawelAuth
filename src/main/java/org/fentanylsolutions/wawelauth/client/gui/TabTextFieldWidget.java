@@ -9,7 +9,6 @@ import org.lwjgl.input.Keyboard;
 import com.cleanroommc.modularui.api.widget.IFocusedWidget;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.api.widget.Interactable;
-import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -18,7 +17,7 @@ import cpw.mods.fml.relauncher.SideOnly;
  * TextFieldWidget that cycles focus to the next/previous input on Tab/Shift+Tab.
  */
 @SideOnly(Side.CLIENT)
-public class TabTextFieldWidget extends TextFieldWidget {
+public class TabTextFieldWidget extends SafeTextFieldWidget {
 
     private Runnable onEnterPressed;
 
