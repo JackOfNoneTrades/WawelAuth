@@ -624,7 +624,7 @@ public class ServerConfig {
         private int maxCapeWidth = 64;
         private int maxCapeHeight = 32;
         private int maxFileSizeBytes = 1_048_576;
-        private boolean allowElytra = true;
+        private boolean allowElytra = false;
         private boolean allowAnimatedCapes = true;
         private int maxCapeFrameCount = 256;
         private int maxAnimatedCapeFileSizeBytes = 10_485_760;
