@@ -49,7 +49,7 @@ The main menu is opened with the `Auth` button in the multiplayer screen.
 From there, you can add auth providers, and accounts.
 
 Some things of note:
-* Microsoft is built in.
+* Microsoft, Ely.by, and LittleSkin providers are built in.
 * Any Yggdrasil / authlib-injector provider can be added by URL.
 * The `Manage Local Auth...` button is the quickest way to use local accounts on a Wawel Auth server.
 * Adding the same local server manually as a normal provider is also supported.
