@@ -22,12 +22,13 @@ Clients can also benefit from account management, modern skins, and 3d skin laye
 ![screen1](images/screenshots/screen1.png)
 
 [![hub](images/badges/github.png)](https://github.com/JackOfNoneTrades/WawelAuth/releases)
+[![curse](images/badges/curse.png)](https://www.curseforge.com/minecraft/mc-mods/wawel-auth)
+[![67](images/badges/67.png)](https://67.fentanylsolutions.org/mod/wawel-auth)
 [![maven](images/badges/maven.png)](https://maven.fentanylsolutions.org/#/releases/org/fentanylsolutions/wawelauth/WawelAuth)
 ![forge](images/badges/forge.png)
 [![cord](images/badges/cord.png)](https://discord.gg/xAWCqGrguG)
 
 <!--[![modrinth](images/badges/modrinth.png)]()
-[![curse](images/badges/curse.png)]()
 [![mcmodcn](images/badges/mcmodcn.png)]()-->
 
 ## Dependencies

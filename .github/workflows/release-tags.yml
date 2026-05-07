@@ -12,7 +12,30 @@ jobs:
   release-tags:
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/release-tags.yml@master
     secrets:
-      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
-      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
       MAVEN_USER: ${{ secrets.MAVEN_USER }}
       MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+  publish-67minecraft:
+    runs-on: ubuntu-24.04
+    needs: release-tags
+    env:
+      VERSION: ${{ github.ref_name }}
+      RELEASE_VERSION: ${{ github.ref_name }}
+      SIX_SEVEN_TOKEN: ${{ secrets.SIX_SEVEN_TOKEN }}
+
+    steps:
+      - name: Checkout mod repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 32
+          submodules: recursive
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Publish to 67minecraft
+        run: ./gradlew clean publish67Minecraft --no-configuration-cache --build-cache --info --stacktrace -x test
