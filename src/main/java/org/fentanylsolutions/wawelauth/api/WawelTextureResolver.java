@@ -8,10 +8,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.ITextureObject;
@@ -68,6 +70,8 @@ public class WawelTextureResolver {
     private static final long[] RETRY_DELAYS_MS = { 2_000L, 8_000L, 30_000L };
     private static final long SKIN_TTL_MS = 20 * 60 * 1_000L;
     private static final long FAILED_RETRY_MS = 60_000L;
+    private static final long REGISTERED_LOADING_TIMEOUT_MS = 30_000L;
+    private static final int CLEANUP_INTERVAL_TICKS = 20 * 60;
 
     private final SessionBridge sessionBridge;
     private final ConcurrentHashMap<String, SkinEntry> skinEntries = new ConcurrentHashMap<>();
@@ -75,14 +79,26 @@ public class WawelTextureResolver {
     private final ConcurrentHashMap<String, SkinModel> resolvedSkinModels = new ConcurrentHashMap<>();
     private final ThreadPoolExecutor executor;
     private final AtomicInteger threadCounter = new AtomicInteger(0);
+    private final AtomicLong generationCounter = new AtomicLong(0);
+    private final Object completionLock = new Object();
+    private int cleanupTicks;
 
     public WawelTextureResolver(SessionBridge sessionBridge) {
         this.sessionBridge = sessionBridge;
-        this.executor = new ThreadPoolExecutor(2, 4, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(64), r -> {
+        this.executor = createDefaultExecutor();
+    }
+
+    WawelTextureResolver(SessionBridge sessionBridge, ThreadPoolExecutor executor) {
+        this.sessionBridge = sessionBridge;
+        this.executor = executor;
+    }
+
+    private ThreadPoolExecutor createDefaultExecutor() {
+        return new ThreadPoolExecutor(2, 4, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(64), r -> {
             Thread t = new Thread(r, "WawelAuth-SkinResolver-" + threadCounter.getAndIncrement());
             t.setDaemon(true);
             return t;
-        }, new ThreadPoolExecutor.DiscardOldestPolicy());
+        }, new ThreadPoolExecutor.AbortPolicy());
     }
 
     // =========================================================================
@@ -137,22 +153,28 @@ public class WawelTextureResolver {
     public void invalidate(UUID profileId) {
         if (profileId == null) return;
         String suffix = "|" + profileId.toString();
-        skinEntries.keySet()
-            .removeIf(k -> k.endsWith(suffix));
-        capeEntries.keySet()
-            .removeIf(k -> k.endsWith(suffix));
-        resolvedSkinModels.keySet()
-            .removeIf(k -> k.endsWith(suffix));
-        sessionBridge.invalidateProfileCache(profileId);
+        synchronized (completionLock) {
+            skinEntries.keySet()
+                .removeIf(k -> k.endsWith(suffix));
+            capeEntries.keySet()
+                .removeIf(k -> k.endsWith(suffix));
+            resolvedSkinModels.keySet()
+                .removeIf(k -> k.endsWith(suffix));
+        }
+        if (sessionBridge != null) {
+            sessionBridge.invalidateProfileCache(profileId);
+        }
     }
 
     /**
      * Invalidate all cached entries.
      */
     public void invalidateAll() {
-        skinEntries.clear();
-        capeEntries.clear();
-        resolvedSkinModels.clear();
+        synchronized (completionLock) {
+            skinEntries.clear();
+            capeEntries.clear();
+            resolvedSkinModels.clear();
+        }
     }
 
     // =========================================================================
@@ -161,23 +183,34 @@ public class WawelTextureResolver {
 
     /** Sweep expired entries. Call once per client tick. */
     public void tick() {
+        cleanupTicks++;
+        if (cleanupTicks < CLEANUP_INTERVAL_TICKS) {
+            return;
+        }
+        cleanupTicks = 0;
         long now = System.currentTimeMillis();
-        skinEntries.values()
-            .removeIf(
-                entry -> entry.state == FetchState.RESOLVED && entry.resolvedAtMs > 0
-                    && now - entry.resolvedAtMs > SKIN_TTL_MS);
-        capeEntries.values()
-            .removeIf(
-                entry -> entry.state == FetchState.RESOLVED && entry.resolvedAtMs > 0
-                    && now - entry.resolvedAtMs > SKIN_TTL_MS);
+        synchronized (completionLock) {
+            skinEntries.entrySet()
+                .removeIf(entry -> {
+                    boolean expired = isResolvedExpired(entry.getValue(), now);
+                    if (expired) {
+                        resolvedSkinModels.remove(entry.getKey());
+                    }
+                    return expired;
+                });
+            capeEntries.values()
+                .removeIf(entry -> isResolvedExpired(entry, now));
+        }
     }
 
     /** Shut down worker pool and clear state. */
     public void shutdown() {
         executor.shutdownNow();
-        skinEntries.clear();
-        capeEntries.clear();
-        resolvedSkinModels.clear();
+        synchronized (completionLock) {
+            skinEntries.clear();
+            capeEntries.clear();
+            resolvedSkinModels.clear();
+        }
     }
 
     // =========================================================================
@@ -198,6 +231,16 @@ public class WawelTextureResolver {
                     entry.texLocation = getDefaultSkin();
                     entry.state = FetchState.PENDING;
                     break;
+                case REGISTERED_LOADING:
+                    if (hasUsableRegisteredTexture(entry.texLocation)) {
+                        markResolved(entry, entry.texLocation);
+                        return entry.texLocation;
+                    }
+                    if (entry.isRegisteredLoadingTimedOut()) {
+                        entry.texLocation = getDefaultSkin();
+                        handleFetchFailure(entry);
+                    }
+                    return getDefaultSkin();
                 case FETCHING:
                     return getDefaultSkin();
                 case PLACEHOLDER:
@@ -214,8 +257,8 @@ public class WawelTextureResolver {
         }
 
         if (entry == null) {
-            entry = new SkinEntry(profileId, displayName, provider, allowUnsigned);
-            SkinEntry existing = skinEntries.putIfAbsent(cacheKey, entry);
+            entry = new SkinEntry(cacheKey, nextGeneration(), profileId, displayName, provider, allowUnsigned);
+            SkinEntry existing = (SkinEntry) cacheEntry(entry);
             if (existing != null) {
                 entry = existing;
             }
@@ -248,6 +291,16 @@ public class WawelTextureResolver {
                         break;
                     }
                     return entry.texLocation;
+                case REGISTERED_LOADING:
+                    if (entry.texLocation != null && hasUsableRegisteredTexture(entry.texLocation)) {
+                        markResolved(entry, entry.texLocation);
+                        return entry.texLocation;
+                    }
+                    if (entry.isRegisteredLoadingTimedOut()) {
+                        entry.texLocation = null;
+                        handleFetchFailure(entry);
+                    }
+                    return null;
                 case FETCHING:
                     return null;
                 case PLACEHOLDER:
@@ -264,8 +317,8 @@ public class WawelTextureResolver {
         }
 
         if (entry == null) {
-            entry = new CapeEntry(profileId, displayName, provider, allowUnsigned);
-            CapeEntry existing = capeEntries.putIfAbsent(cacheKey, entry);
+            entry = new CapeEntry(cacheKey, nextGeneration(), profileId, displayName, provider, allowUnsigned);
+            CapeEntry existing = (CapeEntry) cacheEntry(entry);
             if (existing != null) {
                 entry = existing;
             }
@@ -282,12 +335,18 @@ public class WawelTextureResolver {
         if (!entry.fetchInFlight.compareAndSet(false, true)) {
             return;
         }
-        entry.state = FetchState.FETCHING;
+        synchronized (completionLock) {
+            if (!isCurrent(entry)) {
+                entry.fetchInFlight.set(false);
+                return;
+            }
+            entry.state = FetchState.FETCHING;
+        }
 
         final UUID profileId = entry.profileId;
         final String displayName = entry.displayName;
         final ClientProvider provider = entry.provider;
-        String type = entry instanceof SkinEntry ? "skin" : "cape";
+        final String type = entry instanceof SkinEntry ? "skin" : "cape";
         WawelAuth.debug(
             "Fetching " + type
                 + " for "
@@ -299,20 +358,32 @@ public class WawelTextureResolver {
                 + "'");
         final boolean requireSecure = !entry.allowUnsigned;
 
-        executor.submit(() -> {
-            try {
-                doFetch(entry, profileId, displayName, provider, requireSecure);
-            } catch (Exception e) {
-                WawelAuth.debug("Skin fetch failed for " + profileId + ": " + e.getMessage());
-                handleFetchFailure(entry);
-            } finally {
-                entry.fetchInFlight.set(false);
-            }
-        });
+        try {
+            executor.submit(() -> {
+                try {
+                    if (!isCurrent(entry)) {
+                        return;
+                    }
+                    doFetch(entry, profileId, displayName, provider, requireSecure);
+                } catch (Exception e) {
+                    WawelAuth.debug("Failed to fetch " + type + " for " + profileId + ": " + e.getMessage());
+                    handleFetchFailureIfCurrent(entry);
+                } finally {
+                    entry.fetchInFlight.set(false);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            entry.fetchInFlight.set(false);
+            WawelAuth.debug("Fetch submission rejected for " + type + " " + profileId + ": " + e.getMessage());
+            handleFetchFailureIfCurrent(entry);
+        }
     }
 
     private void doFetch(TextureEntry entry, UUID profileId, String displayName, ClientProvider provider,
         boolean requireSecure) {
+        if (!isCurrent(entry)) {
+            return;
+        }
 
         final boolean isSkin = entry instanceof SkinEntry;
         final boolean isOffline = BuiltinProviders.isOfflineProvider(provider.getName());
@@ -327,8 +398,7 @@ public class WawelTextureResolver {
                 return;
             }
             // No local skin file, not transient, don't retry
-            entry.state = FetchState.RESOLVED;
-            entry.resolvedAtMs = System.currentTimeMillis();
+            completeNoTextureIfCurrent(entry);
             return;
         }
 
@@ -339,20 +409,20 @@ public class WawelTextureResolver {
             profile = sessionBridge.fillProfileFromProvider(provider, requestedProfile, requireSecure);
         } catch (Exception e) {
             WawelAuth.debug("fillProfileFromProvider failed for " + profileId + ": " + e.getMessage());
-            handleFetchFailure(entry);
+            handleFetchFailureIfCurrent(entry);
             return;
         }
 
         if (profile == null || profile.getProperties()
             .isEmpty()) {
-            handleFetchFailure(entry);
+            handleFetchFailureIfCurrent(entry);
             return;
         }
 
         if (isSkin) {
             SkinModel model = extractSkinModelFromProfile(profile);
             if (model != null) {
-                resolvedSkinModels.put(buildCacheKey(provider, profileId), model);
+                putResolvedSkinModelIfCurrent(entry, model);
             }
         }
 
@@ -370,17 +440,16 @@ public class WawelTextureResolver {
         } finally {
             sessionBridge.clearActiveProviderContext();
         }
+        if (!isCurrent(entry)) {
+            return;
+        }
 
         final MinecraftProfileTexture.Type finalType = isSkin ? MinecraftProfileTexture.Type.SKIN
             : MinecraftProfileTexture.Type.CAPE;
 
         if (textures == null || !textures.containsKey(finalType)) {
             // Profile has no skin/cape, not transient, don't retry
-            if (isSkin) {
-                entry.texLocation = getDefaultSkin();
-            }
-            entry.state = FetchState.RESOLVED;
-            entry.resolvedAtMs = System.currentTimeMillis();
+            completeNoTextureIfCurrent(entry);
             return;
         }
 
@@ -388,24 +457,21 @@ public class WawelTextureResolver {
         Minecraft.getMinecraft()
             .func_152344_a(() -> {
                 try {
-                    SkinManager skinManager = Minecraft.getMinecraft()
-                        .func_152342_ad();
-                    ResourceLocation registeredLocation = skinManager instanceof IProviderAwareSkinManager
-                        ? ((IProviderAwareSkinManager) skinManager)
-                            .wawelauth$loadTexture(finalTexture, finalType, null, provider)
-                        : skinManager.func_152792_a(finalTexture, finalType);
-                    if (!hasUsableRegisteredTexture(registeredLocation)) {
-                        WawelAuth.debug("Texture registration was not usable yet for " + profileId);
-                        handleFetchFailure(entry);
-                        return;
+                    synchronized (completionLock) {
+                        if (!isCurrent(entry)) {
+                            return;
+                        }
+                        SkinManager skinManager = Minecraft.getMinecraft()
+                            .func_152342_ad();
+                        ResourceLocation registeredLocation = skinManager instanceof IProviderAwareSkinManager
+                            ? ((IProviderAwareSkinManager) skinManager)
+                                .wawelauth$loadTexture(finalTexture, finalType, null, provider)
+                            : skinManager.func_152792_a(finalTexture, finalType);
+                        completeRegisteredTextureIfCurrent(entry, registeredLocation, profileId);
                     }
-                    entry.texLocation = registeredLocation;
-                    entry.state = FetchState.RESOLVED;
-                    entry.resolvedAtMs = System.currentTimeMillis();
-                    entry.retryCount = 0;
                 } catch (Exception e) {
                     WawelAuth.debug("Failed to register texture for " + profileId + ": " + e.getMessage());
-                    handleFetchFailure(entry);
+                    handleFetchFailureIfCurrent(entry);
                 }
             });
     }
@@ -422,42 +488,149 @@ public class WawelTextureResolver {
             }
         } catch (Exception e) {
             WawelAuth.debug("Failed to load local offline texture for " + profileId + ": " + e.getMessage());
-            handleFetchFailure(entry);
+            handleFetchFailureIfCurrent(entry);
+            return;
+        }
+        if (!isCurrent(entry)) {
             return;
         }
 
         Minecraft.getMinecraft()
             .func_152344_a(() -> {
                 try {
-                    ResourceLocation location;
-                    if (isSkin) {
-                        location = new ResourceLocation("wawelauth", "offline_skins/" + UuidUtil.toUnsigned(profileId));
-                    } else {
-                        location = new ResourceLocation("wawelauth", "offline_capes/" + UuidUtil.toUnsigned(profileId));
-                    }
+                    synchronized (completionLock) {
+                        if (!isCurrent(entry)) {
+                            return;
+                        }
+                        ResourceLocation location;
+                        if (isSkin) {
+                            location = new ResourceLocation(
+                                "wawelauth",
+                                "offline_skins/" + UuidUtil.toUnsigned(profileId));
+                        } else {
+                            location = new ResourceLocation(
+                                "wawelauth",
+                                "offline_capes/" + UuidUtil.toUnsigned(profileId));
+                        }
 
-                    ResourceLocation registeredLocation = LocalTextureLoader.registerBufferedImage(location, texImage);
-                    if (!hasUsableRegisteredTexture(registeredLocation)) {
-                        WawelAuth.debug("Local offline texture registration was not usable yet for " + profileId);
-                        handleFetchFailure(entry);
-                        return;
+                        ResourceLocation registeredLocation = LocalTextureLoader
+                            .registerBufferedImage(location, texImage);
+                        if (!hasUsableRegisteredTexture(registeredLocation)) {
+                            WawelAuth.debug("Local offline texture registration was not usable yet for " + profileId);
+                            handleFetchFailureIfCurrent(entry);
+                            return;
+                        }
+                        completeResolvedTextureIfCurrent(entry, registeredLocation);
                     }
-                    entry.texLocation = registeredLocation;
-                    entry.state = FetchState.RESOLVED;
-                    entry.resolvedAtMs = System.currentTimeMillis();
-                    entry.retryCount = 0;
                 } catch (Exception e) {
                     WawelAuth
                         .debug("Failed to register local offline texture for " + profileId + ": " + e.getMessage());
-                    handleFetchFailure(entry);
+                    handleFetchFailureIfCurrent(entry);
                 }
             });
+    }
+
+    private long nextGeneration() {
+        return generationCounter.incrementAndGet();
+    }
+
+    TextureEntry cacheEntry(TextureEntry entry) {
+        if (entry instanceof SkinEntry) {
+            return skinEntries.putIfAbsent(entry.cacheKey, (SkinEntry) entry);
+        }
+        return capeEntries.putIfAbsent(entry.cacheKey, (CapeEntry) entry);
+    }
+
+    TextureEntry getSkinEntry(String cacheKey) {
+        return skinEntries.get(cacheKey);
+    }
+
+    TextureEntry getCapeEntry(String cacheKey) {
+        return capeEntries.get(cacheKey);
+    }
+
+    boolean isCurrent(TextureEntry entry) {
+        if (entry == null) {
+            return false;
+        }
+        TextureEntry current = entry instanceof SkinEntry ? skinEntries.get(entry.cacheKey)
+            : capeEntries.get(entry.cacheKey);
+        return current == entry && current.generation == entry.generation;
+    }
+
+    void putResolvedSkinModelIfCurrent(TextureEntry entry, SkinModel model) {
+        if (model == null) {
+            return;
+        }
+        synchronized (completionLock) {
+            if (isCurrent(entry)) {
+                resolvedSkinModels.put(entry.cacheKey, model);
+            }
+        }
+    }
+
+    void completeNoTextureIfCurrent(TextureEntry entry) {
+        synchronized (completionLock) {
+            if (!isCurrent(entry)) {
+                return;
+            }
+            if (entry instanceof SkinEntry) {
+                entry.texLocation = getDefaultSkin();
+            } else {
+                entry.texLocation = null;
+            }
+            markResolved(entry, entry.texLocation);
+        }
+    }
+
+    private void completeRegisteredTextureIfCurrent(TextureEntry entry, ResourceLocation registeredLocation,
+        UUID profileId) {
+        synchronized (completionLock) {
+            if (!isCurrent(entry)) {
+                return;
+            }
+            if (hasUsableRegisteredTexture(registeredLocation)) {
+                markResolved(entry, registeredLocation);
+                return;
+            }
+            WawelAuth.debug("Texture registered but still loading for " + profileId);
+            entry.texLocation = registeredLocation;
+            entry.state = FetchState.REGISTERED_LOADING;
+            entry.lastAttemptMs = System.currentTimeMillis();
+        }
+    }
+
+    private void completeResolvedTextureIfCurrent(TextureEntry entry, ResourceLocation registeredLocation) {
+        synchronized (completionLock) {
+            if (isCurrent(entry)) {
+                markResolved(entry, registeredLocation);
+            }
+        }
+    }
+
+    private void handleFetchFailureIfCurrent(TextureEntry entry) {
+        synchronized (completionLock) {
+            if (isCurrent(entry)) {
+                handleFetchFailure(entry);
+            }
+        }
     }
 
     private static void handleFetchFailure(TextureEntry entry) {
         entry.retryCount++;
         entry.lastAttemptMs = System.currentTimeMillis();
         entry.state = entry.retryCount >= MAX_RETRIES ? FetchState.FAILED : FetchState.PLACEHOLDER;
+    }
+
+    private static void markResolved(TextureEntry entry, ResourceLocation texLocation) {
+        entry.texLocation = texLocation;
+        entry.state = FetchState.RESOLVED;
+        entry.resolvedAtMs = System.currentTimeMillis();
+        entry.retryCount = 0;
+    }
+
+    private static boolean isResolvedExpired(TextureEntry entry, long now) {
+        return entry.state == FetchState.RESOLVED && entry.resolvedAtMs > 0 && now - entry.resolvedAtMs > SKIN_TTL_MS;
     }
 
     private static boolean hasUsableRegisteredTexture(ResourceLocation texLocation) {
@@ -513,17 +686,20 @@ public class WawelTextureResolver {
     // State machine
     // =========================================================================
 
-    private enum FetchState {
+    enum FetchState {
 
         PENDING,
         FETCHING,
+        REGISTERED_LOADING,
         RESOLVED,
         PLACEHOLDER,
         FAILED
     }
 
-    private static class TextureEntry {
+    static class TextureEntry {
 
+        final String cacheKey;
+        final long generation;
         final UUID profileId;
         final String displayName;
         final ClientProvider provider;
@@ -536,7 +712,10 @@ public class WawelTextureResolver {
         volatile long lastAttemptMs;
         volatile int retryCount;
 
-        TextureEntry(UUID profileId, String displayName, ClientProvider provider, boolean allowUnsigned) {
+        TextureEntry(String cacheKey, long generation, UUID profileId, String displayName, ClientProvider provider,
+            boolean allowUnsigned) {
+            this.cacheKey = cacheKey;
+            this.generation = generation;
             this.profileId = profileId;
             this.displayName = displayName;
             this.provider = provider;
@@ -558,19 +737,25 @@ public class WawelTextureResolver {
             }
             return false;
         }
-    }
 
-    private static final class SkinEntry extends TextureEntry {
-
-        SkinEntry(UUID profileId, String displayName, ClientProvider provider, boolean allowUnsigned) {
-            super(profileId, displayName, provider, allowUnsigned);
+        boolean isRegisteredLoadingTimedOut() {
+            return lastAttemptMs > 0 && System.currentTimeMillis() - lastAttemptMs > REGISTERED_LOADING_TIMEOUT_MS;
         }
     }
 
-    private static final class CapeEntry extends TextureEntry {
+    static final class SkinEntry extends TextureEntry {
 
-        CapeEntry(UUID profileId, String displayName, ClientProvider provider, boolean allowUnsigned) {
-            super(profileId, displayName, provider, allowUnsigned);
+        SkinEntry(String cacheKey, long generation, UUID profileId, String displayName, ClientProvider provider,
+            boolean allowUnsigned) {
+            super(cacheKey, generation, profileId, displayName, provider, allowUnsigned);
+        }
+    }
+
+    static final class CapeEntry extends TextureEntry {
+
+        CapeEntry(String cacheKey, long generation, UUID profileId, String displayName, ClientProvider provider,
+            boolean allowUnsigned) {
+            super(cacheKey, generation, profileId, displayName, provider, allowUnsigned);
         }
     }
 }
