@@ -731,14 +731,35 @@ public class ServerConfig {
     public static class Http {
 
         /**
+         * Enables HTTPS on the unified Minecraft/HTTP port.
+         * <p>
+         * When enabled, the protocol switcher accepts TLS ClientHello records on
+         * the same socket as Minecraft and plaintext HTTP.
+         */
+        private boolean httpsEnabled = true;
+
+        /**
          * Read timeout in seconds for HTTP connections. Prevents slowloris.
          */
         private int readTimeoutSeconds = 10;
 
         /**
+         * TLS handshake timeout in seconds for same-port HTTPS connections.
+         */
+        private int tlsHandshakeTimeoutSeconds = 10;
+
+        /**
          * Maximum HTTP request body size in bytes. Must accommodate texture uploads.
          */
         private int maxContentLengthBytes = 1_048_576;
+
+        public boolean isHttpsEnabled() {
+            return httpsEnabled;
+        }
+
+        public void setHttpsEnabled(boolean httpsEnabled) {
+            this.httpsEnabled = httpsEnabled;
+        }
 
         public int getReadTimeoutSeconds() {
             return readTimeoutSeconds;
@@ -746,6 +767,14 @@ public class ServerConfig {
 
         public void setReadTimeoutSeconds(int readTimeoutSeconds) {
             this.readTimeoutSeconds = readTimeoutSeconds;
+        }
+
+        public int getTlsHandshakeTimeoutSeconds() {
+            return tlsHandshakeTimeoutSeconds;
+        }
+
+        public void setTlsHandshakeTimeoutSeconds(int tlsHandshakeTimeoutSeconds) {
+            this.tlsHandshakeTimeoutSeconds = tlsHandshakeTimeoutSeconds;
         }
 
         public int getMaxContentLengthBytes() {

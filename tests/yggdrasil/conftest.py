@@ -18,7 +18,7 @@ def _env_flag(name: str, default: bool) -> bool:
 @pytest.fixture(scope="session")
 def settings() -> YggSettings:
     return YggSettings(
-        base_url=os.getenv("YGG_BASE_URL", "http://127.0.0.1:25565"),
+        base_url=os.getenv("YGG_BASE_URL", "http://127.0.0.1:25565/auth"),
         username=os.getenv("YGG_USERNAME"),
         password=os.getenv("YGG_PASSWORD"),
         profile_id=os.getenv("YGG_PROFILE_ID"),

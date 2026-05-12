@@ -91,7 +91,6 @@ public class WawelServer {
         TextureService textureService = new TextureService(tokenDAO, profileDAO, textureFileStore);
         AdminWebService adminWebService = new AdminWebService(
             config,
-            keyManager,
             userDAO,
             profileDAO,
             tokenDAO,

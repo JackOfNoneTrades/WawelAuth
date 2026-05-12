@@ -6,7 +6,7 @@ import json
 import struct
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Optional, Set, Tuple
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from cryptography.hazmat.primitives import hashes, serialization
@@ -36,9 +36,15 @@ class AuthContext:
 class YggClient:
     def __init__(self, settings: YggSettings):
         self.settings = settings
+        self.expected_api_location = self._api_location_from_base_url(settings.base_url)
 
     def _url(self, path: str) -> str:
         return urljoin(self.settings.base_url.rstrip("/") + "/", path.lstrip("/"))
+
+    @staticmethod
+    def _api_location_from_base_url(base_url: str) -> str:
+        path = urlparse(base_url).path.rstrip("/")
+        return path or "/"
 
     def request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
         kwargs.setdefault("timeout", self.settings.timeout_seconds)
@@ -54,10 +60,11 @@ class YggClient:
                 f"Expected JSON response, got status={response.status_code} body={response.text!r}"
             ) from exc
 
-    @staticmethod
-    def assert_ali_header(response: requests.Response) -> None:
-        assert response.headers.get(ALI_HEADER) == "/", (
-            f"Missing/invalid {ALI_HEADER}: {response.headers.get(ALI_HEADER)!r}"
+    def assert_ali_header(self, response: requests.Response) -> None:
+        actual = response.headers.get(ALI_HEADER)
+        assert actual == self.expected_api_location, (
+            f"Missing/invalid {ALI_HEADER}: {actual!r}; "
+            f"expected {self.expected_api_location!r}"
         )
 
     @staticmethod

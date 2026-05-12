@@ -111,16 +111,18 @@ Notes:
 
 * `registration.policy`: `OPEN`, `INVITE_ONLY`, `CLOSED`
 * `textures`: max skin / cape dimensions, file limits, animated cape limits
-* `http`: HTTP read timeout and max request body size
+* `http`: same-port HTTPS enable flag, HTTP read timeout, TLS handshake timeout, and max request body size
 * `admin`: web UI enable flag, login token, session TTL
 
 ### Admin web UI
 
 If `server.admin.enabled=true`, the admin UI is available at:
 
-* `http://your-host:your-port/admin`
+* `https://your-host:your-port/admin` when `server.http.httpsEnabled=true` (default)
+* `http://your-host:your-port/admin` for bootstrap/status only; login requires HTTPS
 
 It manages users, textures, invites, whitelist, ops, `server.json`, and `server.properties`.
+Same-port HTTPS uses a self-signed certificate generated in WawelAuth's data directory; verify the SHA-256 fingerprint printed in the server log when accepting the browser warning.
 
 ### Fallback providers
 

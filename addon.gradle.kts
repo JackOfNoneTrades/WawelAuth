@@ -1,5 +1,6 @@
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension
 import com.gtnewhorizons.retrofuturagradle.mcp.ExtractDependencyATsTask
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.api.artifacts.dsl.RepositoryHandler
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.specs.Specs
@@ -44,6 +45,10 @@ tasks.withType<JavaExec>().configureEach {
             }
         }
     }
+}
+
+tasks.named<ShadowJar>("shadowJar").configure {
+    relocate("org.bouncycastle", "org.fentanylsolutions.wawelauth.shadow.bouncycastle")
 }
 
 val minecraftExtension = project.extensions.getByType(MinecraftExtension::class.java)

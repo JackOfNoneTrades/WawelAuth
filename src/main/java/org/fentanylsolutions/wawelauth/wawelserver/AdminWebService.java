@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -30,8 +31,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import javax.crypto.Cipher;
-
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.gui.IUpdatePlayerListBox;
@@ -51,7 +50,6 @@ import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.JsonConfigIO;
 import org.fentanylsolutions.wawelauth.wawelcore.config.RegistrationPolicy;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
-import org.fentanylsolutions.wawelauth.wawelcore.crypto.KeyManager;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.PasswordHasher;
 import org.fentanylsolutions.wawelauth.wawelcore.data.AdminPlayerListType;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
@@ -65,6 +63,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.storage.TokenDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.UserDAO;
 import org.fentanylsolutions.wawelauth.wawelnet.BinaryResponse;
 import org.fentanylsolutions.wawelauth.wawelnet.HttpRouter;
+import org.fentanylsolutions.wawelauth.wawelnet.HttpsContextProvider;
 import org.fentanylsolutions.wawelauth.wawelnet.NetException;
 import org.fentanylsolutions.wawelauth.wawelnet.RequestContext;
 
@@ -97,7 +96,6 @@ public class AdminWebService {
     private static final long MAIN_THREAD_WAIT_MS = 15_000L;
 
     private final ServerConfig serverConfig;
-    private final KeyManager keyManager;
     private final UserDAO userDAO;
     private final ProfileDAO profileDAO;
     private final TokenDAO tokenDAO;
@@ -115,10 +113,9 @@ public class AdminWebService {
     private final byte[] packFallbackPng;
     private final byte[] nerdSymbolsSubsetWoff2;
 
-    public AdminWebService(ServerConfig serverConfig, KeyManager keyManager, UserDAO userDAO, ProfileDAO profileDAO,
-        TokenDAO tokenDAO, InviteDAO inviteDAO, AdminPlayerListProviderBindingDAO adminPlayerListProviderBindingDAO) {
+    public AdminWebService(ServerConfig serverConfig, UserDAO userDAO, ProfileDAO profileDAO, TokenDAO tokenDAO,
+        InviteDAO inviteDAO, AdminPlayerListProviderBindingDAO adminPlayerListProviderBindingDAO) {
         this.serverConfig = serverConfig;
-        this.keyManager = keyManager;
         this.userDAO = userDAO;
         this.profileDAO = profileDAO;
         this.tokenDAO = tokenDAO;
@@ -226,16 +223,25 @@ public class AdminWebService {
         Map<String, Object> out = new LinkedHashMap<>();
         boolean enabled = isAdminEnabled();
         boolean tokenConfigured = resolveConfiguredAdminToken() != null;
-        boolean requireEncryption = requiresEncryptedLogin(ctx);
+        boolean secureTransport = isHttpsRequest(ctx);
 
         out.put("enabled", enabled);
         out.put("tokenConfigured", tokenConfigured);
-        out.put("requireEncryption", requireEncryption);
-        out.put("publicKeyBase64", requireEncryption ? keyManager.getPublicKeyBase64() : null);
+        out.put("secureTransport", secureTransport);
+        out.put("adminLoginAllowed", secureTransport);
         out.put("serverName", serverConfig.getServerName());
         out.put("publicBaseUrl", serverConfig.getPublicBaseUrl());
         out.put("apiRoot", serverConfig.getApiRoot());
         out.put("effectiveApiRoot", serverConfig.getEffectiveApiRoot());
+        out.put(
+            "samePortHttpsEnabled",
+            serverConfig.getHttp()
+                .isHttpsEnabled());
+        out.put(
+            "samePortHttpsCertificateSha256",
+            serverConfig.getHttp()
+                .isHttpsEnabled() ? HttpsContextProvider.getCertificateFingerprint() : null);
+        out.put("samePortHttpsAdminUrl", resolveSamePortHttpsAdminUrl());
         out.put(
             "implementationName",
             serverConfig.getMeta()
@@ -266,19 +272,13 @@ public class AdminWebService {
         if (configuredToken == null) {
             throw NetException.forbidden("Admin token is not configured.");
         }
+        if (!isHttpsRequest(ctx)) {
+            throw NetException.forbidden("Admin login requires HTTPS.");
+        }
 
-        String providedToken;
-        if (requiresEncryptedLogin(ctx)) {
-            String encryptedToken = ctx.optJsonString("encryptedToken");
-            if (encryptedToken == null) {
-                throw NetException.illegalArgument("Missing encryptedToken.");
-            }
-            providedToken = decryptEncryptedToken(encryptedToken);
-        } else {
-            providedToken = ctx.optJsonString("token");
-            if (providedToken == null) {
-                throw NetException.illegalArgument("Missing token.");
-            }
+        String providedToken = ctx.optJsonString("token");
+        if (providedToken == null) {
+            throw NetException.illegalArgument("Missing token.");
         }
 
         if (!constantTimeEquals(configuredToken, providedToken)) {
@@ -301,6 +301,9 @@ public class AdminWebService {
 
     private Object logout(RequestContext ctx) {
         ensureOperational();
+        if (!isHttpsRequest(ctx)) {
+            throw NetException.forbidden("Admin logout requires HTTPS.");
+        }
         String token = extractSessionToken(ctx);
         if (token != null) {
             sessions.remove(token);
@@ -1281,6 +1284,9 @@ public class AdminWebService {
 
     private AdminSession requireSession(RequestContext ctx) {
         ensureOperational();
+        if (!isHttpsRequest(ctx)) {
+            throw NetException.forbidden("Admin API requires HTTPS.");
+        }
         cleanupExpiredSessions(System.currentTimeMillis());
         String token = extractSessionToken(ctx);
         if (token == null) {
@@ -1353,36 +1359,40 @@ public class AdminWebService {
         }
     }
 
-    private String decryptEncryptedToken(String encryptedTokenB64) {
-        byte[] encryptedBytes;
-        try {
-            encryptedBytes = Base64.getDecoder()
-                .decode(encryptedTokenB64);
-        } catch (IllegalArgumentException e) {
-            throw NetException.illegalArgument("encryptedToken is not valid base64.");
+    private String resolveSamePortHttpsAdminUrl() {
+        if (!serverConfig.getHttp()
+            .isHttpsEnabled()) {
+            return null;
+        }
+
+        String base = trimToNull(serverConfig.getPublicBaseUrl());
+        if (base == null) {
+            base = trimToNull(serverConfig.getServerAddress());
+        }
+        if (base == null) {
+            return null;
         }
 
         try {
-            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
-            cipher.init(Cipher.DECRYPT_MODE, keyManager.getPrivateKey());
-            byte[] plain = cipher.doFinal(encryptedBytes);
-            String token = new String(plain, StandardCharsets.UTF_8);
-            if (token.isEmpty()) {
-                throw NetException.illegalArgument("Encrypted token payload is empty.");
+            URI uri = base.contains("://") ? new URI(base) : new URI("http://" + base);
+            String authority = uri.getRawAuthority();
+            if (authority == null || authority.isEmpty()) {
+                return null;
             }
-            return token;
-        } catch (NetException e) {
-            throw e;
+            return "https://" + authority + "/admin";
         } catch (Exception e) {
-            throw NetException.illegalArgument("Failed to decrypt encryptedToken payload.");
+            return null;
         }
-    }
-
-    private boolean requiresEncryptedLogin(RequestContext ctx) {
-        return !isHttpsRequest(ctx);
     }
 
     private static boolean isHttpsRequest(RequestContext ctx) {
+        if (ctx.isSecureTransport()) {
+            return true;
+        }
+        if (!isLoopbackClient(ctx)) {
+            return false;
+        }
+
         String forwarded = trimToNull(
             ctx.getRequest()
                 .headers()
@@ -1407,6 +1417,15 @@ public class AdminWebService {
                 .headers()
                 .get("X-Forwarded-Ssl"));
         return "on".equalsIgnoreCase(forwardedSsl) || "1".equals(forwardedSsl);
+    }
+
+    private static boolean isLoopbackClient(RequestContext ctx) {
+        try {
+            return InetAddress.getByName(ctx.getClientIp())
+                .isLoopbackAddress();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private String resolveConfiguredAdminToken() {

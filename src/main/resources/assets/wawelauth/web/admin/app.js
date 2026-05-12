@@ -188,12 +188,7 @@
             state.bootstrap = data;
             applyBootstrapMetadata(data);
 
-            if (data.requireEncryption) {
-                el.transportHint.classList.remove("hidden");
-                el.transportHint.textContent = "HTTP transport detected. Login payload will be RSA-encrypted with the server public key.";
-            } else {
-                el.transportHint.classList.add("hidden");
-            }
+            renderTransportHint(data);
 
             if (!data.enabled) {
                 showBanner("Admin Web UI is disabled in server configuration.", "warn");
@@ -202,6 +197,16 @@
             }
             if (!data.tokenConfigured) {
                 showBanner("Admin token is not configured. Set server.admin.token or the configured env var.", "warn");
+                disableLogin(true);
+                return;
+            }
+            if (!data.adminLoginAllowed) {
+                showBanner(
+                    data.samePortHttpsAdminUrl
+                        ? "Admin login requires HTTPS. Use the same-port HTTPS link below."
+                        : "Admin login requires HTTPS.",
+                    "warn"
+                );
                 disableLogin(true);
                 return;
             }
@@ -232,20 +237,11 @@
         showBanner("Logging in...", "ok");
 
         try {
-            let payload;
-            if (state.bootstrap.requireEncryption) {
-                payload = {
-                    encryptedToken: await encryptToken(token, state.bootstrap.publicKeyBase64)
-                };
-            } else {
-                payload = { token };
-            }
-
             const data = await requestJson(
                 "/api/wawelauth/admin/login",
                 {
                     method: "POST",
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ token })
                 },
                 false
             );
@@ -265,6 +261,30 @@
             showBanner(`Login failed: ${err.message}`, "err");
             disableLogin(false);
         }
+    }
+
+    function renderTransportHint(data) {
+        el.transportHint.textContent = "";
+        if (!data || data.secureTransport) {
+            el.transportHint.classList.add("hidden");
+            return;
+        }
+
+        el.transportHint.classList.remove("hidden");
+        if (window.location.protocol === "http:" && data.samePortHttpsAdminUrl) {
+            el.transportHint.append("Admin login requires HTTPS. Use same-port HTTPS: ");
+            const link = document.createElement("a");
+            link.href = data.samePortHttpsAdminUrl;
+            link.textContent = data.samePortHttpsAdminUrl;
+            link.rel = "noreferrer";
+            el.transportHint.appendChild(link);
+            if (data.samePortHttpsCertificateSha256) {
+                el.transportHint.append(` (SHA-256: ${data.samePortHttpsCertificateSha256})`);
+            }
+            return;
+        }
+
+        el.transportHint.textContent = "Admin login requires HTTPS.";
     }
 
     function enterAppMode() {
@@ -1579,48 +1599,6 @@
         }
 
         return payload;
-    }
-
-    async function encryptToken(token, publicKeyBase64) {
-        if (!publicKeyBase64) {
-            throw new Error("Server did not provide admin public key.");
-        }
-        if (!window.crypto || !window.crypto.subtle) {
-            throw new Error("Browser does not support WebCrypto required for encrypted login.");
-        }
-
-        const keyData = base64ToBytes(publicKeyBase64);
-        const key = await window.crypto.subtle.importKey(
-            "spki",
-            keyData.buffer,
-            { name: "RSA-OAEP", hash: "SHA-1" },
-            false,
-            ["encrypt"]
-        );
-        const encodedToken = new TextEncoder().encode(token);
-        const encrypted = await window.crypto.subtle.encrypt(
-            { name: "RSA-OAEP" },
-            key,
-            encodedToken
-        );
-        return bytesToBase64(new Uint8Array(encrypted));
-    }
-
-    function base64ToBytes(base64) {
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i += 1) {
-            bytes[i] = binary.charCodeAt(i);
-        }
-        return bytes;
-    }
-
-    function bytesToBase64(bytes) {
-        let binary = "";
-        for (let i = 0; i < bytes.length; i += 1) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return btoa(binary);
     }
 
     function disableLogin(disabled) {

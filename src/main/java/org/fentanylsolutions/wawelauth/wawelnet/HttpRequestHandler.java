@@ -22,6 +22,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.util.CharsetUtil;
 
 /**
@@ -77,7 +78,9 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                 request,
                 match.getPathParams(),
                 ctx.channel()
-                    .remoteAddress());
+                    .remoteAddress(),
+                ctx.pipeline()
+                    .get("https_ssl") instanceof SslHandler);
             Object result = match.getHandler()
                 .handle(reqCtx);
 

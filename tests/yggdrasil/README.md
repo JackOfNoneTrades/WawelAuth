@@ -55,7 +55,7 @@ pip install -r tests/yggdrasil/requirements.txt
 
 ## Environment Variables
 
-- `YGG_BASE_URL` (default: `http://127.0.0.1:25565`)
+- `YGG_BASE_URL` (default: `http://127.0.0.1:25565/auth`)
 - `YGG_USERNAME` (required for authenticated tests)
 - `YGG_PASSWORD` (required for authenticated tests)
 - `YGG_PROFILE_ID` (optional preferred profile UUID without dashes)
@@ -65,7 +65,7 @@ pip install -r tests/yggdrasil/requirements.txt
 Example:
 
 ```bash
-export YGG_BASE_URL="http://127.0.0.1:25565"
+export YGG_BASE_URL="http://127.0.0.1:25565/auth"
 export YGG_USERNAME="test_user"
 export YGG_PASSWORD="test_password"
 pytest -q tests/yggdrasil -m integration

@@ -61,6 +61,8 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:forgeservertools-64744:2225866"))
 
     // Shadow
+    shadowImplementation("org.bouncycastle:bcprov-jdk15to18:1.78.1")
+    shadowImplementation("org.bouncycastle:bcpkix-jdk15to18:1.78.1")
     shadowImplementation("org.xerial:sqlite-jdbc:3.53.0.0")
 
     // Test

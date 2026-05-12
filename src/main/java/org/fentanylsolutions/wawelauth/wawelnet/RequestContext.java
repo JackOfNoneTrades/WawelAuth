@@ -23,14 +23,17 @@ public class RequestContext {
     private final FullHttpRequest request;
     private final Map<String, String> pathParams;
     private final SocketAddress remoteAddress;
+    private final boolean secureTransport;
 
     private JsonObject cachedBody;
     private boolean bodyParsed;
 
-    public RequestContext(FullHttpRequest request, Map<String, String> pathParams, SocketAddress remoteAddress) {
+    public RequestContext(FullHttpRequest request, Map<String, String> pathParams, SocketAddress remoteAddress,
+        boolean secureTransport) {
         this.request = request;
         this.pathParams = pathParams;
         this.remoteAddress = remoteAddress;
+        this.secureTransport = secureTransport;
     }
 
     public FullHttpRequest getRequest() {
@@ -157,6 +160,13 @@ public class RequestContext {
                 .getHostAddress();
         }
         return remoteAddress.toString();
+    }
+
+    /**
+     * Returns true when the request reached the embedded server over native TLS.
+     */
+    public boolean isSecureTransport() {
+        return secureTransport;
     }
 
     /**

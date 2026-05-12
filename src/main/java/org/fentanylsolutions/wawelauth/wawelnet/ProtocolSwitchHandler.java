@@ -3,6 +3,7 @@ package org.fentanylsolutions.wawelauth.wawelnet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import net.minecraft.network.NetworkManager;
 
@@ -17,6 +18,7 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 
 /**
@@ -25,6 +27,7 @@ import io.netty.handler.timeout.ReadTimeoutHandler;
  * HTTP or the Minecraft binary protocol.
  *
  * <ul>
+ * <li>TLS detected: tears down the MC pipeline, installs TLS + HTTP handlers</li>
  * <li>HTTP detected: tears down the MC pipeline, installs HTTP handlers</li>
  * <li>MC detected: removes itself, vanilla pipeline proceeds unchanged</li>
  * </ul>
@@ -54,12 +57,23 @@ public class ProtocolSwitchHandler extends ByteToMessageDecoder {
         int b1 = in.getUnsignedByte(in.readerIndex());
         int b2 = in.getUnsignedByte(in.readerIndex() + 1);
 
-        if (isHttp(b1, b2)) {
-            switchToHttp(ctx);
+        if (isTls(b1, b2)) {
+            switchToHttps(ctx);
+        } else if (isHttp(b1, b2)) {
+            switchToHttp(ctx, false);
         } else {
             ctx.pipeline()
                 .remove(this);
         }
+    }
+
+    /**
+     * TLS records start with content type 0x16 (handshake), then a protocol
+     * major version of 0x03 for SSLv3/TLS. Minecraft handshakes start with a
+     * VarInt packet length, so this is distinct from vanilla traffic.
+     */
+    private static boolean isTls(int b1, int b2) {
+        return b1 == 0x16 && b2 == 0x03;
     }
 
     /**
@@ -85,10 +99,25 @@ public class ProtocolSwitchHandler extends ByteToMessageDecoder {
      * We also remove the NetworkManager from the networkManagers list
      * to prevent zombie entries in NetworkSystem.networkTick().
      */
-    private void switchToHttp(ChannelHandlerContext ctx) {
+    private void switchToHttps(ChannelHandlerContext ctx) {
+        ServerConfig.Http httpConfig = Config.server()
+            .getHttp();
+        if (!httpConfig.isHttpsEnabled()) {
+            WawelAuth.debug(
+                "TLS traffic detected from " + ctx.channel()
+                    .remoteAddress() + " but same-port HTTPS is disabled; closing");
+            ctx.close();
+            return;
+        }
+        switchToHttp(ctx, true);
+    }
+
+    private void switchToHttp(ChannelHandlerContext ctx, boolean https) {
         WawelAuth.debug(
-            "HTTP traffic detected from " + ctx.channel()
-                .remoteAddress() + ", switching pipeline");
+            (https ? "HTTPS" : "HTTP") + " traffic detected from "
+                + ctx.channel()
+                    .remoteAddress()
+                + ", switching pipeline");
 
         ChannelPipeline pipeline = ctx.pipeline();
 
@@ -122,6 +151,11 @@ public class ProtocolSwitchHandler extends ByteToMessageDecoder {
         ServerConfig.Http httpConfig = Config.server()
             .getHttp();
         pipeline.addLast("http_timeout", new ReadTimeoutHandler(httpConfig.getReadTimeoutSeconds()));
+        if (https) {
+            SslHandler sslHandler = new SslHandler(HttpsContextProvider.newServerEngine());
+            sslHandler.setHandshakeTimeout(httpConfig.getTlsHandshakeTimeoutSeconds(), TimeUnit.SECONDS);
+            pipeline.addLast("https_ssl", sslHandler);
+        }
         pipeline.addLast("http_codec", new HttpServerCodec());
         pipeline.addLast("http_aggregator", new HttpObjectAggregator(httpConfig.getMaxContentLengthBytes()));
         pipeline.addLast("http_handler", new HttpRequestHandler());
