@@ -5,6 +5,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import net.minecraft.util.ResourceLocation;
+
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.junit.Assert;
@@ -36,7 +38,8 @@ public class WawelTextureResolverTest {
             ClientProvider provider = provider("Alpha");
             String cacheKey = WawelTextureResolver.buildCacheKey(provider, profileId);
 
-            WawelTextureResolver.SkinEntry oldEntry = new WawelTextureResolver.SkinEntry(
+            TextureEntry oldEntry = new TextureEntry(
+                TextureKind.SKIN,
                 cacheKey,
                 1L,
                 profileId,
@@ -59,7 +62,7 @@ public class WawelTextureResolverTest {
             resolver.completeNoTextureIfCurrent(oldEntry);
 
             Assert.assertNull(resolver.getResolvedSkinModel(profileId, provider));
-            Assert.assertEquals(WawelTextureResolver.FetchState.PENDING, oldEntry.state);
+            Assert.assertEquals(TextureFetchState.PENDING, oldEntry.state);
         } finally {
             executor.shutdownNow();
         }
@@ -74,14 +77,16 @@ public class WawelTextureResolverTest {
             ClientProvider provider = provider("Alpha");
             String cacheKey = WawelTextureResolver.buildCacheKey(provider, profileId);
 
-            WawelTextureResolver.SkinEntry oldEntry = new WawelTextureResolver.SkinEntry(
+            TextureEntry oldEntry = new TextureEntry(
+                TextureKind.SKIN,
                 cacheKey,
                 1L,
                 profileId,
                 "Player",
                 provider,
                 false);
-            WawelTextureResolver.SkinEntry newEntry = new WawelTextureResolver.SkinEntry(
+            TextureEntry newEntry = new TextureEntry(
+                TextureKind.SKIN,
                 cacheKey,
                 2L,
                 profileId,
@@ -97,10 +102,10 @@ public class WawelTextureResolverTest {
             Assert.assertTrue(resolver.isCurrent(newEntry));
 
             resolver.completeNoTextureIfCurrent(oldEntry);
-            Assert.assertEquals(WawelTextureResolver.FetchState.PENDING, newEntry.state);
+            Assert.assertEquals(TextureFetchState.PENDING, newEntry.state);
 
             resolver.completeNoTextureIfCurrent(newEntry);
-            Assert.assertEquals(WawelTextureResolver.FetchState.RESOLVED, newEntry.state);
+            Assert.assertEquals(TextureFetchState.RESOLVED, newEntry.state);
         } finally {
             executor.shutdownNow();
         }
@@ -118,10 +123,10 @@ public class WawelTextureResolverTest {
 
         resolver.getSkin(profileId, "Player", provider, false);
 
-        WawelTextureResolver.TextureEntry entry = resolver.getSkinEntry(cacheKey);
+        TextureEntry entry = resolver.getSkinEntry(cacheKey);
         Assert.assertNotNull(entry);
         Assert.assertFalse(entry.fetchInFlight.get());
-        Assert.assertEquals(WawelTextureResolver.FetchState.PLACEHOLDER, entry.state);
+        Assert.assertEquals(TextureFetchState.PLACEHOLDER, entry.state);
         Assert.assertEquals(1, entry.retryCount);
     }
 
@@ -130,15 +135,9 @@ public class WawelTextureResolverTest {
         UUID profileId = UUID.fromString("dddddddd-1111-4222-8333-eeeeeeeeeeee");
         ClientProvider provider = provider("Alpha");
         String cacheKey = WawelTextureResolver.buildCacheKey(provider, profileId);
-        WawelTextureResolver.SkinEntry entry = new WawelTextureResolver.SkinEntry(
-            cacheKey,
-            1L,
-            profileId,
-            "Player",
-            provider,
-            false);
+        TextureEntry entry = new TextureEntry(TextureKind.SKIN, cacheKey, 1L, profileId, "Player", provider, false);
 
-        entry.state = WawelTextureResolver.FetchState.REGISTERED_LOADING;
+        entry.state = TextureFetchState.REGISTERED_LOADING;
         entry.lastAttemptMs = System.currentTimeMillis();
         Assert.assertFalse(entry.isRegisteredLoadingTimedOut());
 
@@ -154,13 +153,7 @@ public class WawelTextureResolverTest {
             UUID profileId = UUID.fromString("eeeeeeee-1111-4222-8333-ffffffffffff");
             ClientProvider provider = provider("Alpha");
             String cacheKey = WawelTextureResolver.buildCacheKey(provider, profileId);
-            WawelTextureResolver.SkinEntry entry = new WawelTextureResolver.SkinEntry(
-                cacheKey,
-                1L,
-                profileId,
-                "Player",
-                provider,
-                false);
+            TextureEntry entry = new TextureEntry(TextureKind.SKIN, cacheKey, 1L, profileId, "Player", provider, false);
 
             resolver.cacheEntry(entry);
             resolver.putResolvedSkinModelIfCurrent(entry, SkinModel.SLIM);
@@ -184,13 +177,7 @@ public class WawelTextureResolverTest {
             UUID profileId = UUID.fromString("ffffffff-1111-4222-8333-aaaaaaaaaaaa");
             ClientProvider provider = provider("Alpha");
             String cacheKey = WawelTextureResolver.buildCacheKey(provider, profileId);
-            WawelTextureResolver.SkinEntry entry = new WawelTextureResolver.SkinEntry(
-                cacheKey,
-                1L,
-                profileId,
-                "Player",
-                provider,
-                false);
+            TextureEntry entry = new TextureEntry(TextureKind.SKIN, cacheKey, 1L, profileId, "Player", provider, false);
 
             resolver.cacheEntry(entry);
             resolver.putResolvedSkinModelIfCurrent(entry, SkinModel.SLIM);
@@ -204,6 +191,43 @@ public class WawelTextureResolverTest {
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    public void cacheCompletesRegisteredTextureUnderCurrentCheck() {
+        TextureResolverCache cache = new TextureResolverCache();
+        UUID profileId = UUID.fromString("11111111-2222-4333-8444-555555555555");
+        ClientProvider provider = provider("Alpha");
+        String cacheKey = TextureResolverCache.buildCacheKey(provider, profileId);
+        TextureEntry entry = new TextureEntry(TextureKind.SKIN, cacheKey, 1L, profileId, "Player", provider, false);
+        ResourceLocation location = new ResourceLocation("wawelauth", "test_skin");
+
+        cache.cacheEntry(entry);
+
+        TextureFetchState state = cache.completeRegisteredTextureIfCurrent(entry, () -> location, tex -> false);
+
+        Assert.assertEquals(TextureFetchState.REGISTERED_LOADING, state);
+        Assert.assertEquals(TextureFetchState.REGISTERED_LOADING, entry.state);
+        Assert.assertSame(location, entry.texLocation);
+    }
+
+    @Test
+    public void cacheDoesNotRunRegistrationForStaleEntry() {
+        TextureResolverCache cache = new TextureResolverCache();
+        UUID profileId = UUID.fromString("22222222-3333-4444-8555-666666666666");
+        ClientProvider provider = provider("Alpha");
+        String cacheKey = TextureResolverCache.buildCacheKey(provider, profileId);
+        TextureEntry entry = new TextureEntry(TextureKind.SKIN, cacheKey, 1L, profileId, "Player", provider, false);
+        ResourceLocation location = new ResourceLocation("wawelauth", "test_skin");
+
+        TextureFetchState state = cache.completeRegisteredTextureIfCurrent(entry, () -> {
+            Assert.fail("stale entries must not register textures");
+            return location;
+        }, tex -> true);
+
+        Assert.assertNull(state);
+        Assert.assertEquals(TextureFetchState.PENDING, entry.state);
+        Assert.assertNull(entry.texLocation);
     }
 
     private static ClientProvider provider(String name) {

@@ -2,18 +2,14 @@ package org.fentanylsolutions.wawelauth.api;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.ITextureObject;
@@ -31,14 +27,10 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.InsecureTextureException;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
-import com.mojang.authlib.properties.Property;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -66,30 +58,20 @@ public class WawelTextureResolver {
         return DEFAULT_CAPE;
     }
 
-    private static final int MAX_RETRIES = 3;
-    private static final long[] RETRY_DELAYS_MS = { 2_000L, 8_000L, 30_000L };
-    private static final long SKIN_TTL_MS = 20 * 60 * 1_000L;
-    private static final long FAILED_RETRY_MS = 60_000L;
-    private static final long REGISTERED_LOADING_TIMEOUT_MS = 30_000L;
-    private static final int CLEANUP_INTERVAL_TICKS = 20 * 60;
-
     private final SessionBridge sessionBridge;
-    private final ConcurrentHashMap<String, SkinEntry> skinEntries = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, CapeEntry> capeEntries = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, SkinModel> resolvedSkinModels = new ConcurrentHashMap<>();
+    private final TextureResolverCache cache;
     private final ThreadPoolExecutor executor;
     private final AtomicInteger threadCounter = new AtomicInteger(0);
-    private final AtomicLong generationCounter = new AtomicLong(0);
-    private final Object completionLock = new Object();
-    private int cleanupTicks;
 
     public WawelTextureResolver(SessionBridge sessionBridge) {
         this.sessionBridge = sessionBridge;
+        this.cache = new TextureResolverCache();
         this.executor = createDefaultExecutor();
     }
 
     WawelTextureResolver(SessionBridge sessionBridge, ThreadPoolExecutor executor) {
         this.sessionBridge = sessionBridge;
+        this.cache = new TextureResolverCache();
         this.executor = executor;
     }
 
@@ -110,13 +92,13 @@ public class WawelTextureResolver {
         boolean allowUnsigned) {
         if (profileId == null || provider == null) return getDefaultSkin();
         String cacheKey = buildCacheKey(provider, profileId);
-        return getSkinInternal(cacheKey, profileId, displayName, provider, allowUnsigned);
+        return getTextureInternal(TextureKind.SKIN, cacheKey, profileId, displayName, provider, allowUnsigned);
     }
 
     /** Retrieve the skin model resolved during texture fetch, or null if not yet fetched. */
     public SkinModel getResolvedSkinModel(UUID profileId, ClientProvider provider) {
         if (profileId == null || provider == null) return null;
-        return resolvedSkinModels.get(buildCacheKey(provider, profileId));
+        return cache.getResolvedSkinModel(buildCacheKey(provider, profileId));
     }
 
     /** Resolve a player cape, or null if none. */
@@ -124,7 +106,7 @@ public class WawelTextureResolver {
         boolean allowUnsigned) {
         if (profileId == null || provider == null) return null;
         String cacheKey = buildCacheKey(provider, profileId);
-        return getCapeInternal(cacheKey, profileId, displayName, provider, allowUnsigned);
+        return getTextureInternal(TextureKind.CAPE, cacheKey, profileId, displayName, provider, allowUnsigned);
     }
 
     /**
@@ -151,16 +133,7 @@ public class WawelTextureResolver {
 
     /** Invalidate all cached entries for a player UUID across all providers. */
     public void invalidate(UUID profileId) {
-        if (profileId == null) return;
-        String suffix = "|" + profileId.toString();
-        synchronized (completionLock) {
-            skinEntries.keySet()
-                .removeIf(k -> k.endsWith(suffix));
-            capeEntries.keySet()
-                .removeIf(k -> k.endsWith(suffix));
-            resolvedSkinModels.keySet()
-                .removeIf(k -> k.endsWith(suffix));
-        }
+        cache.invalidate(profileId);
         if (sessionBridge != null) {
             sessionBridge.invalidateProfileCache(profileId);
         }
@@ -170,11 +143,7 @@ public class WawelTextureResolver {
      * Invalidate all cached entries.
      */
     public void invalidateAll() {
-        synchronized (completionLock) {
-            skinEntries.clear();
-            capeEntries.clear();
-            resolvedSkinModels.clear();
-        }
+        cache.clear();
     }
 
     // =========================================================================
@@ -183,170 +152,92 @@ public class WawelTextureResolver {
 
     /** Sweep expired entries. Call once per client tick. */
     public void tick() {
-        cleanupTicks++;
-        if (cleanupTicks < CLEANUP_INTERVAL_TICKS) {
-            return;
-        }
-        cleanupTicks = 0;
-        long now = System.currentTimeMillis();
-        synchronized (completionLock) {
-            skinEntries.entrySet()
-                .removeIf(entry -> {
-                    boolean expired = isResolvedExpired(entry.getValue(), now);
-                    if (expired) {
-                        resolvedSkinModels.remove(entry.getKey());
-                    }
-                    return expired;
-                });
-            capeEntries.values()
-                .removeIf(entry -> isResolvedExpired(entry, now));
-        }
+        cache.tick();
     }
 
     /** Shut down worker pool and clear state. */
     public void shutdown() {
         executor.shutdownNow();
-        synchronized (completionLock) {
-            skinEntries.clear();
-            capeEntries.clear();
-            resolvedSkinModels.clear();
-        }
+        cache.clear();
     }
 
     // =========================================================================
     // Internals
     // =========================================================================
 
-    private ResourceLocation getSkinInternal(String cacheKey, UUID profileId, String displayName,
+    private ResourceLocation getTextureInternal(TextureKind kind, String cacheKey, UUID profileId, String displayName,
         ClientProvider provider, boolean allowUnsigned) {
 
-        SkinEntry entry = skinEntries.get(cacheKey);
-
+        ResourceLocation fallback = fallbackFor(kind);
+        TextureEntry entry = cache.get(kind, cacheKey);
         if (entry != null) {
             switch (entry.state) {
                 case RESOLVED:
-                    if (!entry.isExpired() && hasUsableRegisteredTexture(entry.texLocation)) {
+                    if (isResolvedReady(entry)) {
                         return entry.texLocation;
                     }
-                    entry.texLocation = getDefaultSkin();
-                    entry.state = FetchState.PENDING;
+                    entry.texLocation = fallback;
+                    entry.state = TextureFetchState.PENDING;
                     break;
                 case REGISTERED_LOADING:
-                    if (hasUsableRegisteredTexture(entry.texLocation)) {
-                        markResolved(entry, entry.texLocation);
+                    // Main-thread only: render checks and queued texture registrations both run on the client thread.
+                    if (entry.texLocation != null && hasUsableRegisteredTexture(entry.texLocation)) {
+                        entry.markResolved(entry.texLocation);
                         return entry.texLocation;
                     }
                     if (entry.isRegisteredLoadingTimedOut()) {
-                        entry.texLocation = getDefaultSkin();
-                        handleFetchFailure(entry);
+                        entry.texLocation = fallback;
+                        entry.markFailure();
                     }
-                    return getDefaultSkin();
+                    return fallback;
                 case FETCHING:
-                    return getDefaultSkin();
+                    return fallback;
                 case PLACEHOLDER:
                 case FAILED:
                     if (entry.shouldRetry()) {
-                        entry.state = FetchState.PENDING;
-                    } else {
-                        return getDefaultSkin();
+                        entry.state = TextureFetchState.PENDING;
+                        break;
                     }
-                    break;
+                    return fallback;
                 default:
                     break;
             }
         }
 
         if (entry == null) {
-            entry = new SkinEntry(cacheKey, nextGeneration(), profileId, displayName, provider, allowUnsigned);
-            SkinEntry existing = (SkinEntry) cacheEntry(entry);
-            if (existing != null) {
-                entry = existing;
-            }
+            entry = cache.getOrCreate(kind, cacheKey, profileId, displayName, provider, allowUnsigned);
         }
 
-        if (entry.state == FetchState.PENDING) {
+        if (entry.state == TextureFetchState.PENDING) {
             submitFetch(entry);
         }
 
-        return getDefaultSkin();
+        return fallback;
     }
 
-    private ResourceLocation getCapeInternal(String cacheKey, UUID profileId, String displayName,
-        ClientProvider provider, boolean allowUnsigned) {
-
-        CapeEntry entry = capeEntries.get(cacheKey);
-
-        if (entry != null) {
-            switch (entry.state) {
-                case RESOLVED:
-                    if (entry.isExpired()) {
-                        entry.texLocation = null;
-                        entry.state = FetchState.PENDING;
-                        break;
-                    }
-                    // null texture = no cape, not an error
-                    if (entry.texLocation != null && !hasUsableRegisteredTexture(entry.texLocation)) {
-                        entry.texLocation = null;
-                        entry.state = FetchState.PENDING;
-                        break;
-                    }
-                    return entry.texLocation;
-                case REGISTERED_LOADING:
-                    if (entry.texLocation != null && hasUsableRegisteredTexture(entry.texLocation)) {
-                        markResolved(entry, entry.texLocation);
-                        return entry.texLocation;
-                    }
-                    if (entry.isRegisteredLoadingTimedOut()) {
-                        entry.texLocation = null;
-                        handleFetchFailure(entry);
-                    }
-                    return null;
-                case FETCHING:
-                    return null;
-                case PLACEHOLDER:
-                case FAILED:
-                    if (entry.shouldRetry()) {
-                        entry.state = FetchState.PENDING;
-                    } else {
-                        return null;
-                    }
-                    break;
-                default:
-                    break;
-            }
+    private boolean isResolvedReady(TextureEntry entry) {
+        if (entry.isExpired()) {
+            return false;
         }
-
-        if (entry == null) {
-            entry = new CapeEntry(cacheKey, nextGeneration(), profileId, displayName, provider, allowUnsigned);
-            CapeEntry existing = (CapeEntry) cacheEntry(entry);
-            if (existing != null) {
-                entry = existing;
-            }
+        if (!entry.kind.isSkin() && entry.texLocation == null) {
+            return true;
         }
-
-        if (entry.state == FetchState.PENDING) {
-            submitFetch(entry);
-        }
-
-        return null;
+        return hasUsableRegisteredTexture(entry.texLocation);
     }
 
     private void submitFetch(TextureEntry entry) {
         if (!entry.fetchInFlight.compareAndSet(false, true)) {
             return;
         }
-        synchronized (completionLock) {
-            if (!isCurrent(entry)) {
-                entry.fetchInFlight.set(false);
-                return;
-            }
-            entry.state = FetchState.FETCHING;
+        if (!cache.beginFetchIfCurrent(entry)) {
+            entry.fetchInFlight.set(false);
+            return;
         }
 
         final UUID profileId = entry.profileId;
         final String displayName = entry.displayName;
         final ClientProvider provider = entry.provider;
-        final String type = entry instanceof SkinEntry ? "skin" : "cape";
+        final String type = entry.kind.label;
         WawelAuth.debug(
             "Fetching " + type
                 + " for "
@@ -361,13 +252,13 @@ public class WawelTextureResolver {
         try {
             executor.submit(() -> {
                 try {
-                    if (!isCurrent(entry)) {
+                    if (!cache.isCurrent(entry)) {
                         return;
                     }
                     doFetch(entry, profileId, displayName, provider, requireSecure);
                 } catch (Exception e) {
                     WawelAuth.debug("Failed to fetch " + type + " for " + profileId + ": " + e.getMessage());
-                    handleFetchFailureIfCurrent(entry);
+                    cache.handleFetchFailureIfCurrent(entry);
                 } finally {
                     entry.fetchInFlight.set(false);
                 }
@@ -375,30 +266,29 @@ public class WawelTextureResolver {
         } catch (RejectedExecutionException e) {
             entry.fetchInFlight.set(false);
             WawelAuth.debug("Fetch submission rejected for " + type + " " + profileId + ": " + e.getMessage());
-            handleFetchFailureIfCurrent(entry);
+            cache.handleFetchFailureIfCurrent(entry);
         }
     }
 
     private void doFetch(TextureEntry entry, UUID profileId, String displayName, ClientProvider provider,
         boolean requireSecure) {
-        if (!isCurrent(entry)) {
+        if (!cache.isCurrent(entry)) {
             return;
         }
 
-        final boolean isSkin = entry instanceof SkinEntry;
         final boolean isOffline = BuiltinProviders.isOfflineProvider(provider.getName());
 
         // Offline provider: resolve local skin files
         if (isOffline) {
             SessionBridge.OfflineLocalSkin offlineLocalSkin = sessionBridge
                 .resolveOfflineLocalSkin(profileId, provider);
-            if (offlineLocalSkin != null
-                && (isSkin ? offlineLocalSkin.getSkinPath() != null : offlineLocalSkin.getCapePath() != null)) {
-                resolveOfflineLocalTexture(entry, isSkin, profileId, offlineLocalSkin);
+            if (offlineLocalSkin != null && (entry.kind.isSkin() ? offlineLocalSkin.getSkinPath() != null
+                : offlineLocalSkin.getCapePath() != null)) {
+                resolveOfflineLocalTexture(entry, profileId, offlineLocalSkin);
                 return;
             }
             // No local skin file, not transient, don't retry
-            completeNoTextureIfCurrent(entry);
+            cache.completeNoTextureIfCurrent(entry, fallbackFor(entry.kind));
             return;
         }
 
@@ -409,20 +299,20 @@ public class WawelTextureResolver {
             profile = sessionBridge.fillProfileFromProvider(provider, requestedProfile, requireSecure);
         } catch (Exception e) {
             WawelAuth.debug("fillProfileFromProvider failed for " + profileId + ": " + e.getMessage());
-            handleFetchFailureIfCurrent(entry);
+            cache.handleFetchFailureIfCurrent(entry);
             return;
         }
 
         if (profile == null || profile.getProperties()
             .isEmpty()) {
-            handleFetchFailureIfCurrent(entry);
+            cache.handleFetchFailureIfCurrent(entry);
             return;
         }
 
-        if (isSkin) {
-            SkinModel model = extractSkinModelFromProfile(profile);
+        if (entry.kind.isSkin()) {
+            SkinModel model = YggdrasilTexturePayload.extractSkinModel(profile);
             if (model != null) {
-                putResolvedSkinModelIfCurrent(entry, model);
+                cache.putResolvedSkinModelIfCurrent(entry, model);
             }
         }
 
@@ -440,47 +330,43 @@ public class WawelTextureResolver {
         } finally {
             sessionBridge.clearActiveProviderContext();
         }
-        if (!isCurrent(entry)) {
+        if (!cache.isCurrent(entry)) {
             return;
         }
 
-        final MinecraftProfileTexture.Type finalType = isSkin ? MinecraftProfileTexture.Type.SKIN
-            : MinecraftProfileTexture.Type.CAPE;
-
-        if (textures == null || !textures.containsKey(finalType)) {
+        if (textures == null || !textures.containsKey(entry.kind.profileType)) {
             // Profile has no skin/cape, not transient, don't retry
-            completeNoTextureIfCurrent(entry);
+            cache.completeNoTextureIfCurrent(entry, fallbackFor(entry.kind));
             return;
         }
 
-        final MinecraftProfileTexture finalTexture = textures.get(finalType);
+        final MinecraftProfileTexture finalTexture = textures.get(entry.kind.profileType);
         Minecraft.getMinecraft()
             .func_152344_a(() -> {
                 try {
-                    synchronized (completionLock) {
-                        if (!isCurrent(entry)) {
-                            return;
-                        }
+                    TextureFetchState completedState = cache.completeRegisteredTextureIfCurrent(entry, () -> {
                         SkinManager skinManager = Minecraft.getMinecraft()
                             .func_152342_ad();
-                        ResourceLocation registeredLocation = skinManager instanceof IProviderAwareSkinManager
+                        return skinManager instanceof IProviderAwareSkinManager
                             ? ((IProviderAwareSkinManager) skinManager)
-                                .wawelauth$loadTexture(finalTexture, finalType, null, provider)
-                            : skinManager.func_152792_a(finalTexture, finalType);
-                        completeRegisteredTextureIfCurrent(entry, registeredLocation, profileId);
+                                .wawelauth$loadTexture(finalTexture, entry.kind.profileType, null, provider)
+                            : skinManager.func_152792_a(finalTexture, entry.kind.profileType);
+                    }, WawelTextureResolver::hasUsableRegisteredTexture);
+                    if (completedState == TextureFetchState.REGISTERED_LOADING) {
+                        WawelAuth.debug("Texture registered but still loading for " + profileId);
                     }
                 } catch (Exception e) {
                     WawelAuth.debug("Failed to register texture for " + profileId + ": " + e.getMessage());
-                    handleFetchFailureIfCurrent(entry);
+                    cache.handleFetchFailureIfCurrent(entry);
                 }
             });
     }
 
-    private void resolveOfflineLocalTexture(TextureEntry entry, boolean isSkin, UUID profileId,
+    private void resolveOfflineLocalTexture(TextureEntry entry, UUID profileId,
         SessionBridge.OfflineLocalSkin offlineLocalSkin) {
         final BufferedImage texImage;
         try {
-            if (isSkin) {
+            if (entry.kind.isSkin()) {
                 texImage = SkinImageUtil
                     .convertLegacySkin(LocalTextureLoader.readImage(new File(offlineLocalSkin.getSkinPath())));
             } else {
@@ -488,149 +374,32 @@ public class WawelTextureResolver {
             }
         } catch (Exception e) {
             WawelAuth.debug("Failed to load local offline texture for " + profileId + ": " + e.getMessage());
-            handleFetchFailureIfCurrent(entry);
+            cache.handleFetchFailureIfCurrent(entry);
             return;
         }
-        if (!isCurrent(entry)) {
+        if (!cache.isCurrent(entry)) {
             return;
         }
 
         Minecraft.getMinecraft()
             .func_152344_a(() -> {
                 try {
-                    synchronized (completionLock) {
-                        if (!isCurrent(entry)) {
-                            return;
-                        }
-                        ResourceLocation location;
-                        if (isSkin) {
-                            location = new ResourceLocation(
-                                "wawelauth",
-                                "offline_skins/" + UuidUtil.toUnsigned(profileId));
-                        } else {
-                            location = new ResourceLocation(
-                                "wawelauth",
-                                "offline_capes/" + UuidUtil.toUnsigned(profileId));
-                        }
+                    TextureFetchState completedState = cache.completeReadyTextureIfCurrent(entry, () -> {
+                        ResourceLocation location = new ResourceLocation(
+                            "wawelauth",
+                            entry.kind.offlinePathPrefix + "/" + UuidUtil.toUnsigned(profileId));
 
-                        ResourceLocation registeredLocation = LocalTextureLoader
-                            .registerBufferedImage(location, texImage);
-                        if (!hasUsableRegisteredTexture(registeredLocation)) {
-                            WawelAuth.debug("Local offline texture registration was not usable yet for " + profileId);
-                            handleFetchFailureIfCurrent(entry);
-                            return;
-                        }
-                        completeResolvedTextureIfCurrent(entry, registeredLocation);
+                        return LocalTextureLoader.registerBufferedImage(location, texImage);
+                    }, WawelTextureResolver::hasUsableRegisteredTexture);
+                    if (completedState != null && completedState != TextureFetchState.RESOLVED) {
+                        WawelAuth.debug("Local offline texture registration was not usable yet for " + profileId);
                     }
                 } catch (Exception e) {
                     WawelAuth
                         .debug("Failed to register local offline texture for " + profileId + ": " + e.getMessage());
-                    handleFetchFailureIfCurrent(entry);
+                    cache.handleFetchFailureIfCurrent(entry);
                 }
             });
-    }
-
-    private long nextGeneration() {
-        return generationCounter.incrementAndGet();
-    }
-
-    TextureEntry cacheEntry(TextureEntry entry) {
-        if (entry instanceof SkinEntry) {
-            return skinEntries.putIfAbsent(entry.cacheKey, (SkinEntry) entry);
-        }
-        return capeEntries.putIfAbsent(entry.cacheKey, (CapeEntry) entry);
-    }
-
-    TextureEntry getSkinEntry(String cacheKey) {
-        return skinEntries.get(cacheKey);
-    }
-
-    TextureEntry getCapeEntry(String cacheKey) {
-        return capeEntries.get(cacheKey);
-    }
-
-    boolean isCurrent(TextureEntry entry) {
-        if (entry == null) {
-            return false;
-        }
-        TextureEntry current = entry instanceof SkinEntry ? skinEntries.get(entry.cacheKey)
-            : capeEntries.get(entry.cacheKey);
-        return current == entry && current.generation == entry.generation;
-    }
-
-    void putResolvedSkinModelIfCurrent(TextureEntry entry, SkinModel model) {
-        if (model == null) {
-            return;
-        }
-        synchronized (completionLock) {
-            if (isCurrent(entry)) {
-                resolvedSkinModels.put(entry.cacheKey, model);
-            }
-        }
-    }
-
-    void completeNoTextureIfCurrent(TextureEntry entry) {
-        synchronized (completionLock) {
-            if (!isCurrent(entry)) {
-                return;
-            }
-            if (entry instanceof SkinEntry) {
-                entry.texLocation = getDefaultSkin();
-            } else {
-                entry.texLocation = null;
-            }
-            markResolved(entry, entry.texLocation);
-        }
-    }
-
-    private void completeRegisteredTextureIfCurrent(TextureEntry entry, ResourceLocation registeredLocation,
-        UUID profileId) {
-        synchronized (completionLock) {
-            if (!isCurrent(entry)) {
-                return;
-            }
-            if (hasUsableRegisteredTexture(registeredLocation)) {
-                markResolved(entry, registeredLocation);
-                return;
-            }
-            WawelAuth.debug("Texture registered but still loading for " + profileId);
-            entry.texLocation = registeredLocation;
-            entry.state = FetchState.REGISTERED_LOADING;
-            entry.lastAttemptMs = System.currentTimeMillis();
-        }
-    }
-
-    private void completeResolvedTextureIfCurrent(TextureEntry entry, ResourceLocation registeredLocation) {
-        synchronized (completionLock) {
-            if (isCurrent(entry)) {
-                markResolved(entry, registeredLocation);
-            }
-        }
-    }
-
-    private void handleFetchFailureIfCurrent(TextureEntry entry) {
-        synchronized (completionLock) {
-            if (isCurrent(entry)) {
-                handleFetchFailure(entry);
-            }
-        }
-    }
-
-    private static void handleFetchFailure(TextureEntry entry) {
-        entry.retryCount++;
-        entry.lastAttemptMs = System.currentTimeMillis();
-        entry.state = entry.retryCount >= MAX_RETRIES ? FetchState.FAILED : FetchState.PLACEHOLDER;
-    }
-
-    private static void markResolved(TextureEntry entry, ResourceLocation texLocation) {
-        entry.texLocation = texLocation;
-        entry.state = FetchState.RESOLVED;
-        entry.resolvedAtMs = System.currentTimeMillis();
-        entry.retryCount = 0;
-    }
-
-    private static boolean isResolvedExpired(TextureEntry entry, long now) {
-        return entry.state == FetchState.RESOLVED && entry.resolvedAtMs > 0 && now - entry.resolvedAtMs > SKIN_TTL_MS;
     }
 
     private static boolean hasUsableRegisteredTexture(ResourceLocation texLocation) {
@@ -643,119 +412,35 @@ public class WawelTextureResolver {
         return SkinTextureState.isReadyForRender(textureObject);
     }
 
-    private static SkinModel extractSkinModelFromProfile(GameProfile profile) {
-        try {
-            Collection<Property> textures = profile.getProperties()
-                .get("textures");
-            if (textures == null || textures.isEmpty()) return null;
-
-            for (Property property : textures) {
-                if (property == null) continue;
-                String value = property.getValue();
-                if (value == null || value.isEmpty()) continue;
-
-                String json = new String(org.apache.commons.codec.binary.Base64.decodeBase64(value), "UTF-8");
-                JsonObject root = new JsonParser().parse(json)
-                    .getAsJsonObject();
-                JsonObject tex = root.getAsJsonObject("textures");
-                if (tex == null) continue;
-                JsonObject skin = tex.getAsJsonObject("SKIN");
-                if (skin == null) continue;
-                JsonObject metadata = skin.getAsJsonObject("metadata");
-                if (metadata == null) return SkinModel.CLASSIC;
-                JsonElement model = metadata.get("model");
-                if (model == null || !model.isJsonPrimitive()) return SkinModel.CLASSIC;
-                return SkinModel.fromYggdrasil(model.getAsString());
-            }
-        } catch (Exception ignored) {}
-        return null;
+    private static ResourceLocation fallbackFor(TextureKind kind) {
+        return kind.isSkin() ? getDefaultSkin() : null;
     }
 
     static String buildCacheKey(ClientProvider provider, UUID profileId) {
-        String providerName = provider.getName();
-        if (providerName == null || providerName.trim()
-            .isEmpty()) {
-            providerName = "unknown";
-        }
-        return providerName.trim()
-            .toLowerCase() + "|"
-            + profileId.toString();
+        return TextureResolverCache.buildCacheKey(provider, profileId);
     }
 
-    // =========================================================================
-    // State machine
-    // =========================================================================
-
-    enum FetchState {
-
-        PENDING,
-        FETCHING,
-        REGISTERED_LOADING,
-        RESOLVED,
-        PLACEHOLDER,
-        FAILED
+    TextureEntry cacheEntry(TextureEntry entry) {
+        return cache.cacheEntry(entry);
     }
 
-    static class TextureEntry {
-
-        final String cacheKey;
-        final long generation;
-        final UUID profileId;
-        final String displayName;
-        final ClientProvider provider;
-        final boolean allowUnsigned;
-        final AtomicBoolean fetchInFlight = new AtomicBoolean(false);
-
-        volatile FetchState state = FetchState.PENDING;
-        volatile ResourceLocation texLocation;
-        volatile long resolvedAtMs;
-        volatile long lastAttemptMs;
-        volatile int retryCount;
-
-        TextureEntry(String cacheKey, long generation, UUID profileId, String displayName, ClientProvider provider,
-            boolean allowUnsigned) {
-            this.cacheKey = cacheKey;
-            this.generation = generation;
-            this.profileId = profileId;
-            this.displayName = displayName;
-            this.provider = provider;
-            this.allowUnsigned = allowUnsigned;
-        }
-
-        boolean isExpired() {
-            return resolvedAtMs > 0 && System.currentTimeMillis() - resolvedAtMs > SKIN_TTL_MS;
-        }
-
-        boolean shouldRetry() {
-            if (state == FetchState.FAILED) {
-                return System.currentTimeMillis() - lastAttemptMs > FAILED_RETRY_MS;
-            }
-            if (state == FetchState.PLACEHOLDER) {
-                long delay = retryCount < RETRY_DELAYS_MS.length ? RETRY_DELAYS_MS[retryCount]
-                    : RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
-                return System.currentTimeMillis() - lastAttemptMs > delay;
-            }
-            return false;
-        }
-
-        boolean isRegisteredLoadingTimedOut() {
-            return lastAttemptMs > 0 && System.currentTimeMillis() - lastAttemptMs > REGISTERED_LOADING_TIMEOUT_MS;
-        }
+    TextureEntry getSkinEntry(String cacheKey) {
+        return cache.get(TextureKind.SKIN, cacheKey);
     }
 
-    static final class SkinEntry extends TextureEntry {
-
-        SkinEntry(String cacheKey, long generation, UUID profileId, String displayName, ClientProvider provider,
-            boolean allowUnsigned) {
-            super(cacheKey, generation, profileId, displayName, provider, allowUnsigned);
-        }
+    TextureEntry getCapeEntry(String cacheKey) {
+        return cache.get(TextureKind.CAPE, cacheKey);
     }
 
-    static final class CapeEntry extends TextureEntry {
+    boolean isCurrent(TextureEntry entry) {
+        return cache.isCurrent(entry);
+    }
 
-        CapeEntry(String cacheKey, long generation, UUID profileId, String displayName, ClientProvider provider,
-            boolean allowUnsigned) {
-            super(cacheKey, generation, profileId, displayName, provider, allowUnsigned);
-        }
+    void putResolvedSkinModelIfCurrent(TextureEntry entry, SkinModel model) {
+        cache.putResolvedSkinModelIfCurrent(entry, model);
+    }
+
+    void completeNoTextureIfCurrent(TextureEntry entry) {
+        cache.completeNoTextureIfCurrent(entry, fallbackFor(entry.kind));
     }
 }
