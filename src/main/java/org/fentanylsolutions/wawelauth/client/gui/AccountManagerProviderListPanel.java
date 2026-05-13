@@ -38,35 +38,23 @@ final class AccountManagerProviderListPanel {
     private final ListWidget<IWidget, ?> providerList = new ListWidget<>();
     private final Supplier<ClientProvider> selectedProvider;
     private final Consumer<ClientProvider> setSelectedProvider;
-    private final Supplier<ClientAccount> selectedAccount;
     private final Consumer<ClientAccount> setSelectedAccount;
     private final Supplier<Boolean> hasFocusedLocalContext;
-    private final Supplier<Boolean> hasFocusedLocalMetadata;
-    private final Supplier<ClientProvider> resolveFocusedLocalProvider;
-    private final Consumer<ClientProvider> ensureRegisterCapabilityProbe;
-    private final Supplier<String> focusedLocalStatusText;
-    private final Consumer<String> setFocusedLocalStatusText;
+    private final Runnable refreshFocusedLocalProviderState;
     private final Consumer<ClientProvider> selectProvider;
     private final Runnable clearPreview;
     private final Consumer<ClientProvider> openProviderSettingsDialog;
 
     AccountManagerProviderListPanel(Supplier<ClientProvider> selectedProvider,
-        Consumer<ClientProvider> setSelectedProvider, Supplier<ClientAccount> selectedAccount,
-        Consumer<ClientAccount> setSelectedAccount, Supplier<Boolean> hasFocusedLocalContext,
-        Supplier<Boolean> hasFocusedLocalMetadata, Supplier<ClientProvider> resolveFocusedLocalProvider,
-        Consumer<ClientProvider> ensureRegisterCapabilityProbe, Supplier<String> focusedLocalStatusText,
-        Consumer<String> setFocusedLocalStatusText, Consumer<ClientProvider> selectProvider, Runnable clearPreview,
+        Consumer<ClientProvider> setSelectedProvider, Consumer<ClientAccount> setSelectedAccount,
+        Supplier<Boolean> hasFocusedLocalContext, Runnable refreshFocusedLocalProviderState,
+        Consumer<ClientProvider> selectProvider, Runnable clearPreview,
         Consumer<ClientProvider> openProviderSettingsDialog) {
         this.selectedProvider = selectedProvider;
         this.setSelectedProvider = setSelectedProvider;
-        this.selectedAccount = selectedAccount;
         this.setSelectedAccount = setSelectedAccount;
         this.hasFocusedLocalContext = hasFocusedLocalContext;
-        this.hasFocusedLocalMetadata = hasFocusedLocalMetadata;
-        this.resolveFocusedLocalProvider = resolveFocusedLocalProvider;
-        this.ensureRegisterCapabilityProbe = ensureRegisterCapabilityProbe;
-        this.focusedLocalStatusText = focusedLocalStatusText;
-        this.setFocusedLocalStatusText = setFocusedLocalStatusText;
+        this.refreshFocusedLocalProviderState = refreshFocusedLocalProviderState;
         this.selectProvider = selectProvider;
         this.clearPreview = clearPreview;
         this.openProviderSettingsDialog = openProviderSettingsDialog;
@@ -82,24 +70,8 @@ final class AccountManagerProviderListPanel {
         if (client == null) return;
 
         if (Boolean.TRUE.equals(hasFocusedLocalContext.get())) {
-            ClientProvider provider = resolveFocusedLocalProvider.get();
-            setSelectedProvider.accept(provider);
-            if (provider != null) {
-                ensureRegisterCapabilityProbe.accept(provider);
-                String statusText = focusedLocalStatusText.get();
-                if (statusText == null || statusText.isEmpty()) {
-                    setFocusedLocalStatusText
-                        .accept(GuiText.tr("wawelauth.gui.common.ready_message", provider.getName()));
-                }
-            } else {
-                setFocusedLocalStatusText.accept(
-                    Boolean.TRUE.equals(hasFocusedLocalMetadata.get())
-                        ? GuiText.tr("wawelauth.gui.local_auth.status.trust_first")
-                        : GuiText.tr("wawelauth.gui.local_auth.status.not_advertised"));
-                if (selectedAccount.get() != null) {
-                    setSelectedAccount.accept(null);
-                    clearPreview.run();
-                }
+            if (refreshFocusedLocalProviderState != null) {
+                refreshFocusedLocalProviderState.run();
             }
             return;
         }

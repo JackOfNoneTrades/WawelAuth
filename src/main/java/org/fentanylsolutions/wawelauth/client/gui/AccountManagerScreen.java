@@ -134,11 +134,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private String textureSelectionStatus = "";
     private String textureUploadStatus = "";
 
-    private ServerData focusedLocalServerData;
-    private ServerCapabilities focusedLocalCapabilities;
-    private String focusedLocalStatusText = "";
-
     private ModularPanel mainPanel;
+    private FocusedLocalAuthPanel focusedLocalPanel;
     private AccountManagerProviderListPanel providerListPanel;
     private AccountManagerAccountListPanel accountListPanel;
     private Map<String, Boolean> registerCapabilityByProvider;
@@ -198,6 +195,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         registerCapabilityProbeInFlight = new HashSet<>();
         nextStatusUiRefreshAtMs = 0L;
 
+        ServerData focusedLocalServerData = null;
+        ServerCapabilities focusedLocalCapabilities = null;
         if (pendingFocusedServerData != null || pendingFocusedCapabilities != null) {
             focusedLocalServerData = pendingFocusedServerData;
             focusedLocalCapabilities = pendingFocusedCapabilities;
@@ -205,29 +204,28 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             pendingFocusedCapabilities = null;
         }
 
-        if (hasFocusedLocalContext()) {
-            selectedProvider = resolveFocusedLocalProvider();
-            if (selectedProvider != null) {
-                ensureRegisterCapabilityProbe(selectedProvider);
-            }
-            if (focusedLocalStatusText == null || focusedLocalStatusText.isEmpty()) {
-                focusedLocalStatusText = selectedProvider != null
-                    ? GuiText.tr("wawelauth.gui.common.ready_message", selectedProvider.getName())
-                    : GuiText.tr("wawelauth.gui.local_auth.status.trust_first");
-            }
-        }
-
-        providerListPanel = new AccountManagerProviderListPanel(
+        focusedLocalPanel = new FocusedLocalAuthPanel(
+            focusedLocalServerData,
+            focusedLocalCapabilities,
             () -> selectedProvider,
             value -> selectedProvider = value,
             () -> selectedAccount,
             value -> selectedAccount = value,
-            this::hasFocusedLocalContext,
-            this::hasFocusedLocalMetadata,
-            this::resolveFocusedLocalProvider,
+            this::resolveProvider,
             this::ensureRegisterCapabilityProbe,
-            () -> focusedLocalStatusText,
-            value -> focusedLocalStatusText = value,
+            this::rebuildProviderList,
+            this::rebuildAccountList,
+            this::requestAccountListRebuild,
+            this::clearPreview,
+            this::openProviderProxyDialog);
+        focusedLocalPanel.initializeSelectedProvider();
+
+        providerListPanel = new AccountManagerProviderListPanel(
+            () -> selectedProvider,
+            value -> selectedProvider = value,
+            value -> selectedAccount = value,
+            this::hasFocusedLocalContext,
+            () -> focusedLocalPanel.refreshProviderListState(),
             this::selectProvider,
             this::clearPreview,
             this::openProviderSettingsDialog);
@@ -620,110 +618,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void populateFocusedLocalSidebar(Column leftSidebar, Column accountListFrame) {
-        String serverAddress = getFocusedLocalServerAddress();
-        String displayAddress = GuiText.ellipsizeToPixelWidth(serverAddress, 104);
-        TextWidget<?> addressText = new TextWidget<>(IKey.str(displayAddress));
-        addressText.widthRel(1.0f)
-            .height(12);
-        if (!displayAddress.equals(serverAddress)) {
-            addressText.addTooltipLine(serverAddress);
-        }
-        leftSidebar.child(addressText);
-
-        String serverName = getFocusedLocalServerName();
-        if (serverName != null && !serverName.isEmpty() && !serverName.equals(serverAddress)) {
-            String displayName = GuiText.ellipsizeToPixelWidth(serverName, 104);
-            TextWidget<?> nameText = new TextWidget<>(IKey.str(displayName));
-            nameText.color(DETAIL_SECONDARY_TEXT_COLOR)
-                .scale(0.8f)
-                .widthRel(1.0f)
-                .height(10);
-            if (!displayName.equals(serverName)) {
-                nameText.addTooltipLine(serverName);
-            }
-            leftSidebar.child(nameText);
-        }
-
-        if (selectedProvider != null) {
-            String providerLine = GuiText.tr(
-                "wawelauth.gui.account_manager.provider_line",
-                ProviderDisplayName.displayName(selectedProvider.getName()));
-            String displayProviderLine = GuiText.ellipsizeToPixelWidth(providerLine, 104);
-            TextWidget<?> providerText = new TextWidget<>(IKey.str(displayProviderLine));
-            providerText.color(DETAIL_SECONDARY_TEXT_COLOR)
-                .scale(0.8f)
-                .widthRel(1.0f)
-                .height(10);
-            if (!displayProviderLine.equals(providerLine)) {
-                providerText.addTooltipLine(providerLine);
-            }
-            leftSidebar.child(providerText);
-        }
-
-        leftSidebar.child(
-            new TextWidget<>(GuiText.key("wawelauth.gui.common.fingerprint")).widthRel(1.0f)
-                .height(10)
-                .margin(0, 2));
-
-        String fingerprint = getFocusedLocalFingerprint();
-        String displayFingerprint = GuiText.ellipsizeToPixelWidth(fingerprint, 104);
-        TextWidget<?> fingerprintText = new TextWidget<>(IKey.str(displayFingerprint));
-        fingerprintText.color(0xFF55FFFF)
-            .scale(0.7f)
-            .widthRel(1.0f)
-            .height(10);
-        if (!displayFingerprint.equals(fingerprint)) {
-            fingerprintText.addTooltipLine(fingerprint);
-        }
-        leftSidebar.child(fingerprintText)
-            .child(
-                new TextWidget<>(IKey.dynamic(() -> focusedLocalStatusText != null ? focusedLocalStatusText : ""))
-                    .color(0xFFFFFF55)
-                    .scale(0.8f)
-                    .widthRel(1.0f)
-                    .height(10)
-                    .margin(0, 2))
-            .child(
-                GuiText.fitButtonLabelMaxWidth(
-                    new ButtonWidget<>().widthRel(1.0f)
-                        .height(16)
-                        .setEnabledIf(widget -> hasFocusedLocalMetadata()),
-                    104,
-                    "wawelauth.gui.local_auth.trust_refresh")
-                    .onMousePressed(mouseButton -> {
-                        ensureFocusedLocalProvider(null);
-                        return true;
-                    }))
-            .child(
-                GuiText.fitButtonLabelMaxWidth(
-                    new ButtonWidget<>().widthRel(1.0f)
-                        .height(16)
-                        .margin(0, 2)
-                        .setEnabledIf(widget -> hasFocusedLocalMetadata()),
-                    104,
-                    "wawelauth.gui.account_manager.proxy_settings")
-                    .onMousePressed(mouseButton -> {
-                        ensureFocusedLocalProvider(() -> {
-                            if (selectedProvider != null) {
-                                openProviderProxyDialog(selectedProvider);
-                            }
-                        });
-                        return true;
-                    }))
-            .child(
-                GuiText.fitButtonLabelMaxWidth(
-                    new ButtonWidget<>().widthRel(1.0f)
-                        .height(16)
-                        .margin(0, 2)
-                        .setEnabledIf(widget -> selectedProvider != null),
-                    104,
-                    "wawelauth.gui.local_auth.remove_auth")
-                    .onMousePressed(mouseButton -> {
-                        removeFocusedLocalProvider();
-                        return true;
-                    }));
-
-        appendSharedAccountSection(leftSidebar, accountListFrame);
+        focusedLocalPanel.populateSidebar(leftSidebar, accountListFrame, this::appendSharedAccountSection);
     }
 
     private void appendSharedAccountSection(Column leftSidebar, Column accountListFrame) {
@@ -774,7 +669,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private void handlePrimaryLoginAction() {
         if (hasFocusedLocalContext()) {
-            ensureFocusedLocalProvider(() -> {
+            focusedLocalPanel.ensureProvider(() -> {
                 if (selectedProvider != null) {
                     openLoginDialog(selectedProvider.getName());
                 }
@@ -789,7 +684,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private void handlePrimaryRegisterAction() {
         if (hasFocusedLocalContext()) {
-            ensureFocusedLocalProvider(() -> {
+            focusedLocalPanel.ensureProvider(() -> {
                 if (selectedProvider != null) {
                     openRegisterDialog(selectedProvider.getName());
                 }
@@ -802,139 +697,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
     }
 
-    private void ensureFocusedLocalProvider(Runnable onReady) {
-        if (!hasFocusedLocalMetadata()) {
-            focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.not_advertised");
-            return;
-        }
-
-        WawelClient client = WawelClient.instance();
-        if (client == null) {
-            focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.client_not_running");
-            return;
-        }
-
-        ClientProvider existing = client.getLocalAuthProviderResolver()
-            .findExisting(focusedLocalCapabilities);
-        if (existing != null) {
-            selectedProvider = resolveProvider(existing);
-            ensureRegisterCapabilityProbe(selectedProvider);
-            focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.ready_message", selectedProvider.getName());
-            rebuildAccountList();
-            requestAccountListRebuild();
-            if (onReady != null) {
-                onReady.run();
-            }
-            return;
-        }
-
-        focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.resolving");
-        CompletableFuture.supplyAsync(
-            () -> client.getLocalAuthProviderResolver()
-                .resolveOrCreate(focusedLocalCapabilities))
-            .whenComplete((provider, err) -> {
-                Minecraft.getMinecraft()
-                    .func_152344_a(() -> {
-                        if (err != null) {
-                            Throwable cause = err.getCause() != null ? err.getCause() : err;
-                            focusedLocalStatusText = GuiText
-                                .tr("wawelauth.gui.common.failed_message", cause.getMessage());
-                            return;
-                        }
-
-                        selectedProvider = resolveProvider(provider);
-                        ensureRegisterCapabilityProbe(selectedProvider);
-                        focusedLocalStatusText = GuiText
-                            .tr("wawelauth.gui.common.ready_message", selectedProvider.getName());
-                        rebuildProviderList();
-                        rebuildAccountList();
-                        requestAccountListRebuild();
-                        if (onReady != null) {
-                            onReady.run();
-                        }
-                    });
-            });
-    }
-
-    private void removeFocusedLocalProvider() {
-        if (selectedProvider == null) {
-            focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.trust_first");
-            return;
-        }
-
-        WawelClient client = WawelClient.instance();
-        if (client == null) {
-            focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.client_not_running");
-            return;
-        }
-
-        String providerName = selectedProvider.getName();
-        try {
-            client.getProviderRegistry()
-                .removeProvider(providerName);
-            selectedProvider = null;
-            selectedAccount = null;
-            clearPreview();
-            focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.removed");
-            rebuildAccountList();
-            requestAccountListRebuild();
-        } catch (Exception e) {
-            focusedLocalStatusText = e.getMessage();
-            WawelAuth.debug("Focused local provider deletion failed: " + e.getMessage());
-        }
-    }
-
     private boolean hasFocusedLocalContext() {
-        return focusedLocalServerData != null && focusedLocalCapabilities != null;
+        return focusedLocalPanel != null && focusedLocalPanel.hasContext();
     }
 
     private boolean hasFocusedLocalMetadata() {
-        return hasFocusedLocalContext() && notBlank(focusedLocalCapabilities.getLocalAuthApiRoot())
-            && notBlank(focusedLocalCapabilities.getLocalAuthPublicKeyFingerprint());
-    }
-
-    private ClientProvider resolveFocusedLocalProvider() {
-        if (!hasFocusedLocalContext()) {
-            return null;
-        }
-        WawelClient client = WawelClient.instance();
-        if (client == null) {
-            return null;
-        }
-        return resolveProvider(
-            client.getLocalAuthProviderResolver()
-                .findExisting(focusedLocalCapabilities));
-    }
-
-    private String getFocusedLocalServerAddress() {
-        if (focusedLocalServerData != null && focusedLocalServerData.serverIP != null
-            && !focusedLocalServerData.serverIP.trim()
-                .isEmpty()) {
-            return focusedLocalServerData.serverIP.trim();
-        }
-        return GuiText.tr("wawelauth.gui.common.server");
-    }
-
-    private String getFocusedLocalServerName() {
-        if (focusedLocalServerData != null && focusedLocalServerData.serverName != null) {
-            String trimmed = focusedLocalServerData.serverName.trim();
-            if (!trimmed.isEmpty()) {
-                return trimmed;
-            }
-        }
-        return "";
-    }
-
-    private static boolean notBlank(String value) {
-        return value != null && !value.trim()
-            .isEmpty();
-    }
-
-    private String getFocusedLocalFingerprint() {
-        if (focusedLocalCapabilities == null || focusedLocalCapabilities.getLocalAuthPublicKeyFingerprint() == null) {
-            return GuiText.tr("wawelauth.gui.common.missing");
-        }
-        return focusedLocalCapabilities.getLocalAuthPublicKeyFingerprint();
+        return focusedLocalPanel != null && focusedLocalPanel.hasMetadata();
     }
 
     @Override
