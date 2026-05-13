@@ -101,7 +101,9 @@
         el.cfgDefaultInviteUses = document.getElementById("cfgDefaultInviteUses");
         el.cfgTokenMaxPerUser = document.getElementById("cfgTokenMaxPerUser");
         el.cfgSessionTimeoutMs = document.getElementById("cfgSessionTimeoutMs");
+        el.cfgHttpHttpsEnabled = document.getElementById("cfgHttpHttpsEnabled");
         el.cfgHttpReadTimeoutSec = document.getElementById("cfgHttpReadTimeoutSec");
+        el.cfgHttpTlsHandshakeTimeoutSec = document.getElementById("cfgHttpTlsHandshakeTimeoutSec");
         el.cfgHttpMaxContentLen = document.getElementById("cfgHttpMaxContentLen");
         el.cfgMaxSkinWidth = document.getElementById("cfgMaxSkinWidth");
         el.cfgMaxSkinHeight = document.getElementById("cfgMaxSkinHeight");
@@ -693,7 +695,12 @@
                 sessionTimeoutMs: parseIntField(el.cfgSessionTimeoutMs, "Session Timeout")
             },
             http: {
+                httpsEnabled: Boolean(el.cfgHttpHttpsEnabled.checked),
                 readTimeoutSeconds: parseIntField(el.cfgHttpReadTimeoutSec, "HTTP Read Timeout"),
+                tlsHandshakeTimeoutSeconds: parseIntField(
+                    el.cfgHttpTlsHandshakeTimeoutSec,
+                    "TLS Handshake Timeout"
+                ),
                 maxContentLengthBytes: parseIntField(el.cfgHttpMaxContentLen, "HTTP Max Content")
             },
             textures: {
@@ -757,7 +764,9 @@
         el.cfgTokenMaxPerUser.value = safeNumber(tokens.maxPerUser, 10);
         el.cfgSessionTimeoutMs.value = safeNumber(tokens.sessionTimeoutMs, 30000);
 
+        el.cfgHttpHttpsEnabled.checked = http.httpsEnabled !== false;
         el.cfgHttpReadTimeoutSec.value = safeNumber(http.readTimeoutSeconds, 10);
+        el.cfgHttpTlsHandshakeTimeoutSec.value = safeNumber(http.tlsHandshakeTimeoutSeconds, 10);
         el.cfgHttpMaxContentLen.value = safeNumber(http.maxContentLengthBytes, 1048576);
 
         el.cfgMaxSkinWidth.value = safeNumber(textures.maxSkinWidth, 64);

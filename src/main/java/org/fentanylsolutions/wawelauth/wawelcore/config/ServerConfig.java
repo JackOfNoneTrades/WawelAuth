@@ -24,6 +24,9 @@ import com.google.gson.annotations.SerializedName;
  */
 public class ServerConfig {
 
+    public static final int MIN_TLS_HANDSHAKE_TIMEOUT_SECONDS = 1;
+    public static final int MAX_TLS_HANDSHAKE_TIMEOUT_SECONDS = 300;
+
     private boolean wawelAuthEnabled = true;
     private boolean enableLocalAuth = true;
     private String serverName = "A Wawel Auth Server";
@@ -449,6 +452,14 @@ public class ServerConfig {
         Http httpConfig = getHttp();
         if (httpConfig.getReadTimeoutSeconds() < 1) {
             throw new IllegalStateException("http.readTimeoutSeconds must be >= 1.");
+        }
+        if (httpConfig.getTlsHandshakeTimeoutSeconds() < MIN_TLS_HANDSHAKE_TIMEOUT_SECONDS
+            || httpConfig.getTlsHandshakeTimeoutSeconds() > MAX_TLS_HANDSHAKE_TIMEOUT_SECONDS) {
+            throw new IllegalStateException(
+                "http.tlsHandshakeTimeoutSeconds must be between " + MIN_TLS_HANDSHAKE_TIMEOUT_SECONDS
+                    + " and "
+                    + MAX_TLS_HANDSHAKE_TIMEOUT_SECONDS
+                    + ".");
         }
         if (httpConfig.getMaxContentLengthBytes() < 1) {
             throw new IllegalStateException("http.maxContentLengthBytes must be >= 1.");

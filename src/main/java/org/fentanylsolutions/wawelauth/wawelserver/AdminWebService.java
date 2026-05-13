@@ -1176,6 +1176,12 @@ public class AdminWebService {
 
         JsonObject http = readOptionalObject(body, "http");
         if (http != null) {
+            Boolean httpsEnabled = readOptionalBoolean(http, "httpsEnabled");
+            if (httpsEnabled != null) {
+                serverConfig.getHttp()
+                    .setHttpsEnabled(httpsEnabled);
+            }
+
             Integer readTimeoutSeconds = readOptionalInt(http, "readTimeoutSeconds");
             if (readTimeoutSeconds != null) {
                 if (readTimeoutSeconds < 1) {
@@ -1183,6 +1189,21 @@ public class AdminWebService {
                 }
                 serverConfig.getHttp()
                     .setReadTimeoutSeconds(readTimeoutSeconds);
+            }
+
+            Integer tlsHandshakeTimeoutSeconds = readOptionalInt(http, "tlsHandshakeTimeoutSeconds");
+            if (tlsHandshakeTimeoutSeconds != null) {
+                if (tlsHandshakeTimeoutSeconds < ServerConfig.MIN_TLS_HANDSHAKE_TIMEOUT_SECONDS
+                    || tlsHandshakeTimeoutSeconds > ServerConfig.MAX_TLS_HANDSHAKE_TIMEOUT_SECONDS) {
+                    throw NetException.illegalArgument(
+                        "http.tlsHandshakeTimeoutSeconds must be between "
+                            + ServerConfig.MIN_TLS_HANDSHAKE_TIMEOUT_SECONDS
+                            + " and "
+                            + ServerConfig.MAX_TLS_HANDSHAKE_TIMEOUT_SECONDS
+                            + ".");
+                }
+                serverConfig.getHttp()
+                    .setTlsHandshakeTimeoutSeconds(tlsHandshakeTimeoutSeconds);
             }
 
             Integer maxContentLengthBytes = readOptionalInt(http, "maxContentLengthBytes");
@@ -1790,9 +1811,17 @@ public class AdminWebService {
 
         Map<String, Object> http = new LinkedHashMap<>();
         http.put(
+            "httpsEnabled",
+            serverConfig.getHttp()
+                .isHttpsEnabled());
+        http.put(
             "readTimeoutSeconds",
             serverConfig.getHttp()
                 .getReadTimeoutSeconds());
+        http.put(
+            "tlsHandshakeTimeoutSeconds",
+            serverConfig.getHttp()
+                .getTlsHandshakeTimeoutSeconds());
         http.put(
             "maxContentLengthBytes",
             serverConfig.getHttp()
