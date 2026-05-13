@@ -237,6 +237,12 @@ public final class ServerBindingPersistence {
      * Remove managed local-auth providers whose fingerprint/provider identity
      * is no longer referenced by any saved server entry.
      *
+     * Not wired to any automatic trigger: "referenced" is evaluated against the
+     * current instance's servers.dat, but the provider registry can be shared
+     * across instances (e.g. symlinked config dir). Opening this instance with
+     * a fresh server list would happily nuke providers another instance still
+     * uses. Retained for an explicit user-driven path only.
+     *
      * @return number of providers removed
      */
     public static int clearOrphanedLocalProviders(WawelClient client) {
@@ -275,6 +281,60 @@ public final class ServerBindingPersistence {
             WawelAuth.LOG.warn("Failed to clean orphaned local auth providers: {}", e.getMessage());
             return 0;
         }
+    }
+
+    /**
+     * Look for a managed local provider that was referenced by the just-removed
+     * server entry and is now referenced by no other entry in the live server
+     * list. Used to ask the user whether to also delete the provider.
+     *
+     * Scope is point-in-time and local to this instance only; the caller is
+     * expected to surface the cross-instance caveat in the prompt.
+     */
+    public static ClientProvider findOrphanCandidateFromDeletedEntry(WawelClient client, ServerData deletedEntry) {
+        if (client == null || !(deletedEntry instanceof IServerDataExt)) {
+            return null;
+        }
+        IServerDataExt deletedExt = (IServerDataExt) deletedEntry;
+        String deletedProviderName = normalize(deletedExt.getWawelProviderName());
+        String deletedFingerprint = normalize(deletedExt.getWawelLocalAuthFingerprint());
+        if (deletedProviderName == null && deletedFingerprint == null) {
+            return null;
+        }
+
+        try {
+            ServerList serverList = new ServerList(Minecraft.getMinecraft());
+            serverList.loadServerList();
+
+            ReferencedLocalAuths referenced = new ReferencedLocalAuths();
+            collectReferencedLocalAuths(serverList, referenced);
+
+            ServerList active = activeServerListRef.get();
+            if (active != null && active != serverList) {
+                collectReferencedLocalAuths(active, referenced);
+            }
+
+            for (ClientProvider provider : client.getProviderRegistry()
+                .listProviders()) {
+                if (!isManagedLocalProvider(provider)) {
+                    continue;
+                }
+                String providerName = normalize(provider.getName());
+                String fingerprint = normalize(provider.getPublicKeyFingerprint());
+                boolean matchesDeleted = (deletedProviderName != null && deletedProviderName.equals(providerName))
+                    || (deletedFingerprint != null && deletedFingerprint.equals(fingerprint));
+                if (!matchesDeleted) {
+                    continue;
+                }
+                if (referenced.contains(provider)) {
+                    continue;
+                }
+                return provider;
+            }
+        } catch (Exception e) {
+            WawelAuth.LOG.warn("Failed to detect orphaned local provider after delete: {}", e.getMessage());
+        }
+        return null;
     }
 
     private static boolean sameServer(ServerData a, ServerData b) {

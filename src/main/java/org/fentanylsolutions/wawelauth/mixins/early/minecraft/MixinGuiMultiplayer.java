@@ -21,10 +21,12 @@ import org.fentanylsolutions.wawelauth.api.WawelFaceRendererClient;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
 import org.fentanylsolutions.wawelauth.client.gui.AccountManagerScreen;
 import org.fentanylsolutions.wawelauth.client.gui.AuthButton;
+import org.fentanylsolutions.wawelauth.client.gui.ConfirmRemoveProviderScreen;
 import org.fentanylsolutions.wawelauth.client.gui.FolderIconButton;
 import org.fentanylsolutions.wawelauth.client.gui.IServerTooltipFaceHost;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
+import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.spongepowered.asm.mixin.Mixin;
@@ -79,7 +81,6 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
         if (client != null) {
             ServerBindingPersistence.clearRetargetedServerBindings(client);
             ServerBindingPersistence.clearMissingAccountBindings(client.getAccountManager());
-            ServerBindingPersistence.clearOrphanedLocalProviders(client);
         }
     }
 
@@ -182,12 +183,26 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
             return;
         }
 
+        ServerData removedEntry = wawelauth$pendingRemovedServerData;
         try {
             WawelClient client = WawelClient.instance();
-            if (client != null) {
-                ServerBindingPersistence.clearRetargetedServerBindings(client);
-                ServerBindingPersistence.clearOrphanedLocalProviders(client);
+            if (client == null) {
+                return;
             }
+            ServerBindingPersistence.clearRetargetedServerBindings(client);
+
+            if (removedEntry == null) {
+                return;
+            }
+            ClientProvider orphan = ServerBindingPersistence.findOrphanCandidateFromDeletedEntry(client, removedEntry);
+            if (orphan == null) {
+                return;
+            }
+
+            String title = GuiText.tr("wawelauth.gui.multiplayer.remove_provider.title", orphan.getName());
+            String subtitle = GuiText.tr("wawelauth.gui.multiplayer.remove_provider.subtitle");
+            String hint = GuiText.tr("wawelauth.gui.multiplayer.remove_provider.hint");
+            this.mc.displayGuiScreen(new ConfirmRemoveProviderScreen(this, orphan.getName(), title, subtitle, hint));
         } finally {
             wawelauth$pendingRemovedServerData = null;
             wawelauth$pendingEditedServerRetarget = false;
