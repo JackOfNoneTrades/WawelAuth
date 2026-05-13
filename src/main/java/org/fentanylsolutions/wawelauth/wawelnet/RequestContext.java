@@ -1,10 +1,12 @@
 package org.fentanylsolutions.wawelauth.wawelnet;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.net.InetAddresses;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
@@ -155,9 +157,23 @@ public class RequestContext {
      * Returns the client's IP address as a string.
      */
     public String getClientIp() {
+        String remoteIp = getRemoteIp();
+        if (!isTrustedForwardingPeer(remoteIp)) {
+            return remoteIp;
+        }
+
+        String forwardedIp = getForwardedClientIp();
+        return forwardedIp == null ? remoteIp : forwardedIp;
+    }
+
+    /**
+     * Returns the raw TCP peer IP, without forwarded header handling.
+     */
+    public String getRemoteIp() {
         if (remoteAddress instanceof InetSocketAddress) {
-            return ((InetSocketAddress) remoteAddress).getAddress()
-                .getHostAddress();
+            InetSocketAddress inet = (InetSocketAddress) remoteAddress;
+            InetAddress address = inet.getAddress();
+            return address == null ? inet.getHostString() : address.getHostAddress();
         }
         return remoteAddress.toString();
     }
@@ -175,5 +191,72 @@ public class RequestContext {
     public String getPath() {
         QueryStringDecoder decoder = new QueryStringDecoder(request.getUri());
         return decoder.path();
+    }
+
+    private String getForwardedClientIp() {
+        String realIp = normalizeForwardedIp(
+            request.headers()
+                .get("X-Real-IP"));
+        if (realIp != null) {
+            return realIp;
+        }
+
+        String forwardedFor = request.headers()
+            .get("X-Forwarded-For");
+        if (forwardedFor == null) {
+            return null;
+        }
+
+        String[] parts = forwardedFor.split(",");
+        for (int i = parts.length - 1; i >= 0; i--) {
+            String ip = normalizeForwardedIp(parts[i]);
+            if (ip != null) {
+                return ip;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isTrustedForwardingPeer(String remoteIp) {
+        try {
+            return InetAddresses.forString(remoteIp)
+                .isLoopbackAddress();
+        } catch (IllegalArgumentException e) {
+            try {
+                return InetAddress.getByName(remoteIp)
+                    .isLoopbackAddress();
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
+    }
+
+    private static String normalizeForwardedIp(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String token = value.trim();
+        if (token.isEmpty()) {
+            return null;
+        }
+        if (token.length() >= 2 && token.startsWith("\"") && token.endsWith("\"")) {
+            token = token.substring(1, token.length() - 1)
+                .trim();
+        }
+        if (token.startsWith("[") && token.contains("]")) {
+            token = token.substring(1, token.indexOf(']'));
+        } else {
+            int colon = token.lastIndexOf(':');
+            if (colon > 0 && token.indexOf(':') == colon && token.indexOf('.') >= 0) {
+                token = token.substring(0, colon);
+            }
+        }
+
+        try {
+            return InetAddresses.toAddrString(InetAddresses.forString(token));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

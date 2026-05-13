@@ -1421,7 +1421,7 @@ public class AdminWebService {
 
     private static boolean isLoopbackClient(RequestContext ctx) {
         try {
-            return InetAddress.getByName(ctx.getClientIp())
+            return InetAddress.getByName(ctx.getRemoteIp())
                 .isLoopbackAddress();
         } catch (Exception e) {
             return false;
