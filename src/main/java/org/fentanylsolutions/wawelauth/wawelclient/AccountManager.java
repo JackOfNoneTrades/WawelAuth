@@ -49,6 +49,7 @@ public class AccountManager {
     private static final long STALE_THRESHOLD_MS = 25 * 60_000; // 25 minutes
     private static final long CHECK_INTERVAL_SECONDS = 60;
     private static final long UNVERIFIED_RETRY_INTERVAL_MS = 30_000; // retry quickly after offline startup
+    private static final long STATUS_STORAGE_SYNC_INTERVAL_MS = 5_000;
 
     private final ClientAccountDAO accountDAO;
     private final ClientProviderDAO providerDAO;
@@ -57,9 +58,11 @@ public class AccountManager {
     private final ScheduledExecutorService scheduler;
 
     /**
-     * In-memory account status cache. Render code reads from this, never from DB.
+     * In-memory account status cache. Render code goes through getAccountStatus(),
+     * which can throttle-sync stale entries from the shared database.
      */
     private final ConcurrentHashMap<Long, AccountStatus> statusCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Long> statusStorageSyncAt = new ConcurrentHashMap<>();
 
     public AccountManager(ClientAccountDAO accountDAO, ClientProviderDAO providerDAO, YggdrasilHttpClient httpClient) {
 
@@ -305,6 +308,7 @@ public class AccountManager {
 
                 accountDAO.delete(id);
                 statusCache.remove(id);
+                statusStorageSyncAt.remove(id);
                 future.complete(null);
             } catch (Exception e) {
                 future.completeExceptionally(e);
@@ -405,13 +409,18 @@ public class AccountManager {
     }
 
     /**
-     * Get the cached account status. Safe to call from the render thread:
-     * reads only from an in-memory map, never the DB.
+     * Get the cached account status. Stale negative states are opportunistically
+     * re-read from storage so another running instance can repair this cache.
      *
      * @return the cached status, or null if unknown
      */
     public AccountStatus getAccountStatus(long id) {
-        return statusCache.get(id);
+        AccountStatus cached = statusCache.get(id);
+        if (cached == null || cached == AccountStatus.UNVERIFIED || cached == AccountStatus.EXPIRED) {
+            maybeSyncCachedStatusFromStorage(id);
+            cached = statusCache.get(id);
+        }
+        return cached;
     }
 
     /**
@@ -419,6 +428,65 @@ public class AccountManager {
      */
     public void cacheStatus(long id, AccountStatus status) {
         statusCache.put(id, status);
+        statusStorageSyncAt.put(id, System.currentTimeMillis());
+    }
+
+    private void maybeSyncCachedStatusFromStorage(long id) {
+        long now = System.currentTimeMillis();
+        Long lastSyncAt = statusStorageSyncAt.get(id);
+        if (lastSyncAt != null && now - lastSyncAt < STATUS_STORAGE_SYNC_INTERVAL_MS) {
+            return;
+        }
+
+        statusStorageSyncAt.put(id, now);
+        try {
+            ClientAccount account = accountDAO.findById(id);
+            if (account == null) {
+                statusCache.remove(id);
+                statusStorageSyncAt.remove(id);
+                return;
+            }
+            syncCachedStatusFromStorage(account);
+        } catch (Exception e) {
+            WawelAuth.debug("Could not sync cached account status for " + id + ": " + e.getMessage());
+        }
+    }
+
+    private void syncCachedStatusFromStorage(ClientAccount account) {
+        if (account == null || account.getStatus() == null) {
+            return;
+        }
+
+        long id = account.getId();
+        AccountStatus stored = account.getStatus();
+        statusCache.compute(id, (ignored, cached) -> {
+            if (cached == null || cached == stored) {
+                return stored;
+            }
+
+            // UNVERIFIED is a transient reachability state. Do not let a stale
+            // row downgrade a healthier status produced inside this JVM.
+            if (stored == AccountStatus.UNVERIFIED && isDurableStatus(cached)) {
+                return cached;
+            }
+
+            WawelAuth.debug(
+                "Synced cached status for account " + id
+                    + " ("
+                    + account.getProfileName()
+                    + ") from "
+                    + cached
+                    + " to "
+                    + stored);
+            return stored;
+        });
+        statusStorageSyncAt.put(id, System.currentTimeMillis());
+    }
+
+    private static boolean isDurableStatus(AccountStatus status) {
+        return status == AccountStatus.VALID || status == AccountStatus.REFRESHED
+            || status == AccountStatus.UNAUTHED
+            || status == AccountStatus.EXPIRED;
     }
 
     // =========================================================================
@@ -457,6 +525,7 @@ public class AccountManager {
             for (ClientAccount account : accounts) {
                 try {
                     AccountStatus status = account.getStatus();
+                    syncCachedStatusFromStorage(account);
 
                     if (status == AccountStatus.EXPIRED) {
                         // Needs user intervention, skip
@@ -827,6 +896,7 @@ public class AccountManager {
             if (shouldRemoveLocalAccountAfterServerDelete(candidate, account, targetUserUuid)) {
                 accountDAO.delete(candidate.getId());
                 statusCache.remove(candidate.getId());
+                statusStorageSyncAt.remove(candidate.getId());
                 removed++;
             }
         }
@@ -834,6 +904,7 @@ public class AccountManager {
         if (removed == 0) {
             accountDAO.delete(account.getId());
             statusCache.remove(account.getId());
+            statusStorageSyncAt.remove(account.getId());
         }
 
         WawelAuth.LOG.info(
