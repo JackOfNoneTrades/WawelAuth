@@ -15,8 +15,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 import org.fentanylsolutions.fentlib.util.NetUtil;
 import org.fentanylsolutions.fentlib.util.StringUtil;
@@ -28,6 +27,9 @@ import org.fentanylsolutions.wawelauth.wawelnet.BinaryResponse;
 import org.fentanylsolutions.wawelauth.wawelnet.NetException;
 import org.fentanylsolutions.wawelauth.wawelnet.RequestContext;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.Weigher;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -57,17 +59,50 @@ public class FallbackProxyService {
     private static final int MAX_JSON_BYTES = 1_048_576; // 1 MB
     private static final int MAX_TEXTURE_BYTES = 4_194_304; // 4 MB
     private static final int MAX_TEXTURE_REDIRECTS = 5;
+    private static final long CACHE_EXPIRE_AFTER_ACCESS_MINUTES = 30L;
+    private static final long PROFILE_CACHE_MAX_BYTES = 16L * 1024L * 1024L;
+    private static final long TEXTURE_CACHE_MAX_BYTES = 64L * 1024L * 1024L;
+    private static final int PROFILE_CACHE_ENTRY_OVERHEAD_BYTES = 2048;
+    private static final int TEXTURE_CACHE_ENTRY_OVERHEAD_BYTES = 16 * 1024;
 
     private final ServerConfig serverConfig;
     private final Gson gson;
 
-    private final ConcurrentMap<String, CachedJson> profileCache = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, CachedTexture> textureCache = new ConcurrentHashMap<>();
+    private final Cache<String, CachedJson> profileCache;
+    private final Cache<String, CachedTexture> textureCache;
 
     public FallbackProxyService(ServerConfig serverConfig) {
+        this(serverConfig, PROFILE_CACHE_MAX_BYTES, TEXTURE_CACHE_MAX_BYTES);
+    }
+
+    FallbackProxyService(ServerConfig serverConfig, long profileCacheMaxBytes, long textureCacheMaxBytes) {
         this.serverConfig = serverConfig;
         this.gson = new GsonBuilder().disableHtmlEscaping()
             .create();
+        this.profileCache = CacheBuilder.newBuilder()
+            .maximumWeight(Math.max(1L, profileCacheMaxBytes))
+            .weigher(new Weigher<String, CachedJson>() {
+
+                @Override
+                public int weigh(String key, CachedJson value) {
+                    return value.cacheWeight;
+                }
+            })
+            .expireAfterAccess(CACHE_EXPIRE_AFTER_ACCESS_MINUTES, TimeUnit.MINUTES)
+            .concurrencyLevel(4)
+            .build();
+        this.textureCache = CacheBuilder.newBuilder()
+            .maximumWeight(Math.max(1L, textureCacheMaxBytes))
+            .weigher(new Weigher<String, CachedTexture>() {
+
+                @Override
+                public int weigh(String key, CachedTexture value) {
+                    return value.cacheWeight;
+                }
+            })
+            .expireAfterAccess(CACHE_EXPIRE_AFTER_ACCESS_MINUTES, TimeUnit.MINUTES)
+            .concurrencyLevel(4)
+            .build();
     }
 
     /**
@@ -165,11 +200,10 @@ public class FallbackProxyService {
         validateProxyUrlForFallback(entry, upstreamUrl);
 
         String cacheKey = entry.key + "|" + upstreamUrl;
-        CachedTexture cached = textureCache.get(cacheKey);
-        if (cached != null && !cached.isExpired()) {
+        CachedTexture cached = getCachedTexture(cacheKey);
+        if (cached != null) {
             return buildBinary(cached.data, cached.contentType, entry.ttlMs);
         }
-        textureCache.remove(cacheKey);
 
         TextureResponse response;
         try {
@@ -192,9 +226,7 @@ public class FallbackProxyService {
         }
 
         if (entry.ttlMs > 0L) {
-            textureCache.put(
-                cacheKey,
-                new CachedTexture(response.data, response.contentType, System.currentTimeMillis() + entry.ttlMs));
+            cacheTexture(cacheKey, response.data, response.contentType, entry.ttlMs);
         }
 
         return buildBinary(response.data, response.contentType, entry.ttlMs);
@@ -237,10 +269,10 @@ public class FallbackProxyService {
     }
 
     private JsonObject getCachedProfile(String cacheKey) {
-        CachedJson cached = profileCache.get(cacheKey);
+        CachedJson cached = profileCache.getIfPresent(cacheKey);
         if (cached == null) return null;
         if (cached.isExpired()) {
-            profileCache.remove(cacheKey);
+            profileCache.invalidate(cacheKey);
             return null;
         }
         return deepCopy(cached.body);
@@ -248,7 +280,25 @@ public class FallbackProxyService {
 
     private void cacheProfile(String cacheKey, JsonObject profile, long ttlMs) {
         if (ttlMs <= 0L) return;
-        profileCache.put(cacheKey, new CachedJson(deepCopy(profile), System.currentTimeMillis() + ttlMs));
+        JsonObject copy = deepCopy(profile);
+        profileCache.put(cacheKey, new CachedJson(copy, System.currentTimeMillis() + ttlMs, estimateJsonWeight(copy)));
+    }
+
+    private CachedTexture getCachedTexture(String cacheKey) {
+        CachedTexture cached = textureCache.getIfPresent(cacheKey);
+        if (cached == null) return null;
+        if (cached.isExpired()) {
+            textureCache.invalidate(cacheKey);
+            return null;
+        }
+        return cached;
+    }
+
+    private void cacheTexture(String cacheKey, byte[] data, String contentType, long ttlMs) {
+        if (ttlMs <= 0L || data == null) return;
+        textureCache.put(
+            cacheKey,
+            new CachedTexture(data, contentType, System.currentTimeMillis() + ttlMs, estimateTextureWeight(data)));
     }
 
     private FallbackEntry getFallbackByKey(String key) {
@@ -627,6 +677,25 @@ public class FallbackProxyService {
             .getAsJsonObject();
     }
 
+    private static int estimateJsonWeight(JsonObject json) {
+        int bodyBytes = json == null ? 0
+            : json.toString()
+                .getBytes(StandardCharsets.UTF_8).length;
+        return saturatedCacheWeight((long) bodyBytes + PROFILE_CACHE_ENTRY_OVERHEAD_BYTES);
+    }
+
+    private static int estimateTextureWeight(byte[] data) {
+        int bodyBytes = data == null ? 0 : data.length;
+        return saturatedCacheWeight((long) bodyBytes + TEXTURE_CACHE_ENTRY_OVERHEAD_BYTES);
+    }
+
+    private static int saturatedCacheWeight(long weight) {
+        if (weight <= 0L) {
+            return 1;
+        }
+        return weight > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) weight;
+    }
+
     private static String getAsString(JsonObject obj, String key) {
         return JsonUtil.getString(obj, key);
     }
@@ -676,10 +745,12 @@ public class FallbackProxyService {
 
         final JsonObject body;
         final long expiresAt;
+        final int cacheWeight;
 
-        CachedJson(JsonObject body, long expiresAt) {
+        CachedJson(JsonObject body, long expiresAt, int cacheWeight) {
             this.body = body;
             this.expiresAt = expiresAt;
+            this.cacheWeight = cacheWeight;
         }
 
         boolean isExpired() {
@@ -692,11 +763,13 @@ public class FallbackProxyService {
         final byte[] data;
         final String contentType;
         final long expiresAt;
+        final int cacheWeight;
 
-        CachedTexture(byte[] data, String contentType, long expiresAt) {
+        CachedTexture(byte[] data, String contentType, long expiresAt, int cacheWeight) {
             this.data = data;
             this.contentType = contentType;
             this.expiresAt = expiresAt;
+            this.cacheWeight = cacheWeight;
         }
 
         boolean isExpired() {
