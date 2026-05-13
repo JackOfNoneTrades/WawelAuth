@@ -1,14 +1,10 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
 import java.io.File;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -19,11 +15,9 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.util.EnumChatFormatting;
 
 import org.fentanylsolutions.fentlib.util.FileUtil;
 import org.fentanylsolutions.fentlib.util.GuiText;
-import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.compat.EtFuturumCompat;
@@ -44,11 +38,8 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 import org.lwjgl.opengl.GL11;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
-import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
-import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.Rectangle;
-import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.viewport.GuiContext;
@@ -59,7 +50,6 @@ import com.cleanroommc.modularui.widget.Widget;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.Dialog;
 import com.cleanroommc.modularui.widgets.EntityDisplayWidget;
-import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Column;
 import com.cleanroommc.modularui.widgets.layout.Row;
@@ -105,19 +95,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
     }
 
-    private static final UITexture PROVIDER_SETTINGS_TEXTURE = UITexture.fullImage("wawelauth", "gui/gears");
     private static final long STATUS_UI_REFRESH_INTERVAL_MS = 1000L;
-    private static final int PROVIDER_NAME_MAX_WIDTH_PX = 84;
-    private static final int ACCOUNT_NAME_MAX_WIDTH_PX = 90;
     private static final int TEXTURE_STATUS_MAX_WIDTH_PX = 212;
     private static final int DETAIL_PRIMARY_TEXT_COLOR = 0xFF000000;
     private static final int DETAIL_SECONDARY_TEXT_COLOR = 0xFF555555;
     private static final int PREVIEW_PANEL_BACKGROUND_COLOR = 0x22000000;
     private static final int LIST_OUTLINE_COLOR = PREVIEW_PANEL_BACKGROUND_COLOR;
-    private static final IDrawable PROVIDER_SETTINGS_ICON = PROVIDER_SETTINGS_TEXTURE
-        .getSubArea(0.0f, 0.0f, 0.5f, 1.0f);
-    private static final IDrawable PROVIDER_SETTINGS_ICON_HOVER = PROVIDER_SETTINGS_TEXTURE
-        .getSubArea(0.5f, 0.0f, 1.0f, 1.0f);
 
     private static ServerData pendingFocusedServerData;
     private static ServerCapabilities pendingFocusedCapabilities;
@@ -156,14 +139,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private String focusedLocalStatusText = "";
 
     private ModularPanel mainPanel;
-    private ListWidget<IWidget, ?> providerList;
-    private ListWidget<IWidget, ?> accountList;
-    private Map<Long, Rectangle> accountStatusDots;
-    private Map<Long, AccountStatus> renderedStatuses;
+    private AccountManagerProviderListPanel providerListPanel;
+    private AccountManagerAccountListPanel accountListPanel;
     private Map<String, Boolean> registerCapabilityByProvider;
     private Set<String> registerCapabilityProbeInFlight;
     private long nextStatusUiRefreshAtMs;
-    private boolean accountListRebuildPending;
 
     public AccountManagerScreen() {
         super("wawelauth");
@@ -214,12 +194,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     @Override
     public ModularPanel buildUI(ModularGuiContext context) {
         mainPanel = ModularPanel.defaultPanel("wawelauth_account_manager", 360, 240);
-        accountStatusDots = new HashMap<>();
-        renderedStatuses = new HashMap<>();
         registerCapabilityByProvider = new HashMap<>();
         registerCapabilityProbeInFlight = new HashSet<>();
         nextStatusUiRefreshAtMs = 0L;
-        accountListRebuildPending = false;
 
         if (pendingFocusedServerData != null || pendingFocusedCapabilities != null) {
             focusedLocalServerData = pendingFocusedServerData;
@@ -240,8 +217,29 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             }
         }
 
-        providerList = new ListWidget<>();
-        accountList = new ListWidget<>();
+        providerListPanel = new AccountManagerProviderListPanel(
+            () -> selectedProvider,
+            value -> selectedProvider = value,
+            () -> selectedAccount,
+            value -> selectedAccount = value,
+            this::hasFocusedLocalContext,
+            this::hasFocusedLocalMetadata,
+            this::resolveFocusedLocalProvider,
+            this::ensureRegisterCapabilityProbe,
+            () -> focusedLocalStatusText,
+            value -> focusedLocalStatusText = value,
+            this::selectProvider,
+            this::clearPreview,
+            this::openProviderSettingsDialog);
+        accountListPanel = new AccountManagerAccountListPanel(
+            () -> selectedProvider,
+            value -> selectedProvider = value,
+            this::resolveProvider,
+            () -> selectedAccount,
+            value -> selectedAccount = value,
+            this::selectAccount,
+            this::clearPreview);
+
         addProviderDialog = AddProviderDialog.attach(mainPanel, provider -> {
             if (provider != null) {
                 selectProvider(provider);
@@ -302,9 +300,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .heightRel(1.0f)
             .padding(4);
 
-        providerList.widthRel(1.0f)
+        providerListPanel.widget()
+            .widthRel(1.0f)
             .heightRel(1.0f);
-        accountList.widthRel(1.0f)
+        accountListPanel.widget()
+            .widthRel(1.0f)
             .heightRel(1.0f);
 
         Column providerListFrame = new Column();
@@ -313,7 +313,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .margin(0, 2)
             .padding(1)
             .background(new Rectangle().color(LIST_OUTLINE_COLOR))
-            .child(providerList);
+            .child(providerListPanel.widget());
 
         Column accountListFrame = new Column();
         accountListFrame.widthRel(1.0f)
@@ -321,7 +321,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .margin(0, 2)
             .padding(1)
             .background(new Rectangle().color(LIST_OUTLINE_COLOR))
-            .child(accountList);
+            .child(accountListPanel.widget());
 
         if (hasFocusedLocalContext()) {
             populateFocusedLocalSidebar(leftSidebar, accountListFrame);
@@ -941,8 +941,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     public void onUpdate() {
         super.onUpdate();
 
-        if (accountListRebuildPending) {
-            accountListRebuildPending = false;
+        if (accountListPanel != null && accountListPanel.consumeRebuildRequest()) {
             rebuildAccountList();
         }
 
@@ -992,222 +991,20 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void rebuildProviderList() {
-        providerList.removeAll();
-        WawelClient client = WawelClient.instance();
-        if (client == null) return;
-
-        if (hasFocusedLocalContext()) {
-            selectedProvider = resolveFocusedLocalProvider();
-            if (selectedProvider != null) {
-                ensureRegisterCapabilityProbe(selectedProvider);
-                if (focusedLocalStatusText == null || focusedLocalStatusText.isEmpty()) {
-                    focusedLocalStatusText = GuiText
-                        .tr("wawelauth.gui.common.ready_message", selectedProvider.getName());
-                }
-            } else {
-                focusedLocalStatusText = hasFocusedLocalMetadata()
-                    ? GuiText.tr("wawelauth.gui.local_auth.status.trust_first")
-                    : GuiText.tr("wawelauth.gui.local_auth.status.not_advertised");
-                if (selectedAccount != null) {
-                    selectedAccount = null;
-                    clearPreview();
-                }
-            }
-            return;
-        }
-
-        List<ClientProvider> providers = new ArrayList<>();
-        for (ClientProvider provider : client.getProviderRegistry()
-            .listProviders()) {
-            if (shouldShowProviderInGeneralList(provider)) {
-                providers.add(provider);
-            }
-        }
-        providers.sort(
-            Comparator.comparing(
-                provider -> normalizeSortKey(
-                    ProviderDisplayName.displayName(provider != null ? provider.getName() : null)),
-                String.CASE_INSENSITIVE_ORDER));
-
-        boolean selectedVisible = false;
-        for (ClientProvider provider : providers) {
-            String providerName = provider.getName() != null ? provider.getName() : "?";
-            String providerDisplayName = ProviderDisplayName.displayName(providerName);
-            String displayProviderName = GuiText.ellipsizeToPixelWidth(providerDisplayName, PROVIDER_NAME_MAX_WIDTH_PX);
-            boolean isSelected = selectedProvider != null && providerName.equals(selectedProvider.getName());
-            if (isSelected) {
-                selectedVisible = true;
-            }
-
-            ButtonWidget<?> selectButton = new ButtonWidget<>();
-            selectButton.expanded()
-                .heightRel(1.0f);
-            if (isSelected) {
-                selectButton.background(new Rectangle().color(0x44FFFFFF));
-            }
-            selectButton.overlay(IKey.str(displayProviderName));
-            addProviderTooltip(selectButton, provider, providerDisplayName, displayProviderName);
-            selectButton.onMousePressed(mouseButton -> {
-                selectProvider(provider);
-                rebuildProviderList();
-                return true;
-            });
-
-            ButtonWidget<?> settingsButton = new ButtonWidget<>();
-            settingsButton.size(14, 14)
-                .background(IDrawable.EMPTY)
-                .hoverBackground(IDrawable.EMPTY)
-                .overlay(PROVIDER_SETTINGS_ICON)
-                .hoverOverlay(PROVIDER_SETTINGS_ICON_HOVER)
-                .addTooltipLine(GuiText.tr("wawelauth.gui.account_manager.provider_settings"))
-                .onMousePressed(mouseButton -> {
-                    openProviderSettingsDialog(provider);
-                    return true;
-                });
-
-            Row providerRow = new Row();
-            providerRow.widthRel(1.0f)
-                .height(14)
-                .child(selectButton)
-                .child(new Widget<>().size(1, 14))
-                .child(settingsButton);
-
-            providerList.child(providerRow);
-        }
-
-        if (!selectedVisible) {
-            if (!providers.isEmpty()) {
-                selectProvider(providers.get(0));
-                rebuildProviderList();
-            } else {
-                selectedProvider = null;
-                selectedAccount = null;
-                clearPreview();
-            }
+        if (providerListPanel != null) {
+            providerListPanel.rebuild();
         }
     }
 
     private void rebuildAccountList() {
-        ensureStatusCaches();
-        resetAccountListScroll();
-        accountList.removeAll();
-        accountStatusDots.clear();
-        renderedStatuses.clear();
-
-        selectedProvider = resolveProvider(selectedProvider);
-        if (selectedProvider == null) return;
-
-        WawelClient client = WawelClient.instance();
-        if (client == null) return;
-
-        List<ClientAccount> accounts = new ArrayList<>(
-            client.getAccountManager()
-                .listAccounts(selectedProvider.getName()));
-        accounts.sort(
-            Comparator.comparing(
-                account -> normalizeSortKey(account != null ? account.getProfileName() : null),
-                String.CASE_INSENSITIVE_ORDER));
-        boolean selectedInProvider = false;
-        if (selectedAccount != null) {
-            long selectedId = selectedAccount.getId();
-            for (ClientAccount account : accounts) {
-                if (account.getId() == selectedId) {
-                    selectedInProvider = true;
-                    break;
-                }
-            }
+        if (accountListPanel != null) {
+            accountListPanel.rebuild();
         }
-
-        if (!accounts.isEmpty() && !selectedInProvider) {
-            selectAccount(accounts.get(0));
-        } else if (accounts.isEmpty() && selectedAccount != null) {
-            selectedAccount = null;
-            clearPreview();
-        }
-
-        boolean selectedStillExists = false;
-        for (ClientAccount account : accounts) {
-            AccountStatus status = getLiveStatus(account);
-            int statusColor = StatusColors.getColor(status);
-            String profileName = account.getProfileName() != null ? account.getProfileName() : "?";
-            String displayProfileName = GuiText.ellipsizeToPixelWidth(profileName, ACCOUNT_NAME_MAX_WIDTH_PX);
-            boolean isSelected = selectedAccount != null && account.getId() == selectedAccount.getId();
-            if (isSelected) {
-                selectedAccount = account;
-                selectedStillExists = true;
-            }
-
-            ButtonWidget<?> entry = new ButtonWidget<>();
-            entry.widthRel(1.0f)
-                .height(14);
-            if (isSelected) {
-                entry.background(new Rectangle().color(0x44FFFFFF));
-            }
-
-            Row dot = new Row();
-            Rectangle dotBorderRect = new Rectangle().color(0xFF2A2A2A);
-            Rectangle dotFillRect = new Rectangle().color(statusColor);
-            Widget<?> dotFill = new Widget<>();
-            dotFill.size(6, 6)
-                .margin(1, 1)
-                .background(dotFillRect);
-
-            dot.size(8, 8);
-            dot.margin(1, 3);
-            dot.background(dotBorderRect);
-            dot.child(dotFill);
-            accountStatusDots.put(account.getId(), dotFillRect);
-            renderedStatuses.put(account.getId(), status);
-
-            TextWidget<?> nameLabel = new TextWidget<>(IKey.str(displayProfileName));
-            nameLabel.expanded()
-                .heightRel(1.0f);
-            if (!displayProfileName.equals(profileName)) {
-                nameLabel.addTooltipLine(profileName);
-            }
-
-            Row row = new Row();
-            row.widthRel(1.0f)
-                .heightRel(1.0f);
-            row.child(new Widget<>().size(2, 14));
-            if (account.getProfileUuid() != null) {
-                row.child(createAccountFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
-                row.child(new Widget<>().size(2, 14));
-            }
-            row.child(dot);
-            row.child(new Widget<>().size(2, 14));
-            row.child(nameLabel);
-
-            entry.child(row);
-            entry.onMousePressed(mouseButton -> {
-                selectAccount(account);
-                rebuildAccountList();
-                return true;
-            });
-
-            accountList.child(entry);
-        }
-
-        if (selectedAccount != null && !selectedStillExists) {
-            selectedAccount = null;
-            clearPreview();
-        }
-    }
-
-    private Widget<?> createAccountFaceWidget(String displayName, UUID profileUuid, String providerName) {
-        return new FaceWidget(displayName, profileUuid, providerName).size(8, 8)
-            .margin(0, 3);
     }
 
     private void resetAccountListScroll() {
-        if (accountList == null) {
-            return;
-        }
-        try {
-            accountList.getScrollData()
-                .scrollTo(accountList.getScrollArea(), 0);
-        } catch (Exception ignored) {
-            // Scroll reset is best-effort; list still works without it.
+        if (accountListPanel != null) {
+            accountListPanel.resetScroll();
         }
     }
 
@@ -1371,67 +1168,22 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private AccountStatus getLiveStatus(ClientAccount account) {
-        if (account == null) return null;
-        WawelClient client = WawelClient.instance();
-        if (client == null) return account.getStatus();
-
-        AccountStatus cached = client.getAccountManager()
-            .getAccountStatus(account.getId());
-        if (cached != null) {
-            account.setStatus(cached);
-            return cached;
+        if (accountListPanel != null) {
+            return accountListPanel.getLiveStatus(account);
         }
-        return account.getStatus();
+        return account != null ? account.getStatus() : null;
     }
 
     private void refreshVisibleStatuses() {
-        ensureStatusCaches();
-        WawelClient client = WawelClient.instance();
-        if (client == null || accountStatusDots.isEmpty()) {
-            return;
-        }
-
-        for (Map.Entry<Long, Rectangle> entry : accountStatusDots.entrySet()) {
-            long accountId = entry.getKey();
-            AccountStatus cached = client.getAccountManager()
-                .getAccountStatus(accountId);
-            if (cached == null) {
-                continue;
-            }
-
-            AccountStatus rendered = renderedStatuses.get(accountId);
-            if (cached != rendered) {
-                entry.getValue()
-                    .color(StatusColors.getColor(cached));
-                renderedStatuses.put(accountId, cached);
-
-                if (cached == AccountStatus.VALID || cached == AccountStatus.REFRESHED) {
-                    ClientAccount account = client.getAccountManager()
-                        .getAccount(accountId);
-                    if (account != null && account.getProfileUuid() != null) {
-                        client.getTextureResolver()
-                            .invalidate(account.getProfileUuid());
-                    }
-                }
-            }
-
-            if (selectedAccount != null && selectedAccount.getId() == accountId) {
-                selectedAccount.setStatus(cached);
-            }
-        }
-    }
-
-    private void ensureStatusCaches() {
-        if (accountStatusDots == null) {
-            accountStatusDots = new HashMap<>();
-        }
-        if (renderedStatuses == null) {
-            renderedStatuses = new HashMap<>();
+        if (accountListPanel != null) {
+            accountListPanel.refreshVisibleStatuses();
         }
     }
 
     private void requestAccountListRebuild() {
-        this.accountListRebuildPending = true;
+        if (accountListPanel != null) {
+            accountListPanel.requestRebuild();
+        }
     }
 
     private void loadSkinForAccount(ClientAccount account) {
@@ -2245,78 +1997,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         registerCapabilityByProvider.put(providerName, err == null && Boolean.TRUE.equals(supported));
                     });
             });
-    }
-
-    private boolean shouldShowProviderInGeneralList(ClientProvider provider) {
-        return provider != null && (provider.getType() != ProviderType.CUSTOM || provider.isManualEntry());
-    }
-
-    private static void addProviderTooltip(ButtonWidget<?> button, ClientProvider provider, String providerName,
-        String displayProviderName) {
-        boolean showName = !providerName.equals(displayProviderName);
-        boolean showLocalAddress = isLocalAuthProvider(provider);
-        if (!showName && !showLocalAddress) {
-            return;
-        }
-
-        if (showName) {
-            button.addTooltipLine(providerName);
-        }
-
-        if (showLocalAddress) {
-            String address = extractProviderServerAddress(provider);
-            if (address != null) {
-                button.addTooltipLine(
-                    EnumChatFormatting.GRAY + GuiText.tr("wawelauth.gui.common.server") + ": " + address);
-            }
-        }
-    }
-
-    private static boolean isLocalAuthProvider(ClientProvider provider) {
-        if (provider == null) return false;
-        String name = provider.getName();
-        if (name != null && (name.startsWith("LocalAuth-") || name.startsWith("WawelAuth@"))) {
-            return true;
-        }
-
-        String apiRoot = normalize(provider.getApiRoot());
-        String fingerprint = normalize(provider.getPublicKeyFingerprint());
-        if (apiRoot == null || fingerprint == null) {
-            return false;
-        }
-
-        String authExpected = apiRoot + "/authserver";
-        String sessionExpected = apiRoot + "/sessionserver";
-        String auth = normalize(provider.getAuthServerUrl());
-        String session = normalize(provider.getSessionServerUrl());
-        return authExpected.equals(auth) && sessionExpected.equals(session);
-    }
-
-    private static String extractProviderServerAddress(ClientProvider provider) {
-        String apiRoot = normalize(provider != null ? provider.getApiRoot() : null);
-        if (apiRoot == null) {
-            return null;
-        }
-
-        try {
-            URI uri = new URI(apiRoot);
-            if (uri.getHost() != null) {
-                return NetworkAddressUtil.formatHostPort(uri.getHost(), uri.getPort());
-            }
-        } catch (Exception ignored) {}
-
-        return apiRoot;
-    }
-
-    private static String normalize(String value) {
-        if (value == null) return null;
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private static String normalizeSortKey(String value) {
-        String normalized = normalize(value);
-        return normalized != null ? normalized : "";
     }
 
 }
