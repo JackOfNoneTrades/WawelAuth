@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URI;
-import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -90,6 +89,9 @@ public class AdminWebService {
     private static final String ADMIN_HEADER = "X-WawelAuth-Admin-Session";
     private static final String INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String ADMIN_SESSION_COOKIE = "wawelauth_admin_session";
+    private static final String CLEAR_ADMIN_SESSION_COOKIE = ADMIN_SESSION_COOKIE
+        + "=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict";
     private static final int HTTP_CONNECT_TIMEOUT_MS = 10_000;
     private static final int HTTP_READ_TIMEOUT_MS = 10_000;
     private static final int MAX_HTTP_BYTES = 4_194_304;
@@ -1330,6 +1332,7 @@ public class AdminWebService {
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("Cache-Control", "no-store");
         headers.put("Pragma", "no-cache");
+        headers.put("Set-Cookie", CLEAR_ADMIN_SESSION_COOKIE);
         return new BinaryResponse(body, contentType, headers);
     }
 
@@ -1384,35 +1387,6 @@ public class AdminWebService {
                 .headers()
                 .get(ADMIN_HEADER));
         if (headerToken != null) return headerToken;
-
-        String cookieHeader = trimToNull(
-            ctx.getRequest()
-                .headers()
-                .get("Cookie"));
-        if (cookieHeader != null) {
-            String fromCookie = parseCookie(cookieHeader, "wawelauth_admin_session");
-            if (fromCookie != null) {
-                return fromCookie;
-            }
-        }
-        return null;
-    }
-
-    private static String parseCookie(String cookieHeader, String name) {
-        if (cookieHeader == null || name == null) return null;
-        String[] pairs = cookieHeader.split(";");
-        String prefix = name + "=";
-        for (String pair : pairs) {
-            String part = pair.trim();
-            if (!part.startsWith(prefix)) continue;
-            String raw = part.substring(prefix.length());
-            if (raw.isEmpty()) return null;
-            try {
-                return trimToNull(URLDecoder.decode(raw, "UTF-8"));
-            } catch (Exception ignored) {
-                return trimToNull(raw);
-            }
-        }
         return null;
     }
 

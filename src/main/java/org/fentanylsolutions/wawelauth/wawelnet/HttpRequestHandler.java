@@ -34,7 +34,7 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
 
     private static final String CONTENT_TYPE_JSON = "application/json; charset=utf-8";
     private static final String ALI_HEADER = "X-Authlib-Injector-API-Location";
-    private static final String CSP_HEADER = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; "
+    private static final String CSP_HEADER = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; "
         + "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping()
         .create();

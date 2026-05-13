@@ -8,6 +8,7 @@
         sessionToken: null,
         sessionExpiresAt: 0,
         sessionTimer: null,
+        avatarObjectUrls: [],
         activeView: "dashboardView",
         profileUuidDrafts: {},
         users: [],
@@ -36,6 +37,7 @@
     };
 
     document.addEventListener("DOMContentLoaded", () => {
+        clearLegacySessionCookie();
         cacheElements();
         bindEvents();
         clearTables();
@@ -309,6 +311,7 @@
         state.serverProperties = [];
         state.serverPropertiesLoaded = false;
         stopSessionTimer();
+        clearAvatarObjectUrls();
         clearPersistedSession();
 
         el.appCard.classList.add("hidden");
@@ -392,6 +395,7 @@
             applyBootstrapMetadata(state.bootstrap);
             state.sessionExpiresAt = Number(sessionResp.expiresAt) || state.sessionExpiresAt;
             updateSessionLine();
+            clearAvatarObjectUrls();
             renderStats(statsResp || {});
             renderUsers((usersResp && usersResp.users) || []);
             renderInvites((invitesResp && invitesResp.invites) || []);
@@ -846,6 +850,7 @@
                 </td>
             </tr>`;
         }).join("");
+        hydrateAvatarImages(el.usersBody);
     }
 
     function renderUsersHeader() {
@@ -1285,11 +1290,15 @@
     }
 
     function setAvatar(imgEl, avatarUrl) {
+        revokeAvatarElementUrl(imgEl);
         if (avatarUrl) {
-            imgEl.src = withCacheBuster(avatarUrl);
+            imgEl.src = BLANK_AVATAR;
             imgEl.classList.remove("placeholder");
+            loadAvatarImage(imgEl, withCacheBuster(avatarUrl));
             return;
         }
+        imgEl.removeAttribute("data-avatar-url");
+        delete imgEl.dataset.avatarLoading;
         imgEl.src = BLANK_AVATAR;
         imgEl.classList.add("placeholder");
     }
@@ -1421,6 +1430,7 @@
                 <td><button type="button" class="small danger" data-action="remove-op" data-uuid="${escapeAttr(uuid)}" data-name="${escapeAttr(name)}">Remove</button></td>
             </tr>`;
         }).join("");
+        hydrateAvatarImages(el.opsBody);
     }
 
     async function onResolveWhitelistProfile() {
@@ -1556,6 +1566,7 @@
                 <td><button type="button" class="small danger" data-action="remove-whitelist" data-uuid="${escapeAttr(uuid)}" data-name="${escapeAttr(name)}">Remove</button></td>
             </tr>`;
         }).join("");
+        hydrateAvatarImages(el.whitelistBody);
     }
 
     function avatarCellHtml(avatarUrl) {
@@ -1565,14 +1576,87 @@
     function avatarHtml(avatarUrl, extraClass) {
         const className = `avatar-2d${extraClass ? ` ${extraClass}` : ""}${avatarUrl ? "" : " placeholder"}`;
         if (avatarUrl) {
-            return `<img class="${className}" src="${escapeAttr(withCacheBuster(avatarUrl))}" alt="">`;
+            return `<img class="${className}" src="${BLANK_AVATAR}" data-avatar-url="${escapeAttr(withCacheBuster(avatarUrl))}" alt="">`;
         }
         return `<img class="${className}" src="${BLANK_AVATAR}" alt="">`;
+    }
+
+    function hydrateAvatarImages(root) {
+        if (!root) {
+            return;
+        }
+        root.querySelectorAll("img[data-avatar-url]").forEach((imgEl) => {
+            loadAvatarImage(imgEl, imgEl.getAttribute("data-avatar-url"));
+        });
+    }
+
+    async function loadAvatarImage(imgEl, avatarUrl) {
+        if (!imgEl || !avatarUrl || !state.sessionToken) {
+            return;
+        }
+
+        const token = state.sessionToken;
+        const requestedUrl = String(avatarUrl);
+        if (imgEl.dataset.avatarLoading === "1" && imgEl.dataset.avatarUrl === requestedUrl) {
+            return;
+        }
+
+        imgEl.dataset.avatarUrl = requestedUrl;
+        imgEl.dataset.avatarLoading = "1";
+
+        try {
+            const response = await fetch(requestedUrl, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: "omit",
+                cache: "no-store"
+            });
+            if (!response.ok) {
+                throw new Error(`${response.status} ${response.statusText}`);
+            }
+
+            const objectUrl = URL.createObjectURL(await response.blob());
+            if (!imgEl.isConnected || state.sessionToken !== token || imgEl.dataset.avatarUrl !== requestedUrl) {
+                URL.revokeObjectURL(objectUrl);
+                return;
+            }
+
+            revokeAvatarElementUrl(imgEl);
+            state.avatarObjectUrls.push(objectUrl);
+            imgEl.dataset.avatarObjectUrl = objectUrl;
+            imgEl.src = objectUrl;
+            imgEl.classList.remove("placeholder");
+        } catch (_err) {
+            if (imgEl.dataset.avatarUrl === requestedUrl) {
+                imgEl.src = BLANK_AVATAR;
+                imgEl.classList.add("placeholder");
+            }
+        } finally {
+            if (imgEl.dataset.avatarUrl === requestedUrl) {
+                delete imgEl.dataset.avatarLoading;
+            }
+        }
+    }
+
+    function revokeAvatarElementUrl(imgEl) {
+        if (!imgEl || !imgEl.dataset.avatarObjectUrl) {
+            return;
+        }
+        URL.revokeObjectURL(imgEl.dataset.avatarObjectUrl);
+        delete imgEl.dataset.avatarObjectUrl;
+    }
+
+    function clearAvatarObjectUrls() {
+        state.avatarObjectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+        state.avatarObjectUrls = [];
     }
 
     async function requestJson(path, options, withAuth) {
         const opts = Object.assign({}, options || {});
         opts.headers = Object.assign({}, opts.headers || {});
+        opts.credentials = "omit";
         if (opts.body != null && !opts.headers["Content-Type"]) {
             opts.headers["Content-Type"] = "application/json";
         }
@@ -1624,15 +1708,14 @@
             return;
         }
 
-            state.sessionToken = persisted;
-            try {
-                const sessionResp = await requestJson("/api/wawelauth/admin/session", { method: "GET" }, true);
-                state.sessionExpiresAt = Number(sessionResp.expiresAt) || 0;
-                syncSessionCookie();
-                enterAppMode();
-                await refreshData(false);
-                showBanner("Admin session restored.", "ok");
-            } catch (_err) {
+        state.sessionToken = persisted;
+        try {
+            const sessionResp = await requestJson("/api/wawelauth/admin/session", { method: "GET" }, true);
+            state.sessionExpiresAt = Number(sessionResp.expiresAt) || 0;
+            enterAppMode();
+            await refreshData(false);
+            showBanner("Admin session restored.", "ok");
+        } catch (_err) {
             state.sessionToken = null;
             state.sessionExpiresAt = 0;
             clearPersistedSession();
@@ -1722,7 +1805,6 @@
         } catch (_err) {
             // No-op
         }
-        syncSessionCookie();
     }
 
     function readPersistedSession() {
@@ -1739,19 +1821,16 @@
         } catch (_err) {
             // No-op
         }
-        clearSessionCookie();
     }
 
-    function syncSessionCookie() {
-        if (!state.sessionToken) {
-            clearSessionCookie();
-            return;
-        }
-        document.cookie = `wawelauth_admin_session=${encodeURIComponent(state.sessionToken)}; Path=/; SameSite=Strict`;
-    }
-
-    function clearSessionCookie() {
+    function clearLegacySessionCookie() {
+        // Pre-cookie-removal builds stored the bearer session in this JS-managed cookie.
+        document.cookie = "wawelauth_admin_session=; Path=/; Max-Age=0; SameSite=Strict";
         document.cookie = "wawelauth_admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict";
+        if (window.location.protocol === "https:") {
+            document.cookie = "wawelauth_admin_session=; Path=/; Max-Age=0; Secure; SameSite=Strict";
+            document.cookie = "wawelauth_admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Strict";
+        }
     }
 
     async function copyTextToClipboard(text) {
