@@ -130,6 +130,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private LoginDialog loginDialog;
     private RegisterDialog registerDialog;
     private AccountManagerProviderDialogs providerDialogs;
+    private AccountManagerCredentialDialogs credentialDialogs;
     private IPanelHandler removeAccountDialogHandler;
     private IPanelHandler providerSettingsDialogHandler;
     private IPanelHandler providerProxyDialogHandler;
@@ -141,9 +142,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private String pendingRemoveAccountName;
     private String pendingProviderSettingsName;
     private String pendingProviderProxyName;
-    private long pendingCredentialDeleteAccountId = -1L;
-    private String pendingCredentialDeleteAccountName;
-    private String pendingCredentialDeletePassword;
     private boolean texturePathDialogForSkin;
     private String texturePathDialogInitialPath;
     private PreviewBackMode capePreviewMode = PreviewBackMode.CAPE;
@@ -276,15 +274,25 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             this::rebuildAccountList,
             this::openProviderProxyDialog,
             () -> providerSettingsDialogHandler.deleteCachedPanel());
+        credentialDialogs = new AccountManagerCredentialDialogs(
+            () -> selectedAccount,
+            value -> selectedAccount = value,
+            this::isCredentialManagementSupported,
+            value -> textureUploadStatus = value,
+            this::openCredentialDeleteDialog,
+            this::clearPreview,
+            this::rebuildAccountList,
+            this::requestAccountListRebuild);
         removeAccountDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> buildRemoveAccountDialog(), true);
         providerSettingsDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> providerDialogs.buildProviderSettingsDialog(), true);
         providerProxyDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> providerDialogs.buildProviderProxyDialog(), true);
-        credentialDialogHandler = IPanelHandler.simple(mainPanel, (parent, player) -> buildCredentialDialog(), true);
+        credentialDialogHandler = IPanelHandler
+            .simple(mainPanel, (parent, player) -> credentialDialogs.buildCredentialDialog(), true);
         credentialDeleteDialogHandler = IPanelHandler
-            .simple(mainPanel, (parent, player) -> buildCredentialDeleteDialog(), true);
+            .simple(mainPanel, (parent, player) -> credentialDialogs.buildCredentialDeleteDialog(), true);
         texturePathDialogHandler = IPanelHandler.simple(mainPanel, (parent, player) -> buildTexturePathDialog(), true);
         textureResetDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> buildTextureResetDialog(), true);
@@ -1317,7 +1325,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             textureUploadStatus = GuiText.tr("wawelauth.gui.account_manager.credentials_unavailable");
             return;
         }
-        clearPendingCredentialDeleteState();
+        credentialDialogs.clearPendingDeleteState();
         this.credentialDialogHandler.deleteCachedPanel();
         this.credentialDialogHandler.openPanel();
     }
@@ -1638,308 +1646,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         EtFuturumCompat.applyPreviewElytra(entity, useElytra);
     }
 
-    private Dialog<Boolean> buildCredentialDialog() {
-        Dialog<Boolean> dialog = new Dialog<>("wawelauth_credentials");
-        dialog.setCloseOnOutOfBoundsClick(false);
-        WawelClient client = WawelClient.instance();
-        ClientAccount account = selectedAccount;
-
-        String profileName = account != null && account.getProfileName() != null ? account.getProfileName()
-            : GuiText.tr("wawelauth.gui.common.account");
-        String providerName = account != null ? account.getProviderName() : null;
-        ClientProvider provider = client != null && providerName != null ? client.getProviderRegistry()
-            .getProvider(providerName) : null;
-        boolean credentialSupported = isCredentialManagementSupported(provider);
-
-        if (account == null || client == null || !credentialSupported) {
-            String reason = account == null ? GuiText.tr("wawelauth.gui.common.no_account_selected")
-                : GuiText.tr("wawelauth.gui.account_manager.credentials_unavailable");
-            dialog.size(258, 96)
-                .child(
-                    new Column().widthRel(1.0f)
-                        .heightRel(1.0f)
-                        .padding(8)
-                        .child(
-                            new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.credentials")).widthRel(1.0f)
-                                .height(14))
-                        .child(
-                            new TextWidget<>(IKey.str(reason)).color(0xFFFFAA55)
-                                .widthRel(1.0f)
-                                .height(12)
-                                .margin(0, 8))
-                        .child(
-                            new Row().widthRel(1.0f)
-                                .height(20)
-                                .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                                .child(
-                                    GuiText
-                                        .fitButtonLabel(
-                                            new ButtonWidget<>().size(70, 18),
-                                            70,
-                                            "wawelauth.gui.common.close")
-                                        .onMousePressed(btn -> {
-                                            dialog.closeIfOpen();
-                                            return true;
-                                        }))));
-            return dialog;
-        }
-
-        PasswordInputWidget currentPasswordField = new PasswordInputWidget()
-            .hintText(GuiText.tr("wawelauth.gui.credentials.current_password"));
-        PasswordInputWidget newPasswordField = new PasswordInputWidget()
-            .hintText(GuiText.tr("wawelauth.gui.credentials.new_password"));
-        PasswordInputWidget confirmPasswordField = new PasswordInputWidget()
-            .hintText(GuiText.tr("wawelauth.gui.credentials.confirm_new_password"));
-        String[] statusText = { "" };
-        boolean[] busy = { false };
-
-        ButtonWidget<?> changePasswordBtn = new ButtonWidget<>();
-        changePasswordBtn.size(100, 18)
-            .onMousePressed(btn -> {
-                if (busy[0]) return true;
-
-                String currentPassword = currentPasswordField.getText();
-                String newPassword = newPasswordField.getText();
-                String confirmPassword = confirmPasswordField.getText();
-
-                if (currentPassword == null || currentPassword.isEmpty()) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.credentials.error.current_required");
-                    return true;
-                }
-                if (newPassword == null || newPassword.isEmpty()) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.credentials.error.new_required");
-                    return true;
-                }
-                if (!newPassword.equals(confirmPassword)) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.credentials.error.mismatch");
-                    return true;
-                }
-                if (newPassword.equals(currentPassword)) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.credentials.error.same_password");
-                    return true;
-                }
-
-                busy[0] = true;
-                statusText[0] = GuiText.tr("wawelauth.gui.credentials.status.updating");
-
-                client.getAccountManager()
-                    .changePassword(account.getId(), currentPassword, newPassword)
-                    .whenComplete((ignored, err) -> {
-                        Minecraft.getMinecraft()
-                            .func_152344_a(() -> {
-                                busy[0] = false;
-                                if (err != null) {
-                                    Throwable cause = err.getCause() != null ? err.getCause() : err;
-                                    statusText[0] = cause.getMessage();
-                                    WawelAuth.debug("Password change failed: " + cause.getMessage());
-                                    return;
-                                }
-                                statusText[0] = GuiText.tr("wawelauth.gui.credentials.status.changed");
-                                currentPasswordField.setText("");
-                                newPasswordField.setText("");
-                                confirmPasswordField.setText("");
-                            });
-                    });
-                return true;
-            });
-        GuiText.fitButtonLabel(changePasswordBtn, 100, "wawelauth.gui.credentials.change_password");
-
-        ButtonWidget<?> deleteServerAccountBtn = new ButtonWidget<>();
-        deleteServerAccountBtn.size(106, 18)
-            .onMousePressed(btn -> {
-                if (busy[0]) return true;
-
-                String currentPassword = currentPasswordField.getText();
-                if (currentPassword == null || currentPassword.isEmpty()) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.credentials.error.delete_requires_password");
-                    return true;
-                }
-
-                pendingCredentialDeleteAccountId = account.getId();
-                pendingCredentialDeleteAccountName = account.getProfileName() != null ? account.getProfileName()
-                    : GuiText.tr("wawelauth.gui.common.account");
-                pendingCredentialDeletePassword = currentPassword;
-                dialog.closeIfOpen();
-                openCredentialDeleteDialog();
-                return true;
-            });
-        GuiText.fitButtonLabel(deleteServerAccountBtn, 106, "wawelauth.gui.credentials.delete_account");
-
-        ButtonWidget<?> closeBtn = new ButtonWidget<>();
-        closeBtn.size(70, 18)
-            .onMousePressed(btn -> {
-                dialog.closeIfOpen();
-                return true;
-            });
-        GuiText.fitButtonLabel(closeBtn, 70, "wawelauth.gui.common.close");
-
-        dialog.size(266, 177)
-            .child(
-                new Column().widthRel(1.0f)
-                    .heightRel(1.0f)
-                    .padding(8)
-                    .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.credentials")).widthRel(1.0f)
-                            .height(14))
-                    .child(
-                        new TextWidget<>(
-                            GuiText.key(
-                                "wawelauth.gui.credentials.selected",
-                                profileName,
-                                ProviderDisplayName.displayName(providerName))).color(0xFFAAAAAA)
-                                    .scale(0.8f)
-                                    .widthRel(1.0f)
-                                    .height(10))
-                    .child(
-                        currentPasswordField.widthRel(1.0f)
-                            .height(18)
-                            .setMaxLength(128)
-                            .margin(0, 4))
-                    .child(
-                        newPasswordField.widthRel(1.0f)
-                            .height(18)
-                            .setMaxLength(128)
-                            .margin(0, 3))
-                    .child(
-                        confirmPasswordField.widthRel(1.0f)
-                            .height(18)
-                            .setMaxLength(128)
-                            .margin(0, 3))
-                    .child(
-                        new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(0xFFFFAA55)
-                            .widthRel(1.0f)
-                            .height(12)
-                            .margin(0, 2))
-                    .child(
-                        new Row().widthRel(1.0f)
-                            .height(20)
-                            .margin(0, 4)
-                            .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                            .child(changePasswordBtn)
-                            .child(new Widget<>().size(6, 18))
-                            .child(deleteServerAccountBtn))
-                    .child(
-                        new Row().widthRel(1.0f)
-                            .height(20)
-                            .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                            .child(closeBtn)));
-        return dialog;
-    }
-
     private void openCredentialDeleteDialog() {
-        if (pendingCredentialDeleteAccountId < 0L) {
+        if (!credentialDialogs.hasPendingDelete()) {
             return;
         }
         this.credentialDeleteDialogHandler.deleteCachedPanel();
         this.credentialDeleteDialogHandler.openPanel();
-    }
-
-    private Dialog<Boolean> buildCredentialDeleteDialog() {
-        Dialog<Boolean> dialog = new Dialog<>("wawelauth_confirm_delete_server_account");
-        dialog.setCloseOnOutOfBoundsClick(false);
-
-        long accountId = pendingCredentialDeleteAccountId;
-        String accountName = pendingCredentialDeleteAccountName != null ? pendingCredentialDeleteAccountName
-            : GuiText.tr("wawelauth.gui.common.account");
-        String currentPassword = pendingCredentialDeletePassword;
-        WawelClient client = WawelClient.instance();
-
-        String[] statusText = { "" };
-        boolean[] busy = { false };
-
-        ButtonWidget<?> cancelBtn = new ButtonWidget<>();
-        cancelBtn.size(62, 18)
-            .onMousePressed(btn -> {
-                if (busy[0]) return true;
-                clearPendingCredentialDeleteState();
-                dialog.closeIfOpen();
-                return true;
-            });
-        GuiText.fitButtonLabel(cancelBtn, 62, "wawelauth.gui.common.cancel");
-
-        ButtonWidget<?> deleteBtn = new ButtonWidget<>();
-        deleteBtn.size(62, 18)
-            .onMousePressed(btn -> {
-                if (busy[0]) return true;
-
-                if (client == null) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.common.client_not_running");
-                    return true;
-                }
-                if (accountId < 0L) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.common.no_account_selected");
-                    return true;
-                }
-                if (currentPassword == null || currentPassword.isEmpty()) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.credentials.error.current_required");
-                    return true;
-                }
-
-                busy[0] = true;
-                statusText[0] = GuiText.tr("wawelauth.gui.credentials.status.deleting");
-
-                client.getAccountManager()
-                    .deleteWawelAuthAccount(accountId, currentPassword)
-                    .whenComplete((ignored, err) -> {
-                        Minecraft.getMinecraft()
-                            .func_152344_a(() -> {
-                                busy[0] = false;
-                                if (err != null) {
-                                    Throwable cause = err.getCause() != null ? err.getCause() : err;
-                                    statusText[0] = cause.getMessage();
-                                    WawelAuth.debug("Server account deletion failed: " + cause.getMessage());
-                                    return;
-                                }
-
-                                clearPendingCredentialDeleteState();
-                                if (selectedAccount != null && selectedAccount.getId() == accountId) {
-                                    selectedAccount = null;
-                                    clearPreview();
-                                }
-                                ServerBindingPersistence.clearMissingAccountBindings(client.getAccountManager());
-                                rebuildAccountList();
-                                requestAccountListRebuild();
-                                textureUploadStatus = GuiText.tr("wawelauth.gui.credentials.status.deleted");
-                                dialog.closeIfOpen();
-                            });
-                    });
-                return true;
-            });
-        GuiText.fitButtonLabel(deleteBtn, 62, "wawelauth.gui.common.delete");
-
-        dialog.size(270, 104)
-            .child(
-                new Column().widthRel(1.0f)
-                    .heightRel(1.0f)
-                    .padding(8)
-                    .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.credentials.delete_title", accountName))
-                            .widthRel(1.0f)
-                            .height(14))
-                    .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.credentials.delete_warning")).color(0xFFAAAAAA)
-                            .scale(0.8f)
-                            .widthRel(1.0f)
-                            .height(10))
-                    .child(
-                        new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(0xFFFFAA55)
-                            .widthRel(1.0f)
-                            .height(12)
-                            .margin(0, 6))
-                    .child(
-                        new Row().widthRel(1.0f)
-                            .height(20)
-                            .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                            .child(cancelBtn)
-                            .child(new Widget<>().size(6, 18))
-                            .child(deleteBtn)));
-        return dialog;
-    }
-
-    private void clearPendingCredentialDeleteState() {
-        pendingCredentialDeleteAccountId = -1L;
-        pendingCredentialDeleteAccountName = null;
-        pendingCredentialDeletePassword = null;
     }
 
     private void clearTextureSelection() {
