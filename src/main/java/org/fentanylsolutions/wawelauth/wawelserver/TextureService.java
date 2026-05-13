@@ -11,7 +11,9 @@ import java.util.UUID;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
+import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.MemoryCacheImageInputStream;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
@@ -28,6 +30,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.storage.ProfileDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.TokenDAO;
 import org.fentanylsolutions.wawelauth.wawelnet.NetException;
 import org.fentanylsolutions.wawelauth.wawelnet.RequestContext;
+import org.w3c.dom.Node;
 
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -478,41 +481,200 @@ public class TextureService {
 
     /**
      * Validates a GIF file as a valid animated cape.
-     * Uses javax.imageio GIF reader to check frame count and dimensions.
+     * Uses a bounded javax.imageio GIF reader pass to validate every accepted frame
+     * before raw GIF bytes are stored.
      *
      * @return {width, height, frameCount} of the GIF frames
      * @throws NetException if validation fails
      */
     private static int[] validateGifCape(byte[] data, ServerConfig.Textures texConfig) {
-        try {
-            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("gif");
-            if (!readers.hasNext()) {
-                throw NetException.illegalArgument("GIF format not supported on this server.");
+        Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("gif");
+        if (!readers.hasNext()) {
+            throw NetException.illegalArgument("GIF format not supported on this server.");
+        }
+
+        ImageReader reader = readers.next();
+        try (ImageInputStream iis = new MemoryCacheImageInputStream(new ByteArrayInputStream(data))) {
+            reader.setInput(iis, false, false);
+
+            int[] logicalDimensions = readGifLogicalDimensions(reader);
+            if (logicalDimensions == null) {
+                logicalDimensions = readGifFrameDimensions(reader, 0);
             }
-            ImageReader reader = readers.next();
-            try {
-                ImageInputStream iis = ImageIO.createImageInputStream(new ByteArrayInputStream(data));
-                reader.setInput(iis);
-
-                int frameCount = reader.getNumImages(true);
-                if (frameCount < 2) {
-                    throw NetException
-                        .illegalArgument("Animated cape must have at least 2 frames (got " + frameCount + ").");
-                }
-                if (frameCount > texConfig.getMaxCapeFrameCount()) {
-                    throw NetException.illegalArgument(
-                        "Too many frames: " + frameCount + " (max " + texConfig.getMaxCapeFrameCount() + ").");
-                }
-
-                int width = reader.getWidth(0);
-                int height = reader.getHeight(0);
-
-                return new int[] { width, height, frameCount };
-            } finally {
-                reader.dispose();
+            if (logicalDimensions == null) {
+                throw NetException.illegalArgument("Animated cape must have at least 2 frames (got 0).");
             }
+
+            int width = logicalDimensions[0];
+            int height = logicalDimensions[1];
+            validateGifCapeLogicalDimensions(width, height, texConfig);
+
+            int frameCount = 0;
+            int maxFrames = texConfig.getMaxCapeFrameCount();
+
+            for (int index = 0; index <= maxFrames; index++) {
+                int[] dimensions = readGifFrameDimensions(reader, index);
+                if (dimensions == null) {
+                    break;
+                }
+                if (index >= maxFrames) {
+                    throw NetException.illegalArgument("Too many frames: more than " + maxFrames + ".");
+                }
+
+                validateGifCapeFrameBounds(dimensions[0], dimensions[1], width, height, index);
+                validateGifCapeFrameDescriptor(reader, index, width, height);
+
+                BufferedImage frame = reader.read(index);
+                if (frame == null) {
+                    throw NetException.illegalArgument("GIF frame " + (index + 1) + " could not be decoded.");
+                }
+                try {
+                    validateGifCapeFrameBounds(frame.getWidth(), frame.getHeight(), width, height, index);
+                } finally {
+                    frame.flush();
+                }
+
+                frameCount++;
+            }
+
+            if (frameCount < 2) {
+                throw NetException
+                    .illegalArgument("Animated cape must have at least 2 frames (got " + frameCount + ").");
+            }
+
+            return new int[] { width, height, frameCount };
         } catch (IOException e) {
             throw NetException.illegalArgument("Failed to read GIF: " + e.getMessage());
+        } finally {
+            reader.dispose();
+        }
+    }
+
+    private static int[] readGifLogicalDimensions(ImageReader reader) throws IOException {
+        IIOMetadata metadata = reader.getStreamMetadata();
+        if (metadata == null) {
+            return null;
+        }
+        String nativeFormat = metadata.getNativeMetadataFormatName();
+        if (nativeFormat == null) {
+            return null;
+        }
+        Node descriptor = findMetadataNode(metadata.getAsTree(nativeFormat), "LogicalScreenDescriptor");
+        if (descriptor == null) {
+            return null;
+        }
+        Integer width = readIntAttribute(descriptor, "logicalScreenWidth");
+        Integer height = readIntAttribute(descriptor, "logicalScreenHeight");
+        if (width == null || height == null) {
+            return null;
+        }
+        return new int[] { width.intValue(), height.intValue() };
+    }
+
+    private static int[] readGifFrameDimensions(ImageReader reader, int frameIndex) throws IOException {
+        try {
+            return new int[] { reader.getWidth(frameIndex), reader.getHeight(frameIndex) };
+        } catch (IndexOutOfBoundsException e) {
+            return null;
+        }
+    }
+
+    private static void validateGifCapeLogicalDimensions(int width, int height, ServerConfig.Textures texConfig) {
+        if (width < 1 || height < 1) {
+            throw NetException.illegalArgument("GIF has invalid logical screen dimensions.");
+        }
+        validateTextureShape(TextureType.CAPE, width, height);
+        if (width > texConfig.getMaxCapeWidth() || height > texConfig.getMaxCapeHeight()) {
+            throw NetException.illegalArgument(
+                "GIF logical screen is too large: " + width
+                    + "x"
+                    + height
+                    + " (max "
+                    + texConfig.getMaxCapeWidth()
+                    + "x"
+                    + texConfig.getMaxCapeHeight()
+                    + ").");
+        }
+    }
+
+    private static void validateGifCapeFrameBounds(int width, int height, int logicalWidth, int logicalHeight,
+        int frameIndex) {
+        if (width < 1 || height < 1) {
+            throw NetException.illegalArgument("GIF frame " + (frameIndex + 1) + " has invalid dimensions.");
+        }
+        if (width > logicalWidth || height > logicalHeight) {
+            throw NetException.illegalArgument(
+                "GIF frame " + (frameIndex + 1)
+                    + " exceeds the logical screen: "
+                    + width
+                    + "x"
+                    + height
+                    + " (screen "
+                    + logicalWidth
+                    + "x"
+                    + logicalHeight
+                    + ").");
+        }
+    }
+
+    private static void validateGifCapeFrameDescriptor(ImageReader reader, int frameIndex, int logicalWidth,
+        int logicalHeight) throws IOException {
+        IIOMetadata metadata = reader.getImageMetadata(frameIndex);
+        if (metadata == null) {
+            return;
+        }
+        String nativeFormat = metadata.getNativeMetadataFormatName();
+        if (nativeFormat == null) {
+            return;
+        }
+        Node descriptor = findMetadataNode(metadata.getAsTree(nativeFormat), "ImageDescriptor");
+        if (descriptor == null) {
+            return;
+        }
+
+        Integer left = readIntAttribute(descriptor, "imageLeftPosition");
+        Integer top = readIntAttribute(descriptor, "imageTopPosition");
+        Integer width = readIntAttribute(descriptor, "imageWidth");
+        Integer height = readIntAttribute(descriptor, "imageHeight");
+        if (left == null || top == null || width == null || height == null) {
+            return;
+        }
+        if (left.intValue() < 0 || top.intValue() < 0
+            || width.intValue() < 1
+            || height.intValue() < 1
+            || (long) left.intValue() + width.intValue() > logicalWidth
+            || (long) top.intValue() + height.intValue() > logicalHeight) {
+            throw NetException.illegalArgument("GIF frame " + (frameIndex + 1) + " exceeds the logical screen.");
+        }
+    }
+
+    private static Node findMetadataNode(Node node, String name) {
+        if (node == null) {
+            return null;
+        }
+        if (name.equals(node.getNodeName())) {
+            return node;
+        }
+        for (Node child = node.getFirstChild(); child != null; child = child.getNextSibling()) {
+            Node match = findMetadataNode(child, name);
+            if (match != null) {
+                return match;
+            }
+        }
+        return null;
+    }
+
+    private static Integer readIntAttribute(Node node, String name) {
+        Node attribute = node.getAttributes() == null ? null
+            : node.getAttributes()
+                .getNamedItem(name);
+        if (attribute == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(attribute.getNodeValue());
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 

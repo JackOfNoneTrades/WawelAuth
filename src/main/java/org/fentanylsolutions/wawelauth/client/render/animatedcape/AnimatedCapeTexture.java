@@ -6,7 +6,9 @@ import java.util.Iterator;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
+import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.MemoryCacheImageInputStream;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -15,6 +17,7 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.fentlib.util.GifUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.w3c.dom.Node;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -110,11 +113,16 @@ public class AnimatedCapeTexture {
             Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("gif");
             if (readers.hasNext()) {
                 ImageReader reader = readers.next();
-                try {
-                    ImageInputStream iis = ImageIO.createImageInputStream(new ByteArrayInputStream(gifBytes));
+                try (ImageInputStream iis = new MemoryCacheImageInputStream(new ByteArrayInputStream(gifBytes))) {
                     reader.setInput(iis);
-                    nativeW = reader.getWidth(0);
-                    nativeH = reader.getHeight(0);
+                    int[] logicalDimensions = readGifLogicalDimensions(reader);
+                    if (logicalDimensions != null) {
+                        nativeW = logicalDimensions[0];
+                        nativeH = logicalDimensions[1];
+                    } else {
+                        nativeW = reader.getWidth(0);
+                        nativeH = reader.getHeight(0);
+                    }
                 } finally {
                     reader.dispose();
                 }
@@ -142,6 +150,57 @@ public class AnimatedCapeTexture {
                 stitched.frameDelayMs);
         } catch (Exception e) {
             WawelAuth.LOG.warn("Failed to decode animated cape GIF: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private static int[] readGifLogicalDimensions(ImageReader reader) throws java.io.IOException {
+        IIOMetadata metadata = reader.getStreamMetadata();
+        if (metadata == null || metadata.getNativeMetadataFormatName() == null) {
+            return null;
+        }
+
+        Node descriptor = findMetadataNode(
+            metadata.getAsTree(metadata.getNativeMetadataFormatName()),
+            "LogicalScreenDescriptor");
+        if (descriptor == null) {
+            return null;
+        }
+
+        Integer width = readIntAttribute(descriptor, "logicalScreenWidth");
+        Integer height = readIntAttribute(descriptor, "logicalScreenHeight");
+        if (width == null || height == null) {
+            return null;
+        }
+        return new int[] { width.intValue(), height.intValue() };
+    }
+
+    private static Node findMetadataNode(Node node, String name) {
+        if (node == null) {
+            return null;
+        }
+        if (name.equals(node.getNodeName())) {
+            return node;
+        }
+        for (Node child = node.getFirstChild(); child != null; child = child.getNextSibling()) {
+            Node match = findMetadataNode(child, name);
+            if (match != null) {
+                return match;
+            }
+        }
+        return null;
+    }
+
+    private static Integer readIntAttribute(Node node, String name) {
+        Node attribute = node.getAttributes() == null ? null
+            : node.getAttributes()
+                .getNamedItem(name);
+        if (attribute == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(attribute.getNodeValue());
+        } catch (NumberFormatException e) {
             return null;
         }
     }
