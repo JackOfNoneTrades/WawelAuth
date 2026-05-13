@@ -1436,11 +1436,8 @@ public class AdminWebService {
             ctx.getRequest()
                 .headers()
                 .get("X-Forwarded-Proto"));
-        if (forwarded != null) {
-            String lower = forwarded.toLowerCase(Locale.ROOT);
-            if (lower.contains("https")) {
-                return true;
-            }
+        if (isExactForwardedHttpsProto(forwarded)) {
+            return true;
         }
 
         String frontEndHttps = trimToNull(
@@ -1456,6 +1453,24 @@ public class AdminWebService {
                 .headers()
                 .get("X-Forwarded-Ssl"));
         return "on".equalsIgnoreCase(forwardedSsl) || "1".equals(forwardedSsl);
+    }
+
+    private static boolean isExactForwardedHttpsProto(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null) {
+            return false;
+        }
+        String[] parts = trimmed.split(",");
+        String proto = null;
+        int nonEmptyParts = 0;
+        for (int i = parts.length - 1; i >= 0; i--) {
+            String part = trimToNull(parts[i]);
+            if (part != null) {
+                proto = part;
+                nonEmptyParts++;
+            }
+        }
+        return nonEmptyParts == 1 && "https".equalsIgnoreCase(proto);
     }
 
     private static boolean isLoopbackClient(RequestContext ctx) {
