@@ -922,6 +922,9 @@ public class AccountManager {
         if (provider.getType() == ProviderType.BUILTIN) {
             return false;
         }
+        if (LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
+            return true;
+        }
 
         String baseUrl = resolveMetadataBase(provider);
         JsonObject metadata = httpClient.getJson(provider, baseUrl);
@@ -1565,6 +1568,9 @@ public class AccountManager {
         }
         if (BuiltinProviders.isMojangProvider(provider.getName())) {
             return false;
+        }
+        if (LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
+            return true;
         }
         return doProbeSupportsWawelRegister(provider.getName());
     }

@@ -11,6 +11,7 @@ import net.minecraft.util.EnumChatFormatting;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
+import org.fentanylsolutions.wawelauth.wawelclient.LocalAuthProviderResolver;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
@@ -155,7 +156,7 @@ final class AccountManagerProviderListPanel {
     private static void addProviderTooltip(ButtonWidget<?> button, ClientProvider provider, String providerName,
         String displayProviderName) {
         boolean showName = !providerName.equals(displayProviderName);
-        boolean showLocalAddress = isLocalAuthProvider(provider);
+        boolean showLocalAddress = LocalAuthProviderResolver.isLocalAuthProvider(provider);
         if (!showName && !showLocalAddress) {
             return;
         }
@@ -171,26 +172,6 @@ final class AccountManagerProviderListPanel {
                     EnumChatFormatting.GRAY + GuiText.tr("wawelauth.gui.common.server") + ": " + address);
             }
         }
-    }
-
-    private static boolean isLocalAuthProvider(ClientProvider provider) {
-        if (provider == null) return false;
-        String name = provider.getName();
-        if (name != null && (name.startsWith("LocalAuth-") || name.startsWith("WawelAuth@"))) {
-            return true;
-        }
-
-        String apiRoot = normalize(provider.getApiRoot());
-        String fingerprint = normalize(provider.getPublicKeyFingerprint());
-        if (apiRoot == null || fingerprint == null) {
-            return false;
-        }
-
-        String authExpected = apiRoot + "/authserver";
-        String sessionExpected = apiRoot + "/sessionserver";
-        String auth = normalize(provider.getAuthServerUrl());
-        String session = normalize(provider.getSessionServerUrl());
-        return authExpected.equals(auth) && sessionExpected.equals(session);
     }
 
     private static String extractProviderServerAddress(ClientProvider provider) {

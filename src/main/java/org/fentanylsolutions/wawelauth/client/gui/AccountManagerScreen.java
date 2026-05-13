@@ -25,6 +25,7 @@ import org.fentanylsolutions.wawelauth.client.fakeworld.DummyEntityClientPlayerM
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyWorldClient;
 import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
+import org.fentanylsolutions.wawelauth.wawelclient.LocalAuthProviderResolver;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
@@ -1689,6 +1690,20 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return false;
         }
 
+        if (ClientConfig.isCredentialsDisabled(providerName, provider.getApiRoot())) {
+            if (registerCapabilityByProvider != null) {
+                registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            }
+            return false;
+        }
+
+        if (LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
+            if (registerCapabilityByProvider != null) {
+                registerCapabilityByProvider.put(providerName, Boolean.TRUE);
+            }
+            return true;
+        }
+
         if (registerCapabilityByProvider != null) {
             Boolean supported = registerCapabilityByProvider.get(providerName);
             if (supported != null) {
@@ -1721,6 +1736,16 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return false;
         }
 
+        if (ClientConfig.isCredentialsDisabled(providerName, provider.getApiRoot())) {
+            registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            return false;
+        }
+
+        if (LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
+            registerCapabilityByProvider.put(providerName, Boolean.TRUE);
+            return true;
+        }
+
         Boolean supported = registerCapabilityByProvider.get(providerName);
         if (supported != null) {
             return supported.booleanValue();
@@ -1746,6 +1771,16 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
         if (ProviderDisplayName.isMicrosoftProvider(providerName) || provider.getType() == ProviderType.BUILTIN) {
             registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            return;
+        }
+
+        if (ClientConfig.isCredentialsDisabled(providerName, provider.getApiRoot())) {
+            registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            return;
+        }
+
+        if (LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
+            registerCapabilityByProvider.put(providerName, Boolean.TRUE);
             return;
         }
 

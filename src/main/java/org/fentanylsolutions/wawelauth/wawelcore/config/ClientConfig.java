@@ -30,12 +30,18 @@ public class ClientConfig {
     @Config.DefaultStringList({ "ely\\.by" })
     public static String[] disableTextureReset = { "ely\\.by", "littleskin\\.cn" };
 
+    @Config.Comment("Regex patterns matched against provider name/API root. Credential management is disabled for matches.")
+    @Config.DefaultStringList({ "^Mojang$", "ely\\.by", "littleskin\\.cn" })
+    public static String[] disableCredentials = { "^Mojang$", "ely\\.by", "littleskin\\.cn" };
+
     @Config.Ignore
     private static transient List<Pattern> compiledSkinPatterns;
     @Config.Ignore
     private static transient List<Pattern> compiledCapePatterns;
     @Config.Ignore
     private static transient List<Pattern> compiledResetPatterns;
+    @Config.Ignore
+    private static transient List<Pattern> compiledCredentialsPatterns;
 
     public static boolean isSkinUploadDisabled(String providerName, String apiRoot) {
         return matchesAny(providerName, apiRoot, getSkinPatterns());
@@ -49,6 +55,10 @@ public class ClientConfig {
         return matchesAny(providerName, apiRoot, getResetPatterns());
     }
 
+    public static boolean isCredentialsDisabled(String providerName, String apiRoot) {
+        return matchesAny(providerName, apiRoot, getCredentialsPatterns());
+    }
+
     /**
      * Invalidate compiled pattern caches so they are rebuilt on next access.
      * Call this after modifying the pattern arrays.
@@ -57,6 +67,7 @@ public class ClientConfig {
         compiledSkinPatterns = null;
         compiledCapePatterns = null;
         compiledResetPatterns = null;
+        compiledCredentialsPatterns = null;
     }
 
     private static boolean matchesAny(String providerName, String apiRoot, List<Pattern> patterns) {
@@ -94,6 +105,13 @@ public class ClientConfig {
             compiledResetPatterns = compilePatterns(disableTextureReset);
         }
         return compiledResetPatterns;
+    }
+
+    private static List<Pattern> getCredentialsPatterns() {
+        if (compiledCredentialsPatterns == null) {
+            compiledCredentialsPatterns = compilePatterns(disableCredentials);
+        }
+        return compiledCredentialsPatterns;
     }
 
     private static List<Pattern> compilePatterns(String[] raw) {
@@ -138,5 +156,12 @@ public class ClientConfig {
      */
     public static List<String> getDisableTextureResetList() {
         return new ArrayList<>(Arrays.asList(disableTextureReset));
+    }
+
+    /**
+     * Returns the disableCredentials patterns as a mutable list.
+     */
+    public static List<String> getDisableCredentialsList() {
+        return new ArrayList<>(Arrays.asList(disableCredentials));
     }
 }

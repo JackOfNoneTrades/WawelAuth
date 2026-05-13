@@ -120,6 +120,24 @@ public final class LocalAuthProviderResolver {
         return findByPublicKey(publicKeyBase64, fingerprint);
     }
 
+    public static boolean isLocalAuthProvider(ClientProvider provider) {
+        if (provider == null) {
+            return false;
+        }
+
+        String apiRoot = WawelPingPayload.normalizeUrl(provider.getApiRoot());
+        String fingerprint = normalizeFingerprint(provider.getPublicKeyFingerprint());
+        if (apiRoot == null || fingerprint == null) {
+            return false;
+        }
+
+        String authExpected = apiRoot + "/authserver";
+        String sessionExpected = apiRoot + "/sessionserver";
+        String auth = WawelPingPayload.normalizeUrl(provider.getAuthServerUrl());
+        String session = WawelPingPayload.normalizeUrl(provider.getSessionServerUrl());
+        return authExpected.equals(auth) && sessionExpected.equals(session);
+    }
+
     private ClientProvider findByPublicKey(String publicKeyBase64, String fingerprint) {
         for (ClientProvider provider : providerDAO.listAll()) {
             if (publicKeyBase64 != null && publicKeyBase64.equals(normalizeString(provider.getPublicKeyBase64()))) {
