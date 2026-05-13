@@ -61,6 +61,7 @@ public class ServerConfig {
     private Invites invites = new Invites();
     private Textures textures = new Textures();
     private Tokens tokens = new Tokens();
+    private RateLimits rateLimits = new RateLimits();
     private Http http = new Http();
     private Admin admin = new Admin();
     private List<FallbackServer> fallbackServers = new ArrayList<>();
@@ -238,6 +239,11 @@ public class ServerConfig {
     public Tokens getTokens() {
         if (tokens == null) tokens = new Tokens();
         return tokens;
+    }
+
+    public RateLimits getRateLimits() {
+        if (rateLimits == null) rateLimits = new RateLimits();
+        return rateLimits;
     }
 
     public Http getHttp() {
@@ -449,6 +455,38 @@ public class ServerConfig {
         }
         if (httpConfig.getMaxContentLengthBytes() < texturesConfig.getMaxFileSizeBytes()) {
             throw new IllegalStateException("http.maxContentLengthBytes must be >= textures.maxFileSizeBytes.");
+        }
+
+        RateLimits rateLimitsConfig = getRateLimits();
+        if (rateLimitsConfig.getAdminLoginAttempts() < 1) {
+            throw new IllegalStateException("rateLimits.adminLoginAttempts must be >= 1.");
+        }
+        if (rateLimitsConfig.getAdminLoginWindowSeconds() < 1) {
+            throw new IllegalStateException("rateLimits.adminLoginWindowSeconds must be >= 1.");
+        }
+        if (rateLimitsConfig.getPasswordIpAttempts() < 1) {
+            throw new IllegalStateException("rateLimits.passwordIpAttempts must be >= 1.");
+        }
+        if (rateLimitsConfig.getPasswordSubjectAttempts() < 1) {
+            throw new IllegalStateException("rateLimits.passwordSubjectAttempts must be >= 1.");
+        }
+        if (rateLimitsConfig.getPasswordWindowSeconds() < 1) {
+            throw new IllegalStateException("rateLimits.passwordWindowSeconds must be >= 1.");
+        }
+        if (rateLimitsConfig.getTokenIpAttempts() < 1) {
+            throw new IllegalStateException("rateLimits.tokenIpAttempts must be >= 1.");
+        }
+        if (rateLimitsConfig.getTokenWindowSeconds() < 1) {
+            throw new IllegalStateException("rateLimits.tokenWindowSeconds must be >= 1.");
+        }
+        if (rateLimitsConfig.getRegistrationIpAttempts() < 1) {
+            throw new IllegalStateException("rateLimits.registrationIpAttempts must be >= 1.");
+        }
+        if (rateLimitsConfig.getRegistrationSubjectAttempts() < 1) {
+            throw new IllegalStateException("rateLimits.registrationSubjectAttempts must be >= 1.");
+        }
+        if (rateLimitsConfig.getRegistrationWindowSeconds() < 1) {
+            throw new IllegalStateException("rateLimits.registrationWindowSeconds must be >= 1.");
         }
 
         List<FallbackServer> fallbacks = getFallbackServers();
@@ -721,6 +759,109 @@ public class ServerConfig {
 
         public void setSessionTimeoutMs(long sessionTimeoutMs) {
             this.sessionTimeoutMs = sessionTimeoutMs;
+        }
+    }
+
+    public static class RateLimits {
+
+        private boolean enabled = true;
+        private int adminLoginAttempts = 5;
+        private int adminLoginWindowSeconds = 60;
+        private int passwordIpAttempts = 60;
+        private int passwordSubjectAttempts = 10;
+        private int passwordWindowSeconds = 60;
+        private int tokenIpAttempts = 300;
+        private int tokenWindowSeconds = 60;
+        private int registrationIpAttempts = 10;
+        private int registrationSubjectAttempts = 3;
+        private int registrationWindowSeconds = 300;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getAdminLoginAttempts() {
+            return adminLoginAttempts;
+        }
+
+        public void setAdminLoginAttempts(int adminLoginAttempts) {
+            this.adminLoginAttempts = adminLoginAttempts;
+        }
+
+        public int getAdminLoginWindowSeconds() {
+            return adminLoginWindowSeconds;
+        }
+
+        public void setAdminLoginWindowSeconds(int adminLoginWindowSeconds) {
+            this.adminLoginWindowSeconds = adminLoginWindowSeconds;
+        }
+
+        public int getPasswordIpAttempts() {
+            return passwordIpAttempts;
+        }
+
+        public void setPasswordIpAttempts(int passwordIpAttempts) {
+            this.passwordIpAttempts = passwordIpAttempts;
+        }
+
+        public int getPasswordSubjectAttempts() {
+            return passwordSubjectAttempts;
+        }
+
+        public void setPasswordSubjectAttempts(int passwordSubjectAttempts) {
+            this.passwordSubjectAttempts = passwordSubjectAttempts;
+        }
+
+        public int getPasswordWindowSeconds() {
+            return passwordWindowSeconds;
+        }
+
+        public void setPasswordWindowSeconds(int passwordWindowSeconds) {
+            this.passwordWindowSeconds = passwordWindowSeconds;
+        }
+
+        public int getTokenIpAttempts() {
+            return tokenIpAttempts;
+        }
+
+        public void setTokenIpAttempts(int tokenIpAttempts) {
+            this.tokenIpAttempts = tokenIpAttempts;
+        }
+
+        public int getTokenWindowSeconds() {
+            return tokenWindowSeconds;
+        }
+
+        public void setTokenWindowSeconds(int tokenWindowSeconds) {
+            this.tokenWindowSeconds = tokenWindowSeconds;
+        }
+
+        public int getRegistrationIpAttempts() {
+            return registrationIpAttempts;
+        }
+
+        public void setRegistrationIpAttempts(int registrationIpAttempts) {
+            this.registrationIpAttempts = registrationIpAttempts;
+        }
+
+        public int getRegistrationSubjectAttempts() {
+            return registrationSubjectAttempts;
+        }
+
+        public void setRegistrationSubjectAttempts(int registrationSubjectAttempts) {
+            this.registrationSubjectAttempts = registrationSubjectAttempts;
+        }
+
+        public int getRegistrationWindowSeconds() {
+            return registrationWindowSeconds;
+        }
+
+        public void setRegistrationWindowSeconds(int registrationWindowSeconds) {
+            this.registrationWindowSeconds = registrationWindowSeconds;
         }
     }
 

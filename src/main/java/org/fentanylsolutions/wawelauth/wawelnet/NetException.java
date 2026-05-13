@@ -45,6 +45,10 @@ public class NetException extends RuntimeException {
         return new NetException(HttpResponseStatus.NOT_FOUND, "NotFoundOperationException", message);
     }
 
+    public static NetException tooManyRequests(String message) {
+        return new NetException(HttpResponseStatus.TOO_MANY_REQUESTS, "TooManyRequestsException", message);
+    }
+
     /**
      * Alias for {@link #forbidden}: Yggdrasil uses 403 (not 401) for auth failures.
      * Kept as a separate method for call-site readability where the intent is "unauthorized".

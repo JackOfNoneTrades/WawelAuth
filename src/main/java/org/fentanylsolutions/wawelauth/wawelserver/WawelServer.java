@@ -80,7 +80,14 @@ public class WawelServer {
 
         // Services
         ProfileService profileService = new ProfileService(signer);
-        AuthService authService = new AuthService(userDAO, tokenDAO, profileDAO, inviteDAO, profileService);
+        RequestRateLimiter rateLimiter = new RequestRateLimiter();
+        AuthService authService = new AuthService(
+            userDAO,
+            tokenDAO,
+            profileDAO,
+            inviteDAO,
+            profileService,
+            rateLimiter);
         FallbackProxyService fallbackProxyService = new FallbackProxyService(config);
         SessionService sessionService = new SessionService(
             tokenDAO,
@@ -95,7 +102,8 @@ public class WawelServer {
             profileDAO,
             tokenDAO,
             inviteDAO,
-            adminPlayerListProviderBindingDAO);
+            adminPlayerListProviderBindingDAO,
+            rateLimiter);
         publicPageService = new PublicPageService(config);
 
         // Router

@@ -11,6 +11,7 @@ import java.util.UUID;
 import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.wawelcore.config.RegistrationPolicy;
+import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.PasswordHasher;
 import org.fentanylsolutions.wawelauth.wawelcore.data.TextureType;
 import org.fentanylsolutions.wawelauth.wawelcore.data.TokenState;
@@ -35,14 +36,16 @@ public class AuthService {
     private final ProfileDAO profileDAO;
     private final InviteDAO inviteDAO;
     private final ProfileService profileService;
+    private final RequestRateLimiter rateLimiter;
 
     public AuthService(UserDAO userDAO, TokenDAO tokenDAO, ProfileDAO profileDAO, InviteDAO inviteDAO,
-        ProfileService profileService) {
+        ProfileService profileService, RequestRateLimiter rateLimiter) {
         this.userDAO = userDAO;
         this.tokenDAO = tokenDAO;
         this.profileDAO = profileDAO;
         this.inviteDAO = inviteDAO;
         this.profileService = profileService;
+        this.rateLimiter = rateLimiter;
     }
 
     /**
@@ -52,6 +55,8 @@ public class AuthService {
      * Enforces server registration policy and optional invite consumption.
      */
     public Object register(RequestContext ctx) {
+        checkRegistrationIp(ctx);
+
         String username = StringUtil.trimToNull(ctx.requireJsonString("username"));
         String password = ctx.requireJsonString("password");
         String inviteToken = StringUtil.trimToNull(ctx.optJsonString("inviteToken"));
@@ -59,6 +64,8 @@ public class AuthService {
         if (username == null) {
             throw NetException.illegalArgument("Username is required.");
         }
+        checkRegistrationSubject(username);
+
         if (password == null || password.isEmpty()) {
             throw NetException.illegalArgument("Password is required.");
         }
@@ -174,12 +181,17 @@ public class AuthService {
         }
 
         WawelUser user = resolveAuthenticatedUser(accessToken, clientToken);
+        String subject = UuidUtil.toUnsigned(user.getUuid());
+        checkPasswordLimits(ctx, subject);
         if (user.isLocked()) {
+            recordPasswordFailure(ctx, subject);
             throw NetException.forbidden("Account is locked.");
         }
         if (!PasswordHasher.verify(currentPassword, user.getPasswordHash(), user.getPasswordSalt())) {
+            recordPasswordFailure(ctx, subject);
             throw NetException.forbidden("Invalid credentials. Invalid username or password.");
         }
+        resetPasswordSubject(subject);
 
         PasswordHasher.HashResult hash = PasswordHasher.hash(newPassword);
         user.setPasswordHash(hash.getHash());
@@ -208,12 +220,17 @@ public class AuthService {
         }
 
         WawelUser user = resolveAuthenticatedUser(accessToken, clientToken);
+        String subject = UuidUtil.toUnsigned(user.getUuid());
+        checkPasswordLimits(ctx, subject);
         if (user.isLocked()) {
+            recordPasswordFailure(ctx, subject);
             throw NetException.forbidden("Account is locked.");
         }
         if (!PasswordHasher.verify(currentPassword, user.getPasswordHash(), user.getPasswordSalt())) {
+            recordPasswordFailure(ctx, subject);
             throw NetException.forbidden("Invalid credentials. Invalid username or password.");
         }
+        resetPasswordSubject(subject);
 
         WawelServer server = WawelServer.instance();
         if (server == null) {
@@ -243,6 +260,7 @@ public class AuthService {
         String password = ctx.requireJsonString("password");
         String clientToken = ctx.optJsonString("clientToken");
         boolean requestUser = ctx.optJsonBoolean("requestUser", false);
+        checkPasswordLimits(ctx, username);
 
         if (clientToken == null) {
             clientToken = UUID.randomUUID()
@@ -252,16 +270,20 @@ public class AuthService {
 
         WawelUser user = userDAO.findByUsername(username);
         if (user == null) {
+            recordPasswordFailure(ctx, username);
             throw NetException.forbidden("Invalid credentials. Invalid username or password.");
         }
 
         if (user.isLocked()) {
+            recordPasswordFailure(ctx, username);
             throw NetException.forbidden("Account is locked.");
         }
 
         if (!PasswordHasher.verify(password, user.getPasswordHash(), user.getPasswordSalt())) {
+            recordPasswordFailure(ctx, username);
             throw NetException.forbidden("Invalid credentials. Invalid username or password.");
         }
+        resetPasswordSubject(username);
 
         // Yggdrasil semantics: authenticating again with the same clientToken for
         // the same user should invalidate previously issued access tokens.
@@ -341,6 +363,8 @@ public class AuthService {
      * Refreshes an access token. The old token is invalidated and a new one is issued.
      */
     public Object refresh(RequestContext ctx) {
+        checkTokenIp(ctx);
+
         String accessToken = ctx.requireJsonString("accessToken");
         String clientToken = ctx.optJsonString("clientToken");
         boolean requestUser = ctx.optJsonBoolean("requestUser", false);
@@ -454,6 +478,8 @@ public class AuthService {
      * Validates an access token. Returns 204 on success.
      */
     public Object validate(RequestContext ctx) {
+        checkTokenIp(ctx);
+
         String accessToken = ctx.requireJsonString("accessToken");
         String clientToken = ctx.optJsonString("clientToken");
 
@@ -474,6 +500,8 @@ public class AuthService {
      * Invalidates an access token. Always returns 204 (even if token doesn't exist).
      */
     public Object invalidate(RequestContext ctx) {
+        checkTokenIp(ctx);
+
         String accessToken = ctx.requireJsonString("accessToken");
         String clientToken = ctx.optJsonString("clientToken");
 
@@ -494,15 +522,19 @@ public class AuthService {
     public Object signout(RequestContext ctx) {
         String username = ctx.requireJsonString("username");
         String password = ctx.requireJsonString("password");
+        checkPasswordLimits(ctx, username);
 
         WawelUser user = userDAO.findByUsername(username);
         if (user == null) {
+            recordPasswordFailure(ctx, username);
             throw NetException.forbidden("Invalid credentials. Invalid username or password.");
         }
 
         if (!PasswordHasher.verify(password, user.getPasswordHash(), user.getPasswordSalt())) {
+            recordPasswordFailure(ctx, username);
             throw NetException.forbidden("Invalid credentials. Invalid username or password.");
         }
+        resetPasswordSubject(username);
 
         tokenDAO.deleteByUser(user.getUuid());
 
@@ -541,6 +573,85 @@ public class AuthService {
             throw NetException.forbidden("Invalid token.");
         }
         return user;
+    }
+
+    private void checkPasswordLimits(RequestContext ctx, String subject) {
+        checkPasswordIpLimit(ctx);
+        checkPasswordSubjectLimit(subject);
+    }
+
+    private void checkPasswordIpLimit(RequestContext ctx) {
+        ServerConfig.RateLimits limits = Config.server()
+            .getRateLimits();
+        rateLimiter.checkFailures(
+            limits.isEnabled(),
+            passwordIpKey(ctx),
+            limits.getPasswordIpAttempts(),
+            limits.getPasswordWindowSeconds(),
+            "Too many authentication attempts.");
+    }
+
+    private void checkPasswordSubjectLimit(String subject) {
+        ServerConfig.RateLimits limits = Config.server()
+            .getRateLimits();
+        rateLimiter.checkFailures(
+            limits.isEnabled(),
+            passwordSubjectKey(subject),
+            limits.getPasswordSubjectAttempts(),
+            limits.getPasswordWindowSeconds(),
+            "Too many authentication attempts for this account.");
+    }
+
+    private void recordPasswordFailure(RequestContext ctx, String subject) {
+        ServerConfig.RateLimits limits = Config.server()
+            .getRateLimits();
+        rateLimiter.recordFailure(limits.isEnabled(), passwordIpKey(ctx), limits.getPasswordWindowSeconds());
+        rateLimiter.recordFailure(limits.isEnabled(), passwordSubjectKey(subject), limits.getPasswordWindowSeconds());
+    }
+
+    private void resetPasswordSubject(String subject) {
+        rateLimiter.reset(passwordSubjectKey(subject));
+    }
+
+    private static String passwordIpKey(RequestContext ctx) {
+        return "auth:password:ip:" + RequestRateLimiter.keyPart(ctx.getClientIp());
+    }
+
+    private static String passwordSubjectKey(String subject) {
+        return "auth:password:subject:" + RequestRateLimiter.keyPart(subject);
+    }
+
+    private void checkTokenIp(RequestContext ctx) {
+        ServerConfig.RateLimits limits = Config.server()
+            .getRateLimits();
+        rateLimiter.check(
+            limits.isEnabled(),
+            "auth:token:ip:" + RequestRateLimiter.keyPart(ctx.getClientIp()),
+            limits.getTokenIpAttempts(),
+            limits.getTokenWindowSeconds(),
+            "Too many token requests.");
+    }
+
+    private void checkRegistrationIp(RequestContext ctx) {
+        ServerConfig.RateLimits limits = Config.server()
+            .getRateLimits();
+        rateLimiter.check(
+            limits.isEnabled(),
+            "auth:register:ip:" + RequestRateLimiter.keyPart(ctx.getClientIp()),
+            limits.getRegistrationIpAttempts(),
+            limits.getRegistrationWindowSeconds(),
+            "Too many registration attempts.");
+    }
+
+    private void checkRegistrationSubject(String username) {
+        ServerConfig.RateLimits limits = Config.server()
+            .getRateLimits();
+        rateLimiter.check(
+            limits.isEnabled(),
+            "auth:register:subject:" + RequestRateLimiter.keyPart(username),
+            limits.getRegistrationSubjectAttempts(),
+            limits.getRegistrationWindowSeconds(),
+            "Too many registration attempts for this username.");
     }
 
     private static class RegistrationFailedException extends RuntimeException {

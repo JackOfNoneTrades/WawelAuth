@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.IntConsumer;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
@@ -101,6 +102,7 @@ public class AdminWebService {
     private final TokenDAO tokenDAO;
     private final InviteDAO inviteDAO;
     private final AdminPlayerListProviderBindingDAO adminPlayerListProviderBindingDAO;
+    private final RequestRateLimiter rateLimiter;
     private final ConcurrentMap<String, AdminSession> sessions = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, CachedAvatar> avatarCache = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<MainThreadTask<?>> mainThreadQueue = new ConcurrentLinkedQueue<>();
@@ -114,13 +116,15 @@ public class AdminWebService {
     private final byte[] nerdSymbolsSubsetWoff2;
 
     public AdminWebService(ServerConfig serverConfig, UserDAO userDAO, ProfileDAO profileDAO, TokenDAO tokenDAO,
-        InviteDAO inviteDAO, AdminPlayerListProviderBindingDAO adminPlayerListProviderBindingDAO) {
+        InviteDAO inviteDAO, AdminPlayerListProviderBindingDAO adminPlayerListProviderBindingDAO,
+        RequestRateLimiter rateLimiter) {
         this.serverConfig = serverConfig;
         this.userDAO = userDAO;
         this.profileDAO = profileDAO;
         this.tokenDAO = tokenDAO;
         this.inviteDAO = inviteDAO;
         this.adminPlayerListProviderBindingDAO = adminPlayerListProviderBindingDAO;
+        this.rateLimiter = rateLimiter;
         this.indexHtml = loadResourceBytes("/assets/wawelauth/web/admin/index.html");
         this.appJs = loadResourceBytes("/assets/wawelauth/web/admin/app.js");
         this.stylesCss = loadResourceBytes("/assets/wawelauth/web/admin/styles.css");
@@ -275,15 +279,19 @@ public class AdminWebService {
         if (!isHttpsRequest(ctx)) {
             throw NetException.forbidden("Admin login requires HTTPS.");
         }
+        checkAdminLoginRateLimit(ctx);
 
         String providedToken = ctx.optJsonString("token");
         if (providedToken == null) {
+            recordAdminLoginFailure(ctx);
             throw NetException.illegalArgument("Missing token.");
         }
 
         if (!constantTimeEquals(configuredToken, providedToken)) {
+            recordAdminLoginFailure(ctx);
             throw NetException.forbidden("Invalid admin token.");
         }
+        rateLimiter.reset(adminLoginKey(ctx));
 
         long now = System.currentTimeMillis();
         long ttl = sanitizeSessionTtl(
@@ -297,6 +305,25 @@ public class AdminWebService {
         out.put("sessionToken", sessionToken);
         out.put("expiresAt", now + ttl);
         return out;
+    }
+
+    private void checkAdminLoginRateLimit(RequestContext ctx) {
+        ServerConfig.RateLimits limits = serverConfig.getRateLimits();
+        rateLimiter.checkFailures(
+            limits.isEnabled(),
+            adminLoginKey(ctx),
+            limits.getAdminLoginAttempts(),
+            limits.getAdminLoginWindowSeconds(),
+            "Too many admin login attempts.");
+    }
+
+    private void recordAdminLoginFailure(RequestContext ctx) {
+        ServerConfig.RateLimits limits = serverConfig.getRateLimits();
+        rateLimiter.recordFailure(limits.isEnabled(), adminLoginKey(ctx), limits.getAdminLoginWindowSeconds());
+    }
+
+    private static String adminLoginKey(RequestContext ctx) {
+        return "admin:login:ip:" + RequestRateLimiter.keyPart(ctx.getClientIp());
     }
 
     private Object logout(RequestContext ctx) {
@@ -1043,6 +1070,44 @@ public class AdminWebService {
             }
         }
 
+        JsonObject rateLimits = readOptionalObject(body, "rateLimits");
+        if (rateLimits != null) {
+            Boolean enabled = readOptionalBoolean(rateLimits, "enabled");
+            if (enabled != null) {
+                serverConfig.getRateLimits()
+                    .setEnabled(enabled);
+            }
+
+            updateRateLimitInt(rateLimits, "adminLoginAttempts", serverConfig.getRateLimits()::setAdminLoginAttempts);
+            updateRateLimitInt(
+                rateLimits,
+                "adminLoginWindowSeconds",
+                serverConfig.getRateLimits()::setAdminLoginWindowSeconds);
+            updateRateLimitInt(rateLimits, "passwordIpAttempts", serverConfig.getRateLimits()::setPasswordIpAttempts);
+            updateRateLimitInt(
+                rateLimits,
+                "passwordSubjectAttempts",
+                serverConfig.getRateLimits()::setPasswordSubjectAttempts);
+            updateRateLimitInt(
+                rateLimits,
+                "passwordWindowSeconds",
+                serverConfig.getRateLimits()::setPasswordWindowSeconds);
+            updateRateLimitInt(rateLimits, "tokenIpAttempts", serverConfig.getRateLimits()::setTokenIpAttempts);
+            updateRateLimitInt(rateLimits, "tokenWindowSeconds", serverConfig.getRateLimits()::setTokenWindowSeconds);
+            updateRateLimitInt(
+                rateLimits,
+                "registrationIpAttempts",
+                serverConfig.getRateLimits()::setRegistrationIpAttempts);
+            updateRateLimitInt(
+                rateLimits,
+                "registrationSubjectAttempts",
+                serverConfig.getRateLimits()::setRegistrationSubjectAttempts);
+            updateRateLimitInt(
+                rateLimits,
+                "registrationWindowSeconds",
+                serverConfig.getRateLimits()::setRegistrationWindowSeconds);
+        }
+
         JsonObject textures = readOptionalObject(body, "textures");
         if (textures != null) {
             Integer maxSkinWidth = readOptionalInt(textures, "maxSkinWidth");
@@ -1647,6 +1712,53 @@ public class AdminWebService {
             serverConfig.getTokens()
                 .getSessionTimeoutMs());
         out.put("tokens", tokens);
+
+        Map<String, Object> rateLimits = new LinkedHashMap<>();
+        rateLimits.put(
+            "enabled",
+            serverConfig.getRateLimits()
+                .isEnabled());
+        rateLimits.put(
+            "adminLoginAttempts",
+            serverConfig.getRateLimits()
+                .getAdminLoginAttempts());
+        rateLimits.put(
+            "adminLoginWindowSeconds",
+            serverConfig.getRateLimits()
+                .getAdminLoginWindowSeconds());
+        rateLimits.put(
+            "passwordIpAttempts",
+            serverConfig.getRateLimits()
+                .getPasswordIpAttempts());
+        rateLimits.put(
+            "passwordSubjectAttempts",
+            serverConfig.getRateLimits()
+                .getPasswordSubjectAttempts());
+        rateLimits.put(
+            "passwordWindowSeconds",
+            serverConfig.getRateLimits()
+                .getPasswordWindowSeconds());
+        rateLimits.put(
+            "tokenIpAttempts",
+            serverConfig.getRateLimits()
+                .getTokenIpAttempts());
+        rateLimits.put(
+            "tokenWindowSeconds",
+            serverConfig.getRateLimits()
+                .getTokenWindowSeconds());
+        rateLimits.put(
+            "registrationIpAttempts",
+            serverConfig.getRateLimits()
+                .getRegistrationIpAttempts());
+        rateLimits.put(
+            "registrationSubjectAttempts",
+            serverConfig.getRateLimits()
+                .getRegistrationSubjectAttempts());
+        rateLimits.put(
+            "registrationWindowSeconds",
+            serverConfig.getRateLimits()
+                .getRegistrationWindowSeconds());
+        out.put("rateLimits", rateLimits);
 
         Map<String, Object> textures = new LinkedHashMap<>();
         textures.put(
@@ -2263,6 +2375,17 @@ public class AdminWebService {
         } catch (Exception e) {
             throw NetException.illegalArgument("Field '" + field + "' must be an integer.");
         }
+    }
+
+    private static void updateRateLimitInt(JsonObject parent, String field, IntConsumer setter) {
+        Integer value = readOptionalInt(parent, field);
+        if (value == null) {
+            return;
+        }
+        if (value < 1) {
+            throw NetException.illegalArgument("rateLimits." + field + " must be >= 1.");
+        }
+        setter.accept(value);
     }
 
     private static Long readOptionalLong(JsonObject parent, String field) {
