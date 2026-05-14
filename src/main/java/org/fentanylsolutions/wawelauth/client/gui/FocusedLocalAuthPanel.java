@@ -21,6 +21,7 @@ import com.cleanroommc.modularui.widgets.layout.Column;
 final class FocusedLocalAuthPanel {
 
     private static final int DETAIL_SECONDARY_TEXT_COLOR = 0xFF555555;
+    private static final int SIDEBAR_TEXT_MAX_WIDTH_PX = 104;
 
     private final AccountManagerScreenState state;
     private final Function<ClientProvider, ClientProvider> resolveProvider;
@@ -87,7 +88,7 @@ final class FocusedLocalAuthPanel {
     void populateSidebar(Column leftSidebar, Column accountListFrame,
         BiConsumer<Column, Column> appendSharedAccountSection) {
         String serverAddress = getServerAddress();
-        String displayAddress = GuiText.ellipsizeToPixelWidth(serverAddress, 104);
+        String displayAddress = GuiText.ellipsizeToPixelWidth(serverAddress, SIDEBAR_TEXT_MAX_WIDTH_PX);
         TextWidget<?> addressText = new TextWidget<>(IKey.str(displayAddress));
         addressText.widthRel(1.0f)
             .height(12);
@@ -98,7 +99,7 @@ final class FocusedLocalAuthPanel {
 
         String serverName = getServerName();
         if (serverName != null && !serverName.isEmpty() && !serverName.equals(serverAddress)) {
-            String displayName = GuiText.ellipsizeToPixelWidth(serverName, 104);
+            String displayName = GuiText.ellipsizeToPixelWidth(serverName, SIDEBAR_TEXT_MAX_WIDTH_PX);
             TextWidget<?> nameText = new TextWidget<>(IKey.str(displayName));
             nameText.color(DETAIL_SECONDARY_TEXT_COLOR)
                 .scale(0.8f)
@@ -114,7 +115,7 @@ final class FocusedLocalAuthPanel {
         if (provider != null) {
             String providerLine = GuiText
                 .tr("wawelauth.gui.account_manager.provider_line", ProviderDisplayName.displayName(provider.getName()));
-            String displayProviderLine = GuiText.ellipsizeToPixelWidth(providerLine, 104);
+            String displayProviderLine = GuiText.ellipsizeToPixelWidth(providerLine, SIDEBAR_TEXT_MAX_WIDTH_PX);
             TextWidget<?> providerText = new TextWidget<>(IKey.str(displayProviderLine));
             providerText.color(DETAIL_SECONDARY_TEXT_COLOR)
                 .scale(0.8f)
@@ -132,7 +133,7 @@ final class FocusedLocalAuthPanel {
                 .margin(0, 2));
 
         String fingerprint = getFingerprint();
-        String displayFingerprint = GuiText.ellipsizeToPixelWidth(fingerprint, 104);
+        String displayFingerprint = GuiText.ellipsizeToPixelWidth(fingerprint, SIDEBAR_TEXT_MAX_WIDTH_PX);
         TextWidget<?> fingerprintText = new TextWidget<>(IKey.str(displayFingerprint));
         fingerprintText.color(0xFF55FFFF)
             .scale(0.7f)
@@ -144,18 +145,27 @@ final class FocusedLocalAuthPanel {
         leftSidebar.child(fingerprintText)
             .child(
                 new TextWidget<>(
-                    IKey.dynamic(() -> state.focusedLocalStatusText != null ? state.focusedLocalStatusText : ""))
-                        .color(0xFFFFFF55)
-                        .scale(0.8f)
-                        .widthRel(1.0f)
-                        .height(10)
-                        .margin(0, 2))
+                    IKey.dynamic(
+                        () -> GuiText.ellipsizeToPixelWidth(getFocusedLocalStatusText(), SIDEBAR_TEXT_MAX_WIDTH_PX)))
+                            .tooltipDynamic(tooltip -> {
+                                String fullText = getFocusedLocalStatusText();
+                                if (!GuiText.ellipsizeToPixelWidth(fullText, SIDEBAR_TEXT_MAX_WIDTH_PX)
+                                    .equals(fullText)) {
+                                    tooltip.addLine(IKey.str(fullText));
+                                }
+                            })
+                            .tooltipAutoUpdate(true)
+                            .color(0xFFFFFF55)
+                            .scale(0.8f)
+                            .widthRel(1.0f)
+                            .height(10)
+                            .margin(0, 2))
             .child(
                 GuiText.fitButtonLabelMaxWidth(
                     new ButtonWidget<>().widthRel(1.0f)
                         .height(16)
                         .setEnabledIf(widget -> hasMetadata()),
-                    104,
+                    SIDEBAR_TEXT_MAX_WIDTH_PX,
                     "wawelauth.gui.local_auth.trust_refresh")
                     .onMousePressed(mouseButton -> {
                         ensureProvider(null);
@@ -167,7 +177,7 @@ final class FocusedLocalAuthPanel {
                         .height(16)
                         .margin(0, 2)
                         .setEnabledIf(widget -> hasMetadata()),
-                    104,
+                    SIDEBAR_TEXT_MAX_WIDTH_PX,
                     "wawelauth.gui.account_manager.proxy_settings")
                     .onMousePressed(mouseButton -> {
                         ensureProvider(() -> {
@@ -184,7 +194,7 @@ final class FocusedLocalAuthPanel {
                         .height(16)
                         .margin(0, 2)
                         .setEnabledIf(widget -> state.selectedProvider != null),
-                    104,
+                    SIDEBAR_TEXT_MAX_WIDTH_PX,
                     "wawelauth.gui.local_auth.remove_auth")
                     .onMousePressed(mouseButton -> {
                         removeProvider();
@@ -290,6 +300,10 @@ final class FocusedLocalAuthPanel {
         return resolveProvider.apply(
             client.getLocalAuthProviderResolver()
                 .findExisting(state.focusedLocalCapabilities));
+    }
+
+    private String getFocusedLocalStatusText() {
+        return state.focusedLocalStatusText != null ? state.focusedLocalStatusText : "";
     }
 
     private String getServerAddress() {
