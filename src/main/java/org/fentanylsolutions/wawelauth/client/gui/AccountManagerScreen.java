@@ -1326,7 +1326,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         dialog.setCloseOnOutOfBoundsClick(false);
 
         final String[] statusText = { "" };
-        TextFieldWidget pathField = new SafeTextFieldWidget()
+        TextFieldWidget pathField = new TextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.path_hint", label.toLowerCase()));
         pathField.widthRel(1.0f)
             .height(18)

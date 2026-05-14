@@ -69,7 +69,7 @@ final class AccountManagerProviderDialogs {
         final String[] statusText = {
             managedProvider ? GuiText.tr("wawelauth.gui.account_manager.provider_managed_locked") : "" };
 
-        TextFieldWidget nameField = new SafeTextFieldWidget()
+        TextFieldWidget nameField = new TextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.provider_name"));
         nameField.widthRel(1.0f)
             .height(18)
@@ -237,7 +237,7 @@ final class AccountManagerProviderDialogs {
         final ProviderRegistry.ProbeOutcome[] providerStatusOutcome = { ProviderRegistry.ProbeOutcome.NEUTRAL };
         final boolean[] busy = { false };
 
-        TextFieldWidget hostField = new SafeTextFieldWidget()
+        TextFieldWidget hostField = new TextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_address"));
         hostField.width(214)
             .height(18)
@@ -245,7 +245,7 @@ final class AccountManagerProviderDialogs {
             .margin(0, 2);
         hostField.value(new StringValue(initialSettings.getHost() != null ? initialSettings.getHost() : ""));
 
-        TextFieldWidget portField = new SafeTextFieldWidget()
+        TextFieldWidget portField = new TextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_port"));
         portField.width(64)
             .height(18)
@@ -254,7 +254,7 @@ final class AccountManagerProviderDialogs {
         portField
             .value(new StringValue(initialSettings.getPort() != null ? String.valueOf(initialSettings.getPort()) : ""));
 
-        TextFieldWidget usernameField = new SafeTextFieldWidget()
+        TextFieldWidget usernameField = new TextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_username"));
         usernameField.widthRel(1.0f)
             .height(18)
