@@ -451,9 +451,7 @@ public final class ServerBindingPersistence {
                 return;
             }
 
-            File backup = new File(
-                minecraft.mcDataDir,
-                "servers.dat.wawelauth-" + System.currentTimeMillis() + ".bak");
+            File backup = new File(minecraft.mcDataDir, "servers.dat.wawelauth-" + System.currentTimeMillis() + ".bak");
             Files.copy(source.toPath(), backup.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
         } catch (IOException e) {
             WawelAuth.debug("Failed to back up servers.dat before save: " + e.getMessage());
