@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
@@ -30,11 +29,8 @@ final class AccountManagerAccountListPanel {
     private static final int ACCOUNT_NAME_MAX_WIDTH_PX = 90;
 
     private final ListWidget<IWidget, ?> accountList = new ListWidget<>();
-    private final Supplier<ClientProvider> selectedProvider;
-    private final Consumer<ClientProvider> setSelectedProvider;
+    private final AccountManagerScreenState state;
     private final Function<ClientProvider, ClientProvider> resolveProvider;
-    private final Supplier<ClientAccount> selectedAccount;
-    private final Consumer<ClientAccount> setSelectedAccount;
     private final Consumer<ClientAccount> selectAccount;
     private final Runnable clearPreview;
 
@@ -42,15 +38,11 @@ final class AccountManagerAccountListPanel {
     private Map<Long, AccountStatus> renderedStatuses = new HashMap<>();
     private boolean rebuildPending;
 
-    AccountManagerAccountListPanel(Supplier<ClientProvider> selectedProvider,
-        Consumer<ClientProvider> setSelectedProvider, Function<ClientProvider, ClientProvider> resolveProvider,
-        Supplier<ClientAccount> selectedAccount, Consumer<ClientAccount> setSelectedAccount,
-        Consumer<ClientAccount> selectAccount, Runnable clearPreview) {
-        this.selectedProvider = selectedProvider;
-        this.setSelectedProvider = setSelectedProvider;
+    AccountManagerAccountListPanel(AccountManagerScreenState state,
+        Function<ClientProvider, ClientProvider> resolveProvider, Consumer<ClientAccount> selectAccount,
+        Runnable clearPreview) {
+        this.state = state;
         this.resolveProvider = resolveProvider;
-        this.selectedAccount = selectedAccount;
-        this.setSelectedAccount = setSelectedAccount;
         this.selectAccount = selectAccount;
         this.clearPreview = clearPreview;
     }
@@ -78,8 +70,8 @@ final class AccountManagerAccountListPanel {
         accountStatusDots.clear();
         renderedStatuses.clear();
 
-        ClientProvider provider = resolveProvider.apply(selectedProvider.get());
-        setSelectedProvider.accept(provider);
+        ClientProvider provider = resolveProvider.apply(state.selectedProvider);
+        state.selectedProvider = provider;
         if (provider == null) return;
 
         WawelClient client = WawelClient.instance();
@@ -94,7 +86,7 @@ final class AccountManagerAccountListPanel {
                 String.CASE_INSENSITIVE_ORDER));
 
         boolean selectedInProvider = false;
-        ClientAccount currentSelected = selectedAccount.get();
+        ClientAccount currentSelected = state.selectedAccount;
         if (currentSelected != null) {
             long selectedId = currentSelected.getId();
             for (ClientAccount account : accounts) {
@@ -108,7 +100,7 @@ final class AccountManagerAccountListPanel {
         if (!accounts.isEmpty() && !selectedInProvider) {
             selectAccount.accept(accounts.get(0));
         } else if (accounts.isEmpty() && currentSelected != null) {
-            setSelectedAccount.accept(null);
+            state.selectedAccount = null;
             clearPreview.run();
         }
 
@@ -118,10 +110,10 @@ final class AccountManagerAccountListPanel {
             int statusColor = StatusColors.getColor(status);
             String profileName = account.getProfileName() != null ? account.getProfileName() : "?";
             String displayProfileName = GuiText.ellipsizeToPixelWidth(profileName, ACCOUNT_NAME_MAX_WIDTH_PX);
-            ClientAccount selected = selectedAccount.get();
+            ClientAccount selected = state.selectedAccount;
             boolean isSelected = selected != null && account.getId() == selected.getId();
             if (isSelected) {
-                setSelectedAccount.accept(account);
+                state.selectedAccount = account;
                 selectedStillExists = true;
             }
 
@@ -176,8 +168,8 @@ final class AccountManagerAccountListPanel {
             accountList.child(entry);
         }
 
-        if (selectedAccount.get() != null && !selectedStillExists) {
-            setSelectedAccount.accept(null);
+        if (state.selectedAccount != null && !selectedStillExists) {
+            state.selectedAccount = null;
             clearPreview.run();
         }
     }
@@ -227,7 +219,7 @@ final class AccountManagerAccountListPanel {
                 }
             }
 
-            ClientAccount selected = selectedAccount.get();
+            ClientAccount selected = state.selectedAccount;
             if (selected != null && selected.getId() == accountId) {
                 selected.setStatus(cached);
             }

@@ -1,7 +1,11 @@
 package org.fentanylsolutions.wawelauth.wawelclient;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -39,26 +43,21 @@ public final class ServerBindingPersistence {
      * Persist one modified ServerData entry to servers.dat.
      */
     public static void persistServerSelection(ServerData selected) {
-        try {
-            // Vanilla helper that updates this server entry and flushes servers.dat.
-            ServerList.func_147414_b(selected); // ServerList.saveSingleServer
+        if (selected == null) {
             return;
-        } catch (Throwable t) {
-            WawelAuth.debug("ServerList.func_147414_b failed, using fallback save path: " + t.getMessage());
         }
 
-        // Fallback path for environments where static helper signature differs.
+        if (persistInActiveServerList(selected)) {
+            return;
+        }
+
         try {
+            // Fallback for non-multiplayer contexts where no active list was registered.
             ServerList serverList = new ServerList(Minecraft.getMinecraft());
             serverList.loadServerList();
-            for (int i = 0; i < serverList.countServers(); i++) {
-                ServerData existing = serverList.getServerData(i);
-                if (sameServer(existing, selected)) {
-                    serverList.func_147413_a(i, selected); // ServerList.setServer
-                    break;
-                }
+            if (!persistInServerList(serverList, selected, true)) {
+                WawelAuth.debug("No saved server entry matched per-server account selection for " + selected.serverIP);
             }
-            serverList.saveServerList();
         } catch (Exception e) {
             WawelAuth.LOG.warn("Failed to persist per-server account selection: {}", e.getMessage());
         }
@@ -343,6 +342,39 @@ public final class ServerBindingPersistence {
         return a.serverIP.equals(b.serverIP);
     }
 
+    private static boolean persistInActiveServerList(ServerData selected) {
+        ServerList active = activeServerListRef.get();
+        if (active == null) {
+            return false;
+        }
+
+        try {
+            return persistInServerList(active, selected, true);
+        } catch (Throwable t) {
+            WawelAuth.debug("Active server list save failed, using fallback save path: " + t.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean persistInServerList(ServerList serverList, ServerData selected, boolean save) {
+        if (serverList == null || selected == null) {
+            return false;
+        }
+
+        for (int i = 0; i < serverList.countServers(); i++) {
+            ServerData existing = serverList.getServerData(i);
+            if (existing == selected || sameServer(existing, selected)) {
+                serverList.func_147413_a(i, selected); // ServerList.setServer
+                if (save) {
+                    saveServerListWithBackup(serverList);
+                }
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static int clearMissingInServerList(ServerList serverList, Set<Long> validIds, boolean save) {
         int removed = 0;
         for (int i = 0; i < serverList.countServers(); i++) {
@@ -360,7 +392,7 @@ public final class ServerBindingPersistence {
         }
 
         if (save && removed > 0) {
-            serverList.saveServerList();
+            saveServerListWithBackup(serverList);
         }
         return removed;
     }
@@ -397,9 +429,37 @@ public final class ServerBindingPersistence {
         }
 
         if (save && cleared > 0) {
-            serverList.saveServerList();
+            saveServerListWithBackup(serverList);
         }
         return cleared;
+    }
+
+    private static void saveServerListWithBackup(ServerList serverList) {
+        backupServerListFile();
+        serverList.saveServerList();
+    }
+
+    private static void backupServerListFile() {
+        try {
+            Minecraft minecraft = Minecraft.getMinecraft();
+            if (minecraft == null || minecraft.mcDataDir == null) {
+                return;
+            }
+
+            File source = new File(minecraft.mcDataDir, "servers.dat");
+            if (!source.isFile() || source.length() <= 19L) {
+                return;
+            }
+
+            File backup = new File(
+                minecraft.mcDataDir,
+                "servers.dat.wawelauth-" + System.currentTimeMillis() + ".bak");
+            Files.copy(source.toPath(), backup.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+        } catch (IOException e) {
+            WawelAuth.debug("Failed to back up servers.dat before save: " + e.getMessage());
+        } catch (Throwable t) {
+            WawelAuth.debug("Failed to back up servers.dat before save: " + t.getMessage());
+        }
     }
 
     private static void collectReferencedLocalAuths(ServerList serverList, ReferencedLocalAuths referenced) {

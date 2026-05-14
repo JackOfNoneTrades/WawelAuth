@@ -4,16 +4,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ServerData;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
-import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 
 import com.cleanroommc.modularui.api.drawable.IKey;
@@ -25,12 +22,7 @@ final class FocusedLocalAuthPanel {
 
     private static final int DETAIL_SECONDARY_TEXT_COLOR = 0xFF555555;
 
-    private final ServerData serverData;
-    private final ServerCapabilities capabilities;
-    private final Supplier<ClientProvider> selectedProvider;
-    private final Consumer<ClientProvider> setSelectedProvider;
-    private final Supplier<ClientAccount> selectedAccount;
-    private final Consumer<ClientAccount> setSelectedAccount;
+    private final AccountManagerScreenState state;
     private final Function<ClientProvider, ClientProvider> resolveProvider;
     private final Consumer<ClientProvider> ensureRegisterCapabilityProbe;
     private final Runnable rebuildProviderList;
@@ -39,21 +31,11 @@ final class FocusedLocalAuthPanel {
     private final Runnable clearPreview;
     private final Consumer<ClientProvider> openProviderProxyDialog;
 
-    private String statusText = "";
-
-    FocusedLocalAuthPanel(ServerData serverData, ServerCapabilities capabilities,
-        Supplier<ClientProvider> selectedProvider, Consumer<ClientProvider> setSelectedProvider,
-        Supplier<ClientAccount> selectedAccount, Consumer<ClientAccount> setSelectedAccount,
-        Function<ClientProvider, ClientProvider> resolveProvider,
+    FocusedLocalAuthPanel(AccountManagerScreenState state, Function<ClientProvider, ClientProvider> resolveProvider,
         Consumer<ClientProvider> ensureRegisterCapabilityProbe, Runnable rebuildProviderList,
         Runnable rebuildAccountList, Runnable requestAccountListRebuild, Runnable clearPreview,
         Consumer<ClientProvider> openProviderProxyDialog) {
-        this.serverData = serverData;
-        this.capabilities = capabilities;
-        this.selectedProvider = selectedProvider;
-        this.setSelectedProvider = setSelectedProvider;
-        this.selectedAccount = selectedAccount;
-        this.setSelectedAccount = setSelectedAccount;
+        this.state = state;
         this.resolveProvider = resolveProvider;
         this.ensureRegisterCapabilityProbe = ensureRegisterCapabilityProbe;
         this.rebuildProviderList = rebuildProviderList;
@@ -64,10 +46,11 @@ final class FocusedLocalAuthPanel {
     }
 
     boolean hasContext() {
-        return serverData != null && capabilities != null;
+        return state.focusedLocalServerData != null && state.focusedLocalCapabilities != null;
     }
 
     boolean hasMetadata() {
+        ServerCapabilities capabilities = state.focusedLocalCapabilities;
         return hasContext() && notBlank(capabilities.getLocalAuthApiRoot())
             && notBlank(capabilities.getLocalAuthPublicKeyFingerprint());
     }
@@ -85,17 +68,17 @@ final class FocusedLocalAuthPanel {
         }
 
         ClientProvider provider = resolveFocusedProvider();
-        setSelectedProvider.accept(provider);
+        state.selectedProvider = provider;
         if (provider != null) {
             ensureRegisterCapabilityProbe.accept(provider);
-            if (statusText == null || statusText.isEmpty()) {
-                statusText = GuiText.tr("wawelauth.gui.common.ready_message", provider.getName());
+            if (state.focusedLocalStatusText == null || state.focusedLocalStatusText.isEmpty()) {
+                state.focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.ready_message", provider.getName());
             }
         } else {
-            statusText = hasMetadata() ? GuiText.tr("wawelauth.gui.local_auth.status.trust_first")
+            state.focusedLocalStatusText = hasMetadata() ? GuiText.tr("wawelauth.gui.local_auth.status.trust_first")
                 : GuiText.tr("wawelauth.gui.local_auth.status.not_advertised");
-            if (selectedAccount.get() != null) {
-                setSelectedAccount.accept(null);
+            if (state.selectedAccount != null) {
+                state.selectedAccount = null;
                 clearPreview.run();
             }
         }
@@ -127,7 +110,7 @@ final class FocusedLocalAuthPanel {
             leftSidebar.child(nameText);
         }
 
-        ClientProvider provider = selectedProvider.get();
+        ClientProvider provider = state.selectedProvider;
         if (provider != null) {
             String providerLine = GuiText
                 .tr("wawelauth.gui.account_manager.provider_line", ProviderDisplayName.displayName(provider.getName()));
@@ -160,11 +143,13 @@ final class FocusedLocalAuthPanel {
         }
         leftSidebar.child(fingerprintText)
             .child(
-                new TextWidget<>(IKey.dynamic(() -> statusText != null ? statusText : "")).color(0xFFFFFF55)
-                    .scale(0.8f)
-                    .widthRel(1.0f)
-                    .height(10)
-                    .margin(0, 2))
+                new TextWidget<>(
+                    IKey.dynamic(() -> state.focusedLocalStatusText != null ? state.focusedLocalStatusText : ""))
+                        .color(0xFFFFFF55)
+                        .scale(0.8f)
+                        .widthRel(1.0f)
+                        .height(10)
+                        .margin(0, 2))
             .child(
                 GuiText.fitButtonLabelMaxWidth(
                     new ButtonWidget<>().widthRel(1.0f)
@@ -186,7 +171,7 @@ final class FocusedLocalAuthPanel {
                     "wawelauth.gui.account_manager.proxy_settings")
                     .onMousePressed(mouseButton -> {
                         ensureProvider(() -> {
-                            ClientProvider current = selectedProvider.get();
+                            ClientProvider current = state.selectedProvider;
                             if (current != null) {
                                 openProviderProxyDialog.accept(current);
                             }
@@ -198,7 +183,7 @@ final class FocusedLocalAuthPanel {
                     new ButtonWidget<>().widthRel(1.0f)
                         .height(16)
                         .margin(0, 2)
-                        .setEnabledIf(widget -> selectedProvider.get() != null),
+                        .setEnabledIf(widget -> state.selectedProvider != null),
                     104,
                     "wawelauth.gui.local_auth.remove_auth")
                     .onMousePressed(mouseButton -> {
@@ -211,23 +196,23 @@ final class FocusedLocalAuthPanel {
 
     void ensureProvider(Runnable onReady) {
         if (!hasMetadata()) {
-            statusText = GuiText.tr("wawelauth.gui.local_auth.status.not_advertised");
+            state.focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.not_advertised");
             return;
         }
 
         WawelClient client = WawelClient.instance();
         if (client == null) {
-            statusText = GuiText.tr("wawelauth.gui.common.client_not_running");
+            state.focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.client_not_running");
             return;
         }
 
         ClientProvider existing = client.getLocalAuthProviderResolver()
-            .findExisting(capabilities);
+            .findExisting(state.focusedLocalCapabilities);
         if (existing != null) {
             ClientProvider resolved = resolveProvider.apply(existing);
-            setSelectedProvider.accept(resolved);
+            state.selectedProvider = resolved;
             ensureRegisterCapabilityProbe.accept(resolved);
-            statusText = GuiText.tr("wawelauth.gui.common.ready_message", resolved.getName());
+            state.focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.ready_message", resolved.getName());
             rebuildAccountList.run();
             requestAccountListRebuild.run();
             if (onReady != null) {
@@ -236,23 +221,25 @@ final class FocusedLocalAuthPanel {
             return;
         }
 
-        statusText = GuiText.tr("wawelauth.gui.local_auth.status.resolving");
+        state.focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.resolving");
         CompletableFuture.supplyAsync(
             () -> client.getLocalAuthProviderResolver()
-                .resolveOrCreate(capabilities))
+                .resolveOrCreate(state.focusedLocalCapabilities))
             .whenComplete((provider, err) -> {
                 Minecraft.getMinecraft()
                     .func_152344_a(() -> {
                         if (err != null) {
                             Throwable cause = err.getCause() != null ? err.getCause() : err;
-                            statusText = GuiText.tr("wawelauth.gui.common.failed_message", cause.getMessage());
+                            state.focusedLocalStatusText = GuiText
+                                .tr("wawelauth.gui.common.failed_message", cause.getMessage());
                             return;
                         }
 
                         ClientProvider resolved = resolveProvider.apply(provider);
-                        setSelectedProvider.accept(resolved);
+                        state.selectedProvider = resolved;
                         ensureRegisterCapabilityProbe.accept(resolved);
-                        statusText = GuiText.tr("wawelauth.gui.common.ready_message", resolved.getName());
+                        state.focusedLocalStatusText = GuiText
+                            .tr("wawelauth.gui.common.ready_message", resolved.getName());
                         rebuildProviderList.run();
                         rebuildAccountList.run();
                         requestAccountListRebuild.run();
@@ -264,15 +251,15 @@ final class FocusedLocalAuthPanel {
     }
 
     void removeProvider() {
-        ClientProvider provider = selectedProvider.get();
+        ClientProvider provider = state.selectedProvider;
         if (provider == null) {
-            statusText = GuiText.tr("wawelauth.gui.local_auth.status.trust_first");
+            state.focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.trust_first");
             return;
         }
 
         WawelClient client = WawelClient.instance();
         if (client == null) {
-            statusText = GuiText.tr("wawelauth.gui.common.client_not_running");
+            state.focusedLocalStatusText = GuiText.tr("wawelauth.gui.common.client_not_running");
             return;
         }
 
@@ -280,14 +267,14 @@ final class FocusedLocalAuthPanel {
         try {
             client.getProviderRegistry()
                 .removeProvider(providerName);
-            setSelectedProvider.accept(null);
-            setSelectedAccount.accept(null);
+            state.selectedProvider = null;
+            state.selectedAccount = null;
             clearPreview.run();
-            statusText = GuiText.tr("wawelauth.gui.local_auth.status.removed");
+            state.focusedLocalStatusText = GuiText.tr("wawelauth.gui.local_auth.status.removed");
             rebuildAccountList.run();
             requestAccountListRebuild.run();
         } catch (Exception e) {
-            statusText = e.getMessage();
+            state.focusedLocalStatusText = e.getMessage();
             WawelAuth.debug("Focused local provider deletion failed: " + e.getMessage());
         }
     }
@@ -302,10 +289,11 @@ final class FocusedLocalAuthPanel {
         }
         return resolveProvider.apply(
             client.getLocalAuthProviderResolver()
-                .findExisting(capabilities));
+                .findExisting(state.focusedLocalCapabilities));
     }
 
     private String getServerAddress() {
+        net.minecraft.client.multiplayer.ServerData serverData = state.focusedLocalServerData;
         if (serverData != null && serverData.serverIP != null
             && !serverData.serverIP.trim()
                 .isEmpty()) {
@@ -315,6 +303,7 @@ final class FocusedLocalAuthPanel {
     }
 
     private String getServerName() {
+        net.minecraft.client.multiplayer.ServerData serverData = state.focusedLocalServerData;
         if (serverData != null && serverData.serverName != null) {
             String trimmed = serverData.serverName.trim();
             if (!trimmed.isEmpty()) {
@@ -325,6 +314,7 @@ final class FocusedLocalAuthPanel {
     }
 
     private String getFingerprint() {
+        ServerCapabilities capabilities = state.focusedLocalCapabilities;
         if (capabilities == null || capabilities.getLocalAuthPublicKeyFingerprint() == null) {
             return GuiText.tr("wawelauth.gui.common.missing");
         }

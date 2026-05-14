@@ -3,10 +3,7 @@ package org.fentanylsolutions.wawelauth.client.gui;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -106,8 +103,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static ServerData pendingFocusedServerData;
     private static ServerCapabilities pendingFocusedCapabilities;
 
-    private ClientProvider selectedProvider;
-    private ClientAccount selectedAccount;
+    private AccountManagerScreenState state;
+
     private PlayerPreviewEntity previewFrontEntity;
     private PlayerPreviewEntity previewBackEntity;
     private AddProviderDialog addProviderDialog;
@@ -122,30 +119,23 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private IPanelHandler credentialDeleteDialogHandler;
     private IPanelHandler texturePathDialogHandler;
     private IPanelHandler textureResetDialogHandler;
-    private long pendingRemoveAccountId = -1L;
-    private String pendingRemoveAccountName;
-    private String pendingProviderSettingsName;
-    private String pendingProviderProxyName;
-    private boolean texturePathDialogForSkin;
-    private String texturePathDialogInitialPath;
     private PreviewBackMode capePreviewMode = PreviewBackMode.CAPE;
-    private File selectedSkinFile;
-    private File selectedCapeFile;
-    private boolean skinUploadSlim;
-    private String textureSelectionStatus = "";
-    private String textureUploadStatus = "";
 
     private ModularPanel mainPanel;
     private FocusedLocalAuthPanel focusedLocalPanel;
     private AccountManagerProviderListPanel providerListPanel;
     private AccountManagerAccountListPanel accountListPanel;
-    private Map<String, Boolean> registerCapabilityByProvider;
-    private Set<String> registerCapabilityProbeInFlight;
-    private long nextStatusUiRefreshAtMs;
 
     public AccountManagerScreen() {
         super("wawelauth");
         openParentOnClose(true);
+    }
+
+    private AccountManagerScreenState state() {
+        if (state == null) {
+            state = new AccountManagerScreenState();
+        }
+        return state;
     }
 
     /**
@@ -153,34 +143,35 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
      * Used by the drop handler to decide if file drops should show the texture zone overlay.
      */
     public boolean isTexturePreviewActive() {
-        return previewFrontEntity != null && selectedAccount != null;
+        return previewFrontEntity != null && state().selectedAccount != null;
     }
 
     /**
      * Accept a file dropped from outside the GUI as a skin or cape selection.
      */
     public void acceptDroppedTextureFile(File file, boolean isSkin) {
-        if (selectedAccount == null) return;
+        AccountManagerScreenState state = state();
+        if (state.selectedAccount == null) return;
         String lowerName = file.getName()
             .toLowerCase();
         if (!lowerName.endsWith(".png") && !lowerName.endsWith(".gif")) {
-            textureSelectionStatus = GuiText.tr("wawelauth.gui.account_manager.file_types_supported");
+            state.textureSelectionStatus = GuiText.tr("wawelauth.gui.account_manager.file_types_supported");
             return;
         }
         if (!file.isFile() || !file.canRead()) {
-            textureSelectionStatus = GuiText.tr("wawelauth.gui.account_manager.file_not_readable");
+            state.textureSelectionStatus = GuiText.tr("wawelauth.gui.account_manager.file_not_readable");
             return;
         }
         if (isSkin) {
-            selectedSkinFile = file;
-            textureSelectionStatus = GuiText
+            state.selectedSkinFile = file;
+            state.textureSelectionStatus = GuiText
                 .tr("wawelauth.gui.account_manager.skin_selected", trimPath(file.getAbsolutePath(), 68));
         } else {
-            selectedCapeFile = file;
-            textureSelectionStatus = GuiText
+            state.selectedCapeFile = file;
+            state.textureSelectionStatus = GuiText
                 .tr("wawelauth.gui.account_manager.cape_selected", trimPath(file.getAbsolutePath(), 68));
         }
-        textureUploadStatus = "";
+        state.textureUploadStatus = "";
     }
 
     public static void openForLocalAuth(ServerData serverData) {
@@ -191,10 +182,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     @Override
     public ModularPanel buildUI(ModularGuiContext context) {
+        AccountManagerScreenState state = state();
         mainPanel = ModularPanel.defaultPanel("wawelauth_account_manager", 360, 240);
-        registerCapabilityByProvider = new HashMap<>();
-        registerCapabilityProbeInFlight = new HashSet<>();
-        nextStatusUiRefreshAtMs = 0L;
 
         ServerData focusedLocalServerData = null;
         ServerCapabilities focusedLocalCapabilities = null;
@@ -204,14 +193,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             pendingFocusedServerData = null;
             pendingFocusedCapabilities = null;
         }
+        state.resetForBuild(focusedLocalServerData, focusedLocalCapabilities);
 
         focusedLocalPanel = new FocusedLocalAuthPanel(
-            focusedLocalServerData,
-            focusedLocalCapabilities,
-            () -> selectedProvider,
-            value -> selectedProvider = value,
-            () -> selectedAccount,
-            value -> selectedAccount = value,
+            state,
             this::resolveProvider,
             this::ensureRegisterCapabilityProbe,
             this::rebuildProviderList,
@@ -222,20 +207,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         focusedLocalPanel.initializeSelectedProvider();
 
         providerListPanel = new AccountManagerProviderListPanel(
-            () -> selectedProvider,
-            value -> selectedProvider = value,
-            value -> selectedAccount = value,
+            state,
             this::hasFocusedLocalContext,
             () -> focusedLocalPanel.refreshProviderListState(),
             this::selectProvider,
             this::clearPreview,
             this::openProviderSettingsDialog);
         accountListPanel = new AccountManagerAccountListPanel(
-            () -> selectedProvider,
-            value -> selectedProvider = value,
+            state,
             this::resolveProvider,
-            () -> selectedAccount,
-            value -> selectedAccount = value,
             this::selectAccount,
             this::clearPreview);
 
@@ -252,30 +232,21 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             }
         });
         registerDialog = RegisterDialog.attach(mainPanel, success -> {
-            if (Boolean.TRUE.equals(success) && selectedProvider != null) {
-                loginDialog.openAfterRegister(selectedProvider.getName());
+            if (Boolean.TRUE.equals(success) && state.selectedProvider != null) {
+                loginDialog.openAfterRegister(state.selectedProvider.getName());
             }
         });
-        providerDialogs = new AccountManagerProviderDialogs(
-            () -> pendingProviderSettingsName,
-            value -> pendingProviderSettingsName = value,
-            () -> pendingProviderProxyName,
-            value -> pendingProviderProxyName = value,
-            () -> selectedProvider,
-            value -> selectedProvider = value,
-            () -> {
-                selectedAccount = null;
-                clearPreview();
-            },
+        providerDialogs = new AccountManagerProviderDialogs(state, () -> {
+            state.selectedAccount = null;
+            clearPreview();
+        },
             this::rebuildProviderList,
             this::rebuildAccountList,
             this::openProviderProxyDialog,
             () -> providerSettingsDialogHandler.deleteCachedPanel());
         credentialDialogs = new AccountManagerCredentialDialogs(
-            () -> selectedAccount,
-            value -> selectedAccount = value,
+            state,
             this::isCredentialManagementSupported,
-            value -> textureUploadStatus = value,
             this::openCredentialDeleteDialog,
             this::clearPreview,
             this::rebuildAccountList,
@@ -397,37 +368,37 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                                     return true;
                                 }))))
             .child(new TextWidget<>(IKey.dynamic(() -> {
-                if (selectedAccount == null) return GuiText.tr("wawelauth.gui.common.no_account_selected");
-                String name = selectedAccount.getProfileName();
+                if (state.selectedAccount == null) return GuiText.tr("wawelauth.gui.common.no_account_selected");
+                String name = state.selectedAccount.getProfileName();
                 return name != null ? name : "?";
             })).color(DETAIL_PRIMARY_TEXT_COLOR)
                 .widthRel(1.0f)
                 .height(12)
                 .margin(0, 1))
             .child(new TextWidget<>(IKey.dynamic(() -> {
-                if (selectedAccount == null) return "";
-                UUID uuid = selectedAccount.getProfileUuid();
+                if (state.selectedAccount == null) return "";
+                UUID uuid = state.selectedAccount.getProfileUuid();
                 return uuid != null ? uuid.toString() : GuiText.tr("wawelauth.gui.account_manager.no_profile_bound");
             })).color(DETAIL_SECONDARY_TEXT_COLOR)
                 .scale(0.8f)
                 .widthRel(1.0f)
                 .height(10))
             .child(new TextWidget<>(IKey.dynamic(() -> {
-                if (selectedAccount == null) return "";
+                if (state.selectedAccount == null) return "";
                 return GuiText.tr(
                     "wawelauth.gui.account_manager.provider_line",
-                    ProviderDisplayName.displayName(selectedAccount.getProviderName()));
+                    ProviderDisplayName.displayName(state.selectedAccount.getProviderName()));
             })).color(DETAIL_SECONDARY_TEXT_COLOR)
                 .scale(0.8f)
                 .widthRel(1.0f)
                 .height(10))
             .child(new TextWidget<>(IKey.dynamic(() -> {
-                if (selectedAccount == null) return "";
+                if (state.selectedAccount == null) return "";
                 return GuiText.tr(
                     "wawelauth.gui.account_manager.status_line",
-                    StatusColors.getLabel(getLiveStatus(selectedAccount)));
+                    StatusColors.getLabel(getLiveStatus(state.selectedAccount)));
             })).color(
-                () -> selectedAccount != null ? StatusColors.getColor(getLiveStatus(selectedAccount))
+                () -> state.selectedAccount != null ? StatusColors.getColor(getLiveStatus(state.selectedAccount))
                     : DETAIL_SECONDARY_TEXT_COLOR)
                 .scale(0.8f)
                 .widthRel(1.0f)
@@ -436,10 +407,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .child(
                 new TextWidget<>(
                     IKey.dynamic(
-                        () -> GuiText.ellipsizeToPixelWidth(textureSelectionStatus, TEXTURE_STATUS_MAX_WIDTH_PX)))
+                        () -> GuiText.ellipsizeToPixelWidth(state.textureSelectionStatus, TEXTURE_STATUS_MAX_WIDTH_PX)))
                             .tooltipDynamic(tooltip -> {
                                 if (shouldShowTextureSelectionTooltip()) {
-                                    tooltip.addLine(IKey.str(textureSelectionStatus));
+                                    tooltip.addLine(IKey.str(state.textureSelectionStatus));
                                 }
                             })
                             .tooltipAutoUpdate(true)
@@ -465,10 +436,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             .overlay(
                                 IKey.dynamic(
                                     () -> GuiText.tr(
-                                        skinUploadSlim ? "wawelauth.gui.account_manager.skin_model.slim"
+                                        state.skinUploadSlim ? "wawelauth.gui.account_manager.skin_model.slim"
                                             : "wawelauth.gui.account_manager.skin_model.classic")))
                             .onMousePressed(mouseButton -> {
-                                skinUploadSlim = !skinUploadSlim;
+                                state.skinUploadSlim = !state.skinUploadSlim;
                                 return true;
                             })))
             .child(
@@ -527,20 +498,21 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             })))
             .child(
                 new TextWidget<>(
-                    IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(textureUploadStatus, TEXTURE_STATUS_MAX_WIDTH_PX)))
-                        .tooltipDynamic(tooltip -> {
-                            if (shouldShowTextureUploadTooltip()) {
-                                tooltip.addLine(IKey.str(textureUploadStatus));
-                            }
-                        })
-                        .tooltipAutoUpdate(true)
-                        .color(0xFFFFAA55)
-                        .scale(0.8f)
-                        .widthRel(1.0f)
-                        .height(10)
-                        .margin(0, 1)
-                        .setEnabledIf(
-                            widget -> isAnyTextureUploadEnabled() || isTextureResetEnabledForSelectedProvider()))
+                    IKey.dynamic(
+                        () -> GuiText.ellipsizeToPixelWidth(state.textureUploadStatus, TEXTURE_STATUS_MAX_WIDTH_PX)))
+                            .tooltipDynamic(tooltip -> {
+                                if (shouldShowTextureUploadTooltip()) {
+                                    tooltip.addLine(IKey.str(state.textureUploadStatus));
+                                }
+                            })
+                            .tooltipAutoUpdate(true)
+                            .color(0xFFFFAA55)
+                            .scale(0.8f)
+                            .widthRel(1.0f)
+                            .height(10)
+                            .margin(0, 1)
+                            .setEnabledIf(
+                                widget -> isAnyTextureUploadEnabled() || isTextureResetEnabledForSelectedProvider()))
             .child(
                 new Widget<>().widthRel(1.0f)
                     .expanded())
@@ -555,8 +527,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                                 56,
                                 "wawelauth.gui.account_manager.reauth")
                             .onMousePressed(mouseButton -> {
-                                if (selectedAccount == null) return true;
-                                openLoginDialog(selectedAccount.getProviderName(), selectedAccount.getProfileName());
+                                if (state.selectedAccount == null) return true;
+                                openLoginDialog(
+                                    state.selectedAccount.getProviderName(),
+                                    state.selectedAccount.getProfileName());
                                 return true;
                             }))
                     .child(new Widget<>().size(4, 16))
@@ -671,30 +645,30 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private void handlePrimaryLoginAction() {
         if (hasFocusedLocalContext()) {
             focusedLocalPanel.ensureProvider(() -> {
-                if (selectedProvider != null) {
-                    openLoginDialog(selectedProvider.getName());
+                if (state.selectedProvider != null) {
+                    openLoginDialog(state.selectedProvider.getName());
                 }
             });
             return;
         }
 
-        if (selectedProvider != null) {
-            openLoginDialog(selectedProvider.getName());
+        if (state.selectedProvider != null) {
+            openLoginDialog(state.selectedProvider.getName());
         }
     }
 
     private void handlePrimaryRegisterAction() {
         if (hasFocusedLocalContext()) {
             focusedLocalPanel.ensureProvider(() -> {
-                if (selectedProvider != null) {
-                    openRegisterDialog(selectedProvider.getName());
+                if (state.selectedProvider != null) {
+                    openRegisterDialog(state.selectedProvider.getName());
                 }
             });
             return;
         }
 
-        if (selectedProvider != null) {
-            openRegisterDialog(selectedProvider.getName());
+        if (state.selectedProvider != null) {
+            openRegisterDialog(state.selectedProvider.getName());
         }
     }
 
@@ -715,17 +689,17 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
 
         long now = System.currentTimeMillis();
-        if (now < nextStatusUiRefreshAtMs) {
+        if (now < state.nextStatusUiRefreshAtMs) {
             return;
         }
-        nextStatusUiRefreshAtMs = now + STATUS_UI_REFRESH_INTERVAL_MS;
+        state.nextStatusUiRefreshAtMs = now + STATUS_UI_REFRESH_INTERVAL_MS;
         refreshVisibleStatuses();
     }
 
     private void selectProvider(ClientProvider provider) {
-        this.selectedProvider = resolveProvider(provider);
-        ensureRegisterCapabilityProbe(this.selectedProvider);
-        this.selectedAccount = null;
+        state.selectedProvider = resolveProvider(provider);
+        ensureRegisterCapabilityProbe(state.selectedProvider);
+        state.selectedAccount = null;
         clearTextureSelection();
         clearPreview();
         resetAccountListScroll();
@@ -734,9 +708,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void selectAccount(ClientAccount account) {
-        this.selectedAccount = account;
+        state.selectedAccount = account;
         clearTextureSelection();
-        textureUploadStatus = "";
+        state.textureUploadStatus = "";
         if (account != null && account.getProfileUuid() != null) {
             GameProfile profile = new GameProfile(account.getProfileUuid(), account.getProfileName());
             previewFrontEntity = new PlayerPreviewEntity(profile);
@@ -779,24 +753,25 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private void openProviderSettingsDialog(ClientProvider provider) {
         if (provider == null) return;
-        this.pendingProviderSettingsName = provider.getName();
+        state.pendingProviderSettingsName = provider.getName();
         this.providerSettingsDialogHandler.deleteCachedPanel();
         this.providerSettingsDialogHandler.openPanel();
     }
 
     private void openProviderProxyDialog(ClientProvider provider) {
         if (provider == null) return;
-        this.pendingProviderProxyName = provider.getName();
+        state.pendingProviderProxyName = provider.getName();
         this.providerProxyDialogHandler.deleteCachedPanel();
         this.providerProxyDialogHandler.openPanel();
     }
 
     private void confirmAndRemoveSelectedAccount() {
-        if (selectedAccount == null) return;
+        if (state.selectedAccount == null) return;
 
-        this.pendingRemoveAccountName = selectedAccount.getProfileName() != null ? selectedAccount.getProfileName()
+        state.pendingRemoveAccountName = state.selectedAccount.getProfileName() != null
+            ? state.selectedAccount.getProfileName()
             : GuiText.tr("wawelauth.gui.account_manager.this_account");
-        this.pendingRemoveAccountId = selectedAccount.getId();
+        state.pendingRemoveAccountId = state.selectedAccount.getId();
         this.removeAccountDialogHandler.deleteCachedPanel();
         this.removeAccountDialogHandler.openPanel();
     }
@@ -805,9 +780,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         Dialog<Boolean> dialog = new Dialog<>("wawelauth_confirm_remove");
         dialog.setCloseOnOutOfBoundsClick(false);
 
-        String name = pendingRemoveAccountName != null ? pendingRemoveAccountName
+        String name = state.pendingRemoveAccountName != null ? state.pendingRemoveAccountName
             : GuiText.tr("wawelauth.gui.account_manager.this_account");
-        long accountId = pendingRemoveAccountId;
+        long accountId = state.pendingRemoveAccountId;
 
         TextWidget<?> warningText = new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.remove_warning"));
         warningText.color(0xFFAAAAAA)
@@ -836,8 +811,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                                         60,
                                         "wawelauth.gui.common.cancel")
                                     .onMousePressed(btn -> {
-                                        pendingRemoveAccountId = -1L;
-                                        pendingRemoveAccountName = null;
+                                        state.pendingRemoveAccountId = -1L;
+                                        state.pendingRemoveAccountName = null;
                                         dialog.closeIfOpen();
                                         return true;
                                     }))
@@ -849,8 +824,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                                         60,
                                         "wawelauth.gui.common.remove")
                                     .onMousePressed(btn -> {
-                                        pendingRemoveAccountId = -1L;
-                                        pendingRemoveAccountName = null;
+                                        state.pendingRemoveAccountId = -1L;
+                                        state.pendingRemoveAccountName = null;
                                         dialog.closeIfOpen();
                                         doRemoveAccount(accountId);
                                         return true;
@@ -883,12 +858,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void openCredentialDialog() {
-        if (selectedAccount == null) {
-            textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
+        if (state.selectedAccount == null) {
+            state.textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
             return;
         }
         if (!isCredentialManagementAvailableForSelectedAccount()) {
-            textureUploadStatus = GuiText.tr("wawelauth.gui.account_manager.credentials_unavailable");
+            state.textureUploadStatus = GuiText.tr("wawelauth.gui.account_manager.credentials_unavailable");
             return;
         }
         credentialDialogs.clearPendingDeleteState();
@@ -910,7 +885,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         } else {
                             ServerBindingPersistence.clearMissingAccountBindings(client.getAccountManager());
                         }
-                        selectedAccount = null;
+                        state.selectedAccount = null;
                         clearPreview();
                         rebuildAccountList();
                         requestAccountListRebuild();
@@ -1176,20 +1151,20 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void clearTextureSelection() {
-        selectedSkinFile = null;
-        selectedCapeFile = null;
-        textureSelectionStatus = GuiText.tr("wawelauth.gui.account_manager.no_texture_selected");
+        state.selectedSkinFile = null;
+        state.selectedCapeFile = null;
+        state.textureSelectionStatus = GuiText.tr("wawelauth.gui.account_manager.no_texture_selected");
     }
 
     private boolean shouldShowTextureSelectionTooltip() {
-        if (selectedSkinFile == null && selectedCapeFile == null) {
+        if (state.selectedSkinFile == null && state.selectedCapeFile == null) {
             return false;
         }
-        return !isBlank(textureSelectionStatus);
+        return !isBlank(state.textureSelectionStatus);
     }
 
     private boolean shouldShowTextureUploadTooltip() {
-        return !isBlank(textureUploadStatus);
+        return !isBlank(state.textureUploadStatus);
     }
 
     private static boolean isBlank(String value) {
@@ -1198,10 +1173,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private boolean isOfflineTextureAction() {
-        if (selectedAccount != null && ProviderDisplayName.isOfflineProvider(selectedAccount.getProviderName())) {
+        if (state.selectedAccount != null
+            && ProviderDisplayName.isOfflineProvider(state.selectedAccount.getProviderName())) {
             return true;
         }
-        return selectedProvider != null && ProviderDisplayName.isOfflineProvider(selectedProvider.getName());
+        return state.selectedProvider != null
+            && ProviderDisplayName.isOfflineProvider(state.selectedProvider.getName());
     }
 
     private String getTextureActionLabelKey() {
@@ -1215,8 +1192,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void chooseTextureFile(boolean skin) {
-        if (selectedAccount == null) {
-            textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
+        if (state.selectedAccount == null) {
+            state.textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
             return;
         }
         String label = GuiText.tr(skin ? "wawelauth.gui.account_manager.skin" : "wawelauth.gui.account_manager.cape");
@@ -1227,15 +1204,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         if (result.getStatus() == FileUtil.FilePickerResult.Status.SELECTED) {
             File picked = result.getFile();
             if (skin) {
-                selectedSkinFile = picked;
-                textureSelectionStatus = GuiText
+                state.selectedSkinFile = picked;
+                state.textureSelectionStatus = GuiText
                     .tr("wawelauth.gui.account_manager.skin_selected", trimPath(picked.getAbsolutePath(), 68));
             } else {
-                selectedCapeFile = picked;
-                textureSelectionStatus = GuiText
+                state.selectedCapeFile = picked;
+                state.textureSelectionStatus = GuiText
                     .tr("wawelauth.gui.account_manager.cape_selected", trimPath(picked.getAbsolutePath(), 68));
             }
-            textureUploadStatus = "";
+            state.textureUploadStatus = "";
             return;
         }
 
@@ -1249,43 +1226,44 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             message = GuiText.tr("wawelauth.gui.account_manager.file_picker_fallback");
         }
         WawelAuth.LOG.warn("Texture file picker failed ({}): {}", result.getStatus(), message);
-        textureUploadStatus = message;
+        state.textureUploadStatus = message;
         openTexturePathDialog(skin);
     }
 
     private void handleTextureActionSuccess(WawelClient client, long accountId, String result) {
-        textureUploadStatus = result != null ? result : GuiText.tr("wawelauth.gui.account_manager.upload_complete");
+        state.textureUploadStatus = result != null ? result
+            : GuiText.tr("wawelauth.gui.account_manager.upload_complete");
         ClientAccount refreshed = client.getAccountManager()
             .getAccount(accountId);
-        if (selectedAccount != null && selectedAccount.getId() == accountId) {
+        if (state.selectedAccount != null && state.selectedAccount.getId() == accountId) {
             if (refreshed != null) {
-                selectedAccount = refreshed;
+                state.selectedAccount = refreshed;
             }
-            if (selectedAccount.getProfileUuid() != null) {
+            if (state.selectedAccount.getProfileUuid() != null) {
                 client.getTextureResolver()
-                    .invalidate(selectedAccount.getProfileUuid());
-                LocalTextureLoader.invalidateOfflineCape(selectedAccount.getProfileUuid());
+                    .invalidate(state.selectedAccount.getProfileUuid());
+                LocalTextureLoader.invalidateOfflineCape(state.selectedAccount.getProfileUuid());
             }
-            loadSkinForAccount(selectedAccount);
+            loadSkinForAccount(state.selectedAccount);
         }
-        if (selectedProvider != null) {
+        if (state.selectedProvider != null) {
             rebuildAccountList();
             requestAccountListRebuild();
         }
     }
 
     private void attemptTextureUpload() {
-        if (selectedAccount == null) {
-            textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
+        if (state.selectedAccount == null) {
+            state.textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
             return;
         }
-        if (selectedSkinFile == null && selectedCapeFile == null) {
-            textureUploadStatus = GuiText.tr("wawelauth.gui.account_manager.choose_texture_first");
+        if (state.selectedSkinFile == null && state.selectedCapeFile == null) {
+            state.textureUploadStatus = GuiText.tr("wawelauth.gui.account_manager.choose_texture_first");
             return;
         }
         WawelClient client = WawelClient.instance();
         if (client == null) {
-            textureUploadStatus = GuiText.tr("wawelauth.gui.common.client_not_running");
+            state.textureUploadStatus = GuiText.tr("wawelauth.gui.common.client_not_running");
             return;
         }
 
@@ -1296,19 +1274,19 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             previewBackEntity.prepareTextureUpload();
         }
 
-        final long accountId = selectedAccount.getId();
-        final File skin = selectedSkinFile;
-        final File cape = selectedCapeFile;
-        final boolean skinSlim = skinUploadSlim;
-        textureUploadStatus = GuiText.tr(getTextureActionInProgressKey());
+        final long accountId = state.selectedAccount.getId();
+        final File skin = state.selectedSkinFile;
+        final File cape = state.selectedCapeFile;
+        final boolean skinSlim = state.skinUploadSlim;
+        state.textureUploadStatus = GuiText.tr(getTextureActionInProgressKey());
 
-        if (ProviderDisplayName.isOfflineProvider(selectedAccount.getProviderName())) {
+        if (ProviderDisplayName.isOfflineProvider(state.selectedAccount.getProviderName())) {
             try {
                 String result = client.getAccountManager()
                     .applyOfflineTextures(accountId, skin, cape, skinSlim);
                 handleTextureActionSuccess(client, accountId, result);
             } catch (Exception e) {
-                textureUploadStatus = GuiText.tr("wawelauth.gui.common.failed_message", e.getMessage());
+                state.textureUploadStatus = GuiText.tr("wawelauth.gui.common.failed_message", e.getMessage());
                 WawelAuth.debug("Texture apply failed: " + e.getMessage());
             }
             return;
@@ -1321,7 +1299,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .func_152344_a(() -> {
                         if (err != null) {
                             Throwable cause = err.getCause() != null ? err.getCause() : err;
-                            textureUploadStatus = GuiText.tr("wawelauth.gui.common.failed_message", cause.getMessage());
+                            state.textureUploadStatus = GuiText
+                                .tr("wawelauth.gui.common.failed_message", cause.getMessage());
                             WawelAuth.debug("Texture upload failed: " + cause.getMessage());
                             return;
                         }
@@ -1331,15 +1310,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void openTexturePathDialog(boolean skin) {
-        this.texturePathDialogForSkin = skin;
-        File current = skin ? selectedSkinFile : selectedCapeFile;
-        this.texturePathDialogInitialPath = current != null ? current.getAbsolutePath() : defaultTexturePath(skin);
+        state.texturePathDialogForSkin = skin;
+        File current = skin ? state.selectedSkinFile : state.selectedCapeFile;
+        state.texturePathDialogInitialPath = current != null ? current.getAbsolutePath() : defaultTexturePath(skin);
         this.texturePathDialogHandler.deleteCachedPanel();
         this.texturePathDialogHandler.openPanel();
     }
 
     private Dialog<Boolean> buildTexturePathDialog() {
-        final boolean skin = this.texturePathDialogForSkin;
+        final boolean skin = state.texturePathDialogForSkin;
         final String label = GuiText
             .tr(skin ? "wawelauth.gui.account_manager.skin" : "wawelauth.gui.account_manager.cape");
 
@@ -1353,8 +1332,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .height(18)
             .setMaxLength(4096)
             .margin(0, 2);
-        if (texturePathDialogInitialPath != null) {
-            pathField.setText(texturePathDialogInitialPath);
+        if (state.texturePathDialogInitialPath != null) {
+            pathField.setText(state.texturePathDialogInitialPath);
         }
 
         ButtonWidget<?> openFolderBtn = new ButtonWidget<>();
@@ -1396,15 +1375,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 }
 
                 if (skin) {
-                    selectedSkinFile = picked;
-                    textureSelectionStatus = GuiText
+                    state.selectedSkinFile = picked;
+                    state.textureSelectionStatus = GuiText
                         .tr("wawelauth.gui.account_manager.skin_selected", trimPath(picked.getAbsolutePath(), 68));
                 } else {
-                    selectedCapeFile = picked;
-                    textureSelectionStatus = GuiText
+                    state.selectedCapeFile = picked;
+                    state.textureSelectionStatus = GuiText
                         .tr("wawelauth.gui.account_manager.cape_selected", trimPath(picked.getAbsolutePath(), 68));
                 }
-                textureUploadStatus = "";
+                state.textureUploadStatus = "";
                 dialog.closeIfOpen();
                 return true;
             });
@@ -1453,8 +1432,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private File getTexturePickerInitialDirectory(boolean skin) {
-        File current = skin ? selectedSkinFile : selectedCapeFile;
-        File other = skin ? selectedCapeFile : selectedSkinFile;
+        File current = skin ? state.selectedSkinFile : state.selectedCapeFile;
+        File other = skin ? state.selectedCapeFile : state.selectedSkinFile;
 
         File currentParent = parentDirectory(current);
         if (currentParent != null) {
@@ -1491,19 +1470,19 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private boolean isSkinUploadDisabledForSelectedProvider() {
-        if (selectedProvider == null) return false;
-        if (ProviderDisplayName.isOfflineProvider(selectedProvider.getName())) {
+        if (state.selectedProvider == null) return false;
+        if (ProviderDisplayName.isOfflineProvider(state.selectedProvider.getName())) {
             return false;
         }
-        return ClientConfig.isSkinUploadDisabled(selectedProvider.getName(), selectedProvider.getApiRoot());
+        return ClientConfig.isSkinUploadDisabled(state.selectedProvider.getName(), state.selectedProvider.getApiRoot());
     }
 
     private boolean isCapeUploadDisabledForSelectedProvider() {
-        if (selectedProvider == null) return false;
-        if (ProviderDisplayName.isOfflineProvider(selectedProvider.getName())) {
+        if (state.selectedProvider == null) return false;
+        if (ProviderDisplayName.isOfflineProvider(state.selectedProvider.getName())) {
             return false;
         }
-        return ClientConfig.isCapeUploadDisabled(selectedProvider.getName(), selectedProvider.getApiRoot());
+        return ClientConfig.isCapeUploadDisabled(state.selectedProvider.getName(), state.selectedProvider.getApiRoot());
     }
 
     private boolean isAnyTextureUploadEnabled() {
@@ -1511,11 +1490,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private boolean isTextureResetDisabledForSelectedProvider() {
-        if (selectedProvider == null) return false;
-        if (ProviderDisplayName.isOfflineProvider(selectedProvider.getName())) {
+        if (state.selectedProvider == null) return false;
+        if (ProviderDisplayName.isOfflineProvider(state.selectedProvider.getName())) {
             return false;
         }
-        return ClientConfig.isTextureResetDisabled(selectedProvider.getName(), selectedProvider.getApiRoot());
+        return ClientConfig
+            .isTextureResetDisabled(state.selectedProvider.getName(), state.selectedProvider.getApiRoot());
     }
 
     private boolean isTextureResetEnabledForSelectedProvider() {
@@ -1523,8 +1503,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void attemptTextureReset() {
-        if (selectedAccount == null) {
-            textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
+        if (state.selectedAccount == null) {
+            state.textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
             return;
         }
         this.textureResetDialogHandler.deleteCachedPanel();
@@ -1535,8 +1515,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         Dialog<Boolean> dialog = new Dialog<>("wawelauth_confirm_texture_reset");
         dialog.setCloseOnOutOfBoundsClick(false);
 
-        String name = selectedAccount != null && selectedAccount.getProfileName() != null
-            ? selectedAccount.getProfileName()
+        String name = state.selectedAccount != null && state.selectedAccount.getProfileName() != null
+            ? state.selectedAccount.getProfileName()
             : GuiText.tr("wawelauth.gui.account_manager.this_account");
 
         dialog.size(230, 80)
@@ -1580,18 +1560,18 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void doTextureReset() {
-        if (selectedAccount == null) {
-            textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
+        if (state.selectedAccount == null) {
+            state.textureUploadStatus = GuiText.tr("wawelauth.gui.common.select_account_first");
             return;
         }
         WawelClient client = WawelClient.instance();
         if (client == null) {
-            textureUploadStatus = GuiText.tr("wawelauth.gui.common.client_not_running");
+            state.textureUploadStatus = GuiText.tr("wawelauth.gui.common.client_not_running");
             return;
         }
 
-        final long accountId = selectedAccount.getId();
-        textureUploadStatus = GuiText.tr("wawelauth.gui.account_manager.resetting");
+        final long accountId = state.selectedAccount.getId();
+        state.textureUploadStatus = GuiText.tr("wawelauth.gui.account_manager.resetting");
 
         // Immediately clear preview to show default skin while the server request is in flight
         if (previewFrontEntity != null) {
@@ -1601,16 +1581,16 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             previewBackEntity.clearTextures();
         }
 
-        if (ProviderDisplayName.isOfflineProvider(selectedAccount.getProviderName())) {
+        if (ProviderDisplayName.isOfflineProvider(state.selectedAccount.getProviderName())) {
             try {
                 String result = client.getAccountManager()
                     .resetOfflineTextures(accountId);
                 handleTextureResetSuccess(client, accountId, result);
             } catch (Exception e) {
-                textureUploadStatus = GuiText.tr("wawelauth.gui.common.failed_message", e.getMessage());
+                state.textureUploadStatus = GuiText.tr("wawelauth.gui.common.failed_message", e.getMessage());
                 WawelAuth.debug("Texture reset failed: " + e.getMessage());
-                if (selectedAccount != null && selectedAccount.getId() == accountId) {
-                    loadSkinForAccount(selectedAccount);
+                if (state.selectedAccount != null && state.selectedAccount.getId() == accountId) {
+                    loadSkinForAccount(state.selectedAccount);
                 }
             }
             return;
@@ -1623,11 +1603,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .func_152344_a(() -> {
                         if (err != null) {
                             Throwable cause = err.getCause() != null ? err.getCause() : err;
-                            textureUploadStatus = GuiText.tr("wawelauth.gui.common.failed_message", cause.getMessage());
+                            state.textureUploadStatus = GuiText
+                                .tr("wawelauth.gui.common.failed_message", cause.getMessage());
                             WawelAuth.debug("Texture reset failed: " + cause.getMessage());
                             // Reload the old skin since the reset failed
-                            if (selectedAccount != null && selectedAccount.getId() == accountId) {
-                                loadSkinForAccount(selectedAccount);
+                            if (state.selectedAccount != null && state.selectedAccount.getId() == accountId) {
+                                loadSkinForAccount(state.selectedAccount);
                             }
                             return;
                         }
@@ -1637,30 +1618,31 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void handleTextureResetSuccess(WawelClient client, long accountId, String result) {
-        textureUploadStatus = result != null ? result : GuiText.tr("wawelauth.gui.account_manager.reset_complete");
-        selectedSkinFile = null;
-        selectedCapeFile = null;
+        state.textureUploadStatus = result != null ? result
+            : GuiText.tr("wawelauth.gui.account_manager.reset_complete");
+        state.selectedSkinFile = null;
+        state.selectedCapeFile = null;
         ClientAccount refreshed = client.getAccountManager()
             .getAccount(accountId);
-        if (selectedAccount != null && selectedAccount.getId() == accountId) {
+        if (state.selectedAccount != null && state.selectedAccount.getId() == accountId) {
             if (refreshed != null) {
-                selectedAccount = refreshed;
+                state.selectedAccount = refreshed;
             }
-            if (selectedAccount.getProfileUuid() != null) {
+            if (state.selectedAccount.getProfileUuid() != null) {
                 client.getTextureResolver()
-                    .invalidate(selectedAccount.getProfileUuid());
-                LocalTextureLoader.invalidateOfflineCape(selectedAccount.getProfileUuid());
+                    .invalidate(state.selectedAccount.getProfileUuid());
+                LocalTextureLoader.invalidateOfflineCape(state.selectedAccount.getProfileUuid());
             }
-            loadSkinForAccount(selectedAccount);
+            loadSkinForAccount(state.selectedAccount);
         }
-        if (selectedProvider != null) {
+        if (state.selectedProvider != null) {
             rebuildAccountList();
             requestAccountListRebuild();
         }
     }
 
     private boolean isCredentialManagementAvailableForSelectedAccount() {
-        if (selectedAccount == null) {
+        if (state.selectedAccount == null) {
             return false;
         }
 
@@ -1670,7 +1652,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
 
         ClientProvider provider = client.getProviderRegistry()
-            .getProvider(selectedAccount.getProviderName());
+            .getProvider(state.selectedAccount.getProviderName());
         return isCredentialManagementSupported(provider);
     }
 
@@ -1691,21 +1673,21 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
 
         if (ClientConfig.isCredentialsDisabled(providerName, provider.getApiRoot())) {
-            if (registerCapabilityByProvider != null) {
-                registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            if (state.registerCapabilityByProvider != null) {
+                state.registerCapabilityByProvider.put(providerName, Boolean.FALSE);
             }
             return false;
         }
 
         if (LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
-            if (registerCapabilityByProvider != null) {
-                registerCapabilityByProvider.put(providerName, Boolean.TRUE);
+            if (state.registerCapabilityByProvider != null) {
+                state.registerCapabilityByProvider.put(providerName, Boolean.TRUE);
             }
             return true;
         }
 
-        if (registerCapabilityByProvider != null) {
-            Boolean supported = registerCapabilityByProvider.get(providerName);
+        if (state.registerCapabilityByProvider != null) {
+            Boolean supported = state.registerCapabilityByProvider.get(providerName);
             if (supported != null) {
                 return supported.booleanValue();
             }
@@ -1720,7 +1702,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return hasFocusedLocalMetadata();
         }
 
-        ClientProvider provider = resolveProvider(selectedProvider);
+        ClientProvider provider = resolveProvider(state.selectedProvider);
         if (provider == null) {
             return false;
         }
@@ -1732,21 +1714,21 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
 
         if (ProviderDisplayName.isMicrosoftProvider(providerName) || provider.getType() == ProviderType.BUILTIN) {
-            registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            state.registerCapabilityByProvider.put(providerName, Boolean.FALSE);
             return false;
         }
 
         if (ClientConfig.isCredentialsDisabled(providerName, provider.getApiRoot())) {
-            registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            state.registerCapabilityByProvider.put(providerName, Boolean.FALSE);
             return false;
         }
 
         if (LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
-            registerCapabilityByProvider.put(providerName, Boolean.TRUE);
+            state.registerCapabilityByProvider.put(providerName, Boolean.TRUE);
             return true;
         }
 
-        Boolean supported = registerCapabilityByProvider.get(providerName);
+        Boolean supported = state.registerCapabilityByProvider.get(providerName);
         if (supported != null) {
             return supported.booleanValue();
         }
@@ -1764,40 +1746,41 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return;
         }
 
-        if (registerCapabilityByProvider.containsKey(providerName)
-            || registerCapabilityProbeInFlight.contains(providerName)) {
+        if (state.registerCapabilityByProvider.containsKey(providerName)
+            || state.registerCapabilityProbeInFlight.contains(providerName)) {
             return;
         }
 
         if (ProviderDisplayName.isMicrosoftProvider(providerName) || provider.getType() == ProviderType.BUILTIN) {
-            registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            state.registerCapabilityByProvider.put(providerName, Boolean.FALSE);
             return;
         }
 
         if (ClientConfig.isCredentialsDisabled(providerName, provider.getApiRoot())) {
-            registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            state.registerCapabilityByProvider.put(providerName, Boolean.FALSE);
             return;
         }
 
         if (LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
-            registerCapabilityByProvider.put(providerName, Boolean.TRUE);
+            state.registerCapabilityByProvider.put(providerName, Boolean.TRUE);
             return;
         }
 
         WawelClient client = WawelClient.instance();
         if (client == null) {
-            registerCapabilityByProvider.put(providerName, Boolean.FALSE);
+            state.registerCapabilityByProvider.put(providerName, Boolean.FALSE);
             return;
         }
 
-        registerCapabilityProbeInFlight.add(providerName);
+        state.registerCapabilityProbeInFlight.add(providerName);
         client.getAccountManager()
             .probeSupportsWawelRegister(providerName)
             .whenComplete((supported, err) -> {
                 Minecraft.getMinecraft()
                     .func_152344_a(() -> {
-                        registerCapabilityProbeInFlight.remove(providerName);
-                        registerCapabilityByProvider.put(providerName, err == null && Boolean.TRUE.equals(supported));
+                        state.registerCapabilityProbeInFlight.remove(providerName);
+                        state.registerCapabilityByProvider
+                            .put(providerName, err == null && Boolean.TRUE.equals(supported));
                     });
             });
     }

@@ -2,7 +2,6 @@ package org.fentanylsolutions.wawelauth.client.gui;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
 
@@ -32,30 +31,17 @@ final class AccountManagerProviderDialogs {
 
     private static final int DETAIL_SECONDARY_TEXT_COLOR = 0xFF555555;
 
-    private final Supplier<String> pendingProviderSettingsName;
-    private final Consumer<String> setPendingProviderSettingsName;
-    private final Supplier<String> pendingProviderProxyName;
-    private final Consumer<String> setPendingProviderProxyName;
-    private final Supplier<ClientProvider> selectedProvider;
-    private final Consumer<ClientProvider> setSelectedProvider;
+    private final AccountManagerScreenState state;
     private final Runnable clearSelectedAccountAndPreview;
     private final Runnable rebuildProviderList;
     private final Runnable rebuildAccountList;
     private final Consumer<ClientProvider> openProviderProxyDialog;
     private final Runnable invalidateProviderSettingsDialog;
 
-    AccountManagerProviderDialogs(Supplier<String> pendingProviderSettingsName,
-        Consumer<String> setPendingProviderSettingsName, Supplier<String> pendingProviderProxyName,
-        Consumer<String> setPendingProviderProxyName, Supplier<ClientProvider> selectedProvider,
-        Consumer<ClientProvider> setSelectedProvider, Runnable clearSelectedAccountAndPreview,
+    AccountManagerProviderDialogs(AccountManagerScreenState state, Runnable clearSelectedAccountAndPreview,
         Runnable rebuildProviderList, Runnable rebuildAccountList, Consumer<ClientProvider> openProviderProxyDialog,
         Runnable invalidateProviderSettingsDialog) {
-        this.pendingProviderSettingsName = pendingProviderSettingsName;
-        this.setPendingProviderSettingsName = setPendingProviderSettingsName;
-        this.pendingProviderProxyName = pendingProviderProxyName;
-        this.setPendingProviderProxyName = setPendingProviderProxyName;
-        this.selectedProvider = selectedProvider;
-        this.setSelectedProvider = setSelectedProvider;
+        this.state = state;
         this.clearSelectedAccountAndPreview = clearSelectedAccountAndPreview;
         this.rebuildProviderList = rebuildProviderList;
         this.rebuildAccountList = rebuildAccountList;
@@ -68,12 +54,12 @@ final class AccountManagerProviderDialogs {
         dialog.setCloseOnOutOfBoundsClick(false);
 
         WawelClient client = WawelClient.instance();
-        if (client == null || pendingProviderSettingsName.get() == null) {
+        if (client == null || state.pendingProviderSettingsName == null) {
             return unavailableDialog(dialog, "wawelauth.gui.account_manager.provider_not_available");
         }
 
         ClientProvider provider = client.getProviderRegistry()
-            .getProvider(pendingProviderSettingsName.get());
+            .getProvider(state.pendingProviderSettingsName);
         if (provider == null) {
             return unavailableDialog(dialog, "wawelauth.gui.account_manager.provider_gone");
         }
@@ -111,12 +97,11 @@ final class AccountManagerProviderDialogs {
                     client.getProviderRegistry()
                         .renameProvider(oldName, newName);
 
-                    setPendingProviderSettingsName.accept(newName);
-                    ClientProvider current = selectedProvider.get();
+                    state.pendingProviderSettingsName = newName;
+                    ClientProvider current = state.selectedProvider;
                     if (current != null && oldName.equals(current.getName())) {
-                        setSelectedProvider.accept(
-                            client.getProviderRegistry()
-                                .getProvider(newName));
+                        state.selectedProvider = client.getProviderRegistry()
+                            .getProvider(newName);
                     }
 
                     rebuildProviderList.run();
@@ -143,13 +128,13 @@ final class AccountManagerProviderDialogs {
                     client.getProviderRegistry()
                         .removeProvider(oldName);
 
-                    ClientProvider current = selectedProvider.get();
+                    ClientProvider current = state.selectedProvider;
                     if (current != null && oldName.equals(current.getName())) {
-                        setSelectedProvider.accept(null);
+                        state.selectedProvider = null;
                         clearSelectedAccountAndPreview.run();
                     }
 
-                    setPendingProviderSettingsName.accept(null);
+                    state.pendingProviderSettingsName = null;
                     rebuildProviderList.run();
                     rebuildAccountList.run();
                     dialog.closeIfOpen();
@@ -179,7 +164,7 @@ final class AccountManagerProviderDialogs {
         ButtonWidget<?> closeBtn = new ButtonWidget<>();
         closeBtn.size(70, 18)
             .onMousePressed(btn -> {
-                setPendingProviderSettingsName.accept(null);
+                state.pendingProviderSettingsName = null;
                 dialog.closeIfOpen();
                 return true;
             });
@@ -231,12 +216,12 @@ final class AccountManagerProviderDialogs {
         dialog.setCloseOnOutOfBoundsClick(false);
 
         WawelClient client = WawelClient.instance();
-        if (client == null || pendingProviderProxyName.get() == null) {
+        if (client == null || state.pendingProviderProxyName == null) {
             return unavailableDialog(dialog, "wawelauth.gui.account_manager.provider_not_available");
         }
 
         ClientProvider provider = client.getProviderRegistry()
-            .getProvider(pendingProviderProxyName.get());
+            .getProvider(state.pendingProviderProxyName);
         if (provider == null) {
             return unavailableDialog(dialog, "wawelauth.gui.account_manager.provider_gone");
         }
@@ -392,15 +377,14 @@ final class AccountManagerProviderDialogs {
                         passwordField);
                     client.getProviderRegistry()
                         .updateProxySettings(provider.getName(), formSettings);
-                    ClientProvider current = selectedProvider.get();
+                    ClientProvider current = state.selectedProvider;
                     if (current != null && provider.getName()
                         .equals(current.getName())) {
-                        setSelectedProvider.accept(
-                            client.getProviderRegistry()
-                                .getProvider(provider.getName()));
+                        state.selectedProvider = client.getProviderRegistry()
+                            .getProvider(provider.getName());
                     }
                     invalidateProviderSettingsDialog.run();
-                    setPendingProviderProxyName.accept(null);
+                    state.pendingProviderProxyName = null;
                     dialog.closeIfOpen();
                 } catch (Exception e) {
                     proxyStatusOutcome[0] = ProviderRegistry.ProbeOutcome.ERROR;
@@ -413,7 +397,7 @@ final class AccountManagerProviderDialogs {
         ButtonWidget<?> closeBtn = new ButtonWidget<>();
         closeBtn.size(70, 18)
             .onMousePressed(btn -> {
-                setPendingProviderProxyName.accept(null);
+                state.pendingProviderProxyName = null;
                 dialog.closeIfOpen();
                 return true;
             });

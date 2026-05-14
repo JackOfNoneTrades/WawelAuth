@@ -1,8 +1,6 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
-import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
 
@@ -24,27 +22,18 @@ import com.cleanroommc.modularui.widgets.layout.Row;
 
 final class AccountManagerCredentialDialogs {
 
-    private final Supplier<ClientAccount> selectedAccount;
-    private final Consumer<ClientAccount> setSelectedAccount;
+    private final AccountManagerScreenState state;
     private final Predicate<ClientProvider> credentialManagementSupported;
-    private final Consumer<String> setTextureUploadStatus;
     private final Runnable openCredentialDeleteDialog;
     private final Runnable clearPreview;
     private final Runnable rebuildAccountList;
     private final Runnable requestAccountListRebuild;
 
-    private long pendingDeleteAccountId = -1L;
-    private String pendingDeleteAccountName;
-    private String pendingDeletePassword;
-
-    AccountManagerCredentialDialogs(Supplier<ClientAccount> selectedAccount, Consumer<ClientAccount> setSelectedAccount,
-        Predicate<ClientProvider> credentialManagementSupported, Consumer<String> setTextureUploadStatus,
-        Runnable openCredentialDeleteDialog, Runnable clearPreview, Runnable rebuildAccountList,
-        Runnable requestAccountListRebuild) {
-        this.selectedAccount = selectedAccount;
-        this.setSelectedAccount = setSelectedAccount;
+    AccountManagerCredentialDialogs(AccountManagerScreenState state,
+        Predicate<ClientProvider> credentialManagementSupported, Runnable openCredentialDeleteDialog,
+        Runnable clearPreview, Runnable rebuildAccountList, Runnable requestAccountListRebuild) {
+        this.state = state;
         this.credentialManagementSupported = credentialManagementSupported;
-        this.setTextureUploadStatus = setTextureUploadStatus;
         this.openCredentialDeleteDialog = openCredentialDeleteDialog;
         this.clearPreview = clearPreview;
         this.rebuildAccountList = rebuildAccountList;
@@ -55,7 +44,7 @@ final class AccountManagerCredentialDialogs {
         Dialog<Boolean> dialog = new Dialog<>("wawelauth_credentials");
         dialog.setCloseOnOutOfBoundsClick(false);
         WawelClient client = WawelClient.instance();
-        ClientAccount account = selectedAccount.get();
+        ClientAccount account = state.selectedAccount;
 
         String profileName = account != null && account.getProfileName() != null ? account.getProfileName()
             : GuiText.tr("wawelauth.gui.common.account");
@@ -168,10 +157,10 @@ final class AccountManagerCredentialDialogs {
                     return true;
                 }
 
-                pendingDeleteAccountId = account.getId();
-                pendingDeleteAccountName = account.getProfileName() != null ? account.getProfileName()
+                state.pendingCredentialDeleteAccountId = account.getId();
+                state.pendingCredentialDeleteAccountName = account.getProfileName() != null ? account.getProfileName()
                     : GuiText.tr("wawelauth.gui.common.account");
-                pendingDeletePassword = currentPassword;
+                state.pendingCredentialDeletePassword = currentPassword;
                 dialog.closeIfOpen();
                 openCredentialDeleteDialog.run();
                 return true;
@@ -243,10 +232,10 @@ final class AccountManagerCredentialDialogs {
         Dialog<Boolean> dialog = new Dialog<>("wawelauth_confirm_delete_server_account");
         dialog.setCloseOnOutOfBoundsClick(false);
 
-        long accountId = pendingDeleteAccountId;
-        String accountName = pendingDeleteAccountName != null ? pendingDeleteAccountName
+        long accountId = state.pendingCredentialDeleteAccountId;
+        String accountName = state.pendingCredentialDeleteAccountName != null ? state.pendingCredentialDeleteAccountName
             : GuiText.tr("wawelauth.gui.common.account");
-        String currentPassword = pendingDeletePassword;
+        String currentPassword = state.pendingCredentialDeletePassword;
         WawelClient client = WawelClient.instance();
 
         String[] statusText = { "" };
@@ -297,15 +286,15 @@ final class AccountManagerCredentialDialogs {
                                 }
 
                                 clearPendingDeleteState();
-                                ClientAccount current = selectedAccount.get();
+                                ClientAccount current = state.selectedAccount;
                                 if (current != null && current.getId() == accountId) {
-                                    setSelectedAccount.accept(null);
+                                    state.selectedAccount = null;
                                     clearPreview.run();
                                 }
                                 ServerBindingPersistence.clearMissingAccountBindings(client.getAccountManager());
                                 rebuildAccountList.run();
                                 requestAccountListRebuild.run();
-                                setTextureUploadStatus.accept(GuiText.tr("wawelauth.gui.credentials.status.deleted"));
+                                state.textureUploadStatus = GuiText.tr("wawelauth.gui.credentials.status.deleted");
                                 dialog.closeIfOpen();
                             });
                     });
@@ -343,12 +332,12 @@ final class AccountManagerCredentialDialogs {
     }
 
     boolean hasPendingDelete() {
-        return pendingDeleteAccountId >= 0L;
+        return state.pendingCredentialDeleteAccountId >= 0L;
     }
 
     void clearPendingDeleteState() {
-        pendingDeleteAccountId = -1L;
-        pendingDeleteAccountName = null;
-        pendingDeletePassword = null;
+        state.pendingCredentialDeleteAccountId = -1L;
+        state.pendingCredentialDeleteAccountName = null;
+        state.pendingCredentialDeletePassword = null;
     }
 }

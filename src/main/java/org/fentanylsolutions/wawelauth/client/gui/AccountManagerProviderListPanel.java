@@ -13,7 +13,6 @@ import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.wawelauth.wawelclient.LocalAuthProviderResolver;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
-import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderType;
 
@@ -37,23 +36,17 @@ final class AccountManagerProviderListPanel {
         .getSubArea(0.5f, 0.0f, 1.0f, 1.0f);
 
     private final ListWidget<IWidget, ?> providerList = new ListWidget<>();
-    private final Supplier<ClientProvider> selectedProvider;
-    private final Consumer<ClientProvider> setSelectedProvider;
-    private final Consumer<ClientAccount> setSelectedAccount;
+    private final AccountManagerScreenState state;
     private final Supplier<Boolean> hasFocusedLocalContext;
     private final Runnable refreshFocusedLocalProviderState;
     private final Consumer<ClientProvider> selectProvider;
     private final Runnable clearPreview;
     private final Consumer<ClientProvider> openProviderSettingsDialog;
 
-    AccountManagerProviderListPanel(Supplier<ClientProvider> selectedProvider,
-        Consumer<ClientProvider> setSelectedProvider, Consumer<ClientAccount> setSelectedAccount,
-        Supplier<Boolean> hasFocusedLocalContext, Runnable refreshFocusedLocalProviderState,
-        Consumer<ClientProvider> selectProvider, Runnable clearPreview,
+    AccountManagerProviderListPanel(AccountManagerScreenState state, Supplier<Boolean> hasFocusedLocalContext,
+        Runnable refreshFocusedLocalProviderState, Consumer<ClientProvider> selectProvider, Runnable clearPreview,
         Consumer<ClientProvider> openProviderSettingsDialog) {
-        this.selectedProvider = selectedProvider;
-        this.setSelectedProvider = setSelectedProvider;
-        this.setSelectedAccount = setSelectedAccount;
+        this.state = state;
         this.hasFocusedLocalContext = hasFocusedLocalContext;
         this.refreshFocusedLocalProviderState = refreshFocusedLocalProviderState;
         this.selectProvider = selectProvider;
@@ -91,7 +84,7 @@ final class AccountManagerProviderListPanel {
                 String.CASE_INSENSITIVE_ORDER));
 
         boolean selectedVisible = false;
-        ClientProvider currentSelected = selectedProvider.get();
+        ClientProvider currentSelected = state.selectedProvider;
         for (ClientProvider provider : providers) {
             String providerName = provider.getName() != null ? provider.getName() : "?";
             String providerDisplayName = ProviderDisplayName.displayName(providerName);
@@ -142,8 +135,8 @@ final class AccountManagerProviderListPanel {
                 selectProvider.accept(providers.get(0));
                 rebuild();
             } else {
-                setSelectedProvider.accept(null);
-                setSelectedAccount.accept(null);
+                state.selectedProvider = null;
+                state.selectedAccount = null;
                 clearPreview.run();
             }
         }
