@@ -7,6 +7,8 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,6 +18,7 @@ import net.minecraft.client.multiplayer.ServerAddress;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
 
+import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
@@ -26,6 +29,11 @@ import org.fentanylsolutions.wawelauth.wawelcore.ping.WawelPingPayload;
  * Persistence and cleanup helpers for per-server WawelAuth account bindings.
  */
 public final class ServerBindingPersistence {
+
+    private static final int MAX_SERVER_LIST_BACKUPS = 10;
+    private static final String SERVER_LIST_BACKUP_DIR = "backups";
+    private static final String SERVER_LIST_BACKUP_PREFIX = "servers.dat.wawelauth-";
+    private static final String SERVER_LIST_BACKUP_SUFFIX = ".bak";
 
     private static volatile WeakReference<ServerList> activeServerListRef = new WeakReference<>(null);
 
@@ -451,12 +459,64 @@ public final class ServerBindingPersistence {
                 return;
             }
 
-            File backup = new File(minecraft.mcDataDir, "servers.dat.wawelauth-" + System.currentTimeMillis() + ".bak");
+            File backupDir = resolveServerListBackupDir(minecraft);
+            if (!backupDir.exists() && !backupDir.mkdirs()) {
+                WawelAuth.debug("Failed to create servers.dat backup directory: " + backupDir.getAbsolutePath());
+                return;
+            }
+
+            File backup = nextServerListBackupFile(backupDir);
             Files.copy(source.toPath(), backup.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+            pruneServerListBackups(backupDir);
         } catch (IOException e) {
             WawelAuth.debug("Failed to back up servers.dat before save: " + e.getMessage());
         } catch (Throwable t) {
             WawelAuth.debug("Failed to back up servers.dat before save: " + t.getMessage());
+        }
+    }
+
+    private static File resolveServerListBackupDir(Minecraft minecraft) {
+        File localConfigDir = Config.getLocalConfigDir();
+        if (localConfigDir != null) {
+            return new File(localConfigDir, SERVER_LIST_BACKUP_DIR);
+        }
+
+        File minecraftConfigRoot = Config.getMinecraftConfigRoot();
+        if (minecraftConfigRoot != null) {
+            return new File(new File(minecraftConfigRoot, "wawelauth"), SERVER_LIST_BACKUP_DIR);
+        }
+
+        return new File(new File(new File(minecraft.mcDataDir, "config"), "wawelauth"), SERVER_LIST_BACKUP_DIR);
+    }
+
+    private static File nextServerListBackupFile(File backupDir) {
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        File backup = new File(backupDir, SERVER_LIST_BACKUP_PREFIX + timestamp + SERVER_LIST_BACKUP_SUFFIX);
+        for (int i = 1; backup.exists(); i++) {
+            backup = new File(backupDir, SERVER_LIST_BACKUP_PREFIX + timestamp + "-" + i + SERVER_LIST_BACKUP_SUFFIX);
+        }
+        return backup;
+    }
+
+    private static void pruneServerListBackups(File backupDir) {
+        File[] backups = backupDir.listFiles(
+            file -> file.isFile() && file.getName()
+                .startsWith(SERVER_LIST_BACKUP_PREFIX)
+                && file.getName()
+                    .endsWith(SERVER_LIST_BACKUP_SUFFIX));
+        if (backups == null || backups.length <= MAX_SERVER_LIST_BACKUPS) {
+            return;
+        }
+
+        Arrays.sort(
+            backups,
+            Comparator.comparing(File::getName)
+                .reversed());
+
+        for (int i = MAX_SERVER_LIST_BACKUPS; i < backups.length; i++) {
+            if (!backups[i].delete()) {
+                WawelAuth.debug("Failed to delete old servers.dat backup: " + backups[i].getAbsolutePath());
+            }
         }
     }
 
