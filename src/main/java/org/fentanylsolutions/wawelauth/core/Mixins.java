@@ -175,6 +175,12 @@ public class Mixins extends FentMixins {
             .side(MiscUtil.Side.CLIENT)
             .build();
 
+        registry.mixin("MixinTileEntityFancySkullRenderer")
+            .modid("etfuturum")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+
         registry.mixin("MixinEntityPlayerPreview")
             .modid("betterquesting")
             .extraModid("BetterQuesting")
