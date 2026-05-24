@@ -21,7 +21,7 @@ import cpw.mods.fml.common.event.FMLServerStoppingEvent;
     acceptedMinecraftVersions = "[1.7.10]",
     acceptableRemoteVersions = "*",
     guiFactory = "org.fentanylsolutions.wawelauth.client.gui.GuiFactory",
-    customProperties = { @Mod.CustomProperty(k = "license", v = "LGPLv3+SNEED"),
+    customProperties = { @Mod.CustomProperty(k = "license", v = "LGPLv3"),
         @Mod.CustomProperty(k = "issueTrackerUrl", v = "https://github.com/JackOfNoneTrades/WawelAuth/issues"),
         @Mod.CustomProperty(k = "iconFile", v = "assets/wawelauth/Logo_Dragon_Outline.png"),
         @Mod.CustomProperty(k = "backgroundFile", v = "assets/wawelauth/background.png") })

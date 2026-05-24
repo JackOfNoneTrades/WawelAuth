@@ -236,7 +236,7 @@ Regular whitelist and op commands are disabled.
 
 ## License
 
-`LGPLv3 + SNEED`
+`LGPLv3`
 
 ## Buy me some creatine
 
@@ -245,4 +245,4 @@ Regular whitelist and op commands are disabled.
 
 <br>
 
-![license](images/lgplsneed_small.png)
+![license](images/license_small.png)
