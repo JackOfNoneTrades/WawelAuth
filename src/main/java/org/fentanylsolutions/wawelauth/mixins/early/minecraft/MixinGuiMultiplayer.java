@@ -34,10 +34,11 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.cleanroommc.modularui.factory.ClientGUI;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 @Mixin(GuiMultiplayer.class)
 public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTooltipFaceHost {
@@ -103,16 +104,17 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
         wawelauth$clearServerTooltipFace();
     }
 
-    @Redirect(
+    @WrapOperation(
         method = "drawScreen",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/gui/GuiMultiplayer;func_146283_a(Ljava/util/List;II)V"))
-    private void wawelauth$drawTooltipWithFace(GuiMultiplayer instance, List<String> textLines, int x, int y) {
+    private void wawelauth$drawTooltipWithFace(GuiMultiplayer instance, List<String> textLines, int x, int y,
+        Operation<Void> original) {
         if (wawelauth$tooltipProfileUuid == null || wawelauth$tooltipDisplayName == null
             || textLines == null
             || textLines.isEmpty()) {
-            this.func_146283_a(textLines, x, y);
+            original.call(instance, textLines, x, y);
             return;
         }
         wawelauth$drawHoveringTextWithFace(textLines, x, y);
