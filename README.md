@@ -34,8 +34,11 @@ Clients can also benefit from account management, modern skins, and 3d skin laye
 ## Dependencies
 
 * [UniMixins](https://modrinth.com/mod/unimixins) [![curse](images/icons/curse.png)](https://www.curseforge.com/minecraft/mc-mods/unimixins) [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/unimixins/versions) [![git](images/icons/git.png)](https://github.com/LegacyModdingMC/UniMixins/releases)
-* [FentLib](https://github.com/JackOfNoneTrades/FentLib) [![git](images/icons/git.png)](https://github.com/JackOfNoneTrades/FentLib)
-* [ModularUI2](https://github.com/GTNewHorizons/ModularUI2) [![git](images/icons/git.png)](https://github.com/GTNewHorizons/ModularUI2) (Client only)
+* [FentLib](https://www.curseforge.com/minecraft/mc-mods/fentlib) [![curse](images/icons/curse.png)](https://www.curseforge.com/minecraft/mc-mods/fentlib) [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/fentlib) [![67](images/icons/67.png)](https://67.fentanylsolutions.org/mod/fentlib) [![git](images/icons/git.png)](https://github.com/JackOfNoneTrades/FentLib)
+* [ModularUI2](https://github.com/GTNewHorizons/ModularUI2) [![curse](images/icons/curse.png)](https://www.curseforge.com/minecraft/mc-mods/modularui)  [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/modularui) [![git](images/icons/git.png)](https://github.com/GTNewHorizons/ModularUI2) (Client only)
+
+> [!NOTE]
+> Each release also includes a `nodep` jar. It does not ship `sqlite-jdbc` or Bouncy Castle, and relies on [FalsePatternLib](https://github.com/FalsePattern/FalsePatternLib) [![curse](images/icons/curse.png)](https://www.curseforge.com/minecraft/mc-mods/fplib) [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/fplib) [![git](images/icons/git.png)](https://github.com/FalsePattern/FalsePatternLib) to supply them.
 
 ## Client Setup And Use
 
