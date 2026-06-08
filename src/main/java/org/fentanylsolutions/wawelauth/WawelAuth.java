@@ -17,7 +17,7 @@ import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 @Mod(
     modid = WawelAuth.MODID,
     version = Tags.VERSION,
-    name = "Wawel Auth",
+    name = WawelAuth.MODNAME,
     acceptedMinecraftVersions = "[1.7.10]",
     acceptableRemoteVersions = "*",
     guiFactory = "org.fentanylsolutions.wawelauth.client.gui.GuiFactory",
@@ -28,6 +28,7 @@ import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 public class WawelAuth {
 
     public static final String MODID = "wawelauth";
+    public static final String MODNAME = "Wawel Auth";
     public static final String MODGROUP = "org.fentanylsolutions";
     public static final Logger LOG = LogManager.getLogger(MODID);
 

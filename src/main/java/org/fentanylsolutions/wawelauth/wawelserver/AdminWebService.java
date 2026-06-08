@@ -964,11 +964,6 @@ public class AdminWebService {
 
         JsonObject meta = readOptionalObject(body, "meta");
         if (meta != null) {
-            value = readOptionalString(meta, "implementationName");
-            if (value != null) {
-                serverConfig.getMeta()
-                    .setImplementationName(value);
-            }
             value = readOptionalString(meta, "serverHomepage");
             if (value != null) {
                 serverConfig.getMeta()

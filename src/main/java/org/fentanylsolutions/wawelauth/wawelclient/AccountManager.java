@@ -199,7 +199,7 @@ public class AccountManager {
      * Probe whether a provider supports WawelAuth registration extension.
      * <p>
      * Current rule: GET {services/api root}/ and require
-     * meta.implementationName == "WawelAuth" (case-insensitive).
+     * meta.implementationName == WawelAuth.MODNAME (case-insensitive).
      */
     public CompletableFuture<Boolean> probeSupportsWawelRegister(String providerName) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
@@ -948,7 +948,7 @@ public class AccountManager {
         } catch (Exception e) {
             return false;
         }
-        return "WawelAuth".equalsIgnoreCase(implementationName.trim());
+        return WawelAuth.MODNAME.equalsIgnoreCase(implementationName.trim());
     }
 
     private ClientAccount doAuthenticateMicrosoft(String providerName, Consumer<String> statusSink) throws IOException {

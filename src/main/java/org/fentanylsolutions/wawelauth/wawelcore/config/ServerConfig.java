@@ -527,17 +527,12 @@ public class ServerConfig {
      */
     public static class Meta {
 
-        private String implementationName = "Wawel Auth";
         private String serverHomepage = "";
         private String serverRegister = "";
         private String publicDescription = "";
 
         public String getImplementationName() {
-            return implementationName;
-        }
-
-        public void setImplementationName(String implementationName) {
-            this.implementationName = implementationName;
+            return WawelAuth.MODNAME;
         }
 
         /**
