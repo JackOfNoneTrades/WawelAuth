@@ -62,7 +62,7 @@ public final class DynmapSkinUrlResolver {
         return apiRoot + "/textures/" + hash;
     }
 
-    static String resolveFromProfile(GameProfile profile) {
+    public static String resolveFromProfile(GameProfile profile) {
         if (profile == null) return null;
 
         Collection<Property> properties = profile.getProperties()
