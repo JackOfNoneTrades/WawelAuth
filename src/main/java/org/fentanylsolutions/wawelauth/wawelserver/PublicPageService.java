@@ -34,6 +34,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
 import org.fentanylsolutions.wawelauth.wawelnet.BinaryResponse;
 import org.fentanylsolutions.wawelauth.wawelnet.HttpRouter;
+import org.fentanylsolutions.wawelauth.wawelserver.compat.DynmapSkinUrlResolver;
 
 import com.mojang.authlib.GameProfile;
 

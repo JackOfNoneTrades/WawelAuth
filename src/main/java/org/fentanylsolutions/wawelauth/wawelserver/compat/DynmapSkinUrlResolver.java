@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.wawelserver;
+package org.fentanylsolutions.wawelauth.wawelserver.compat;
 
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +13,7 @@ import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
 import org.fentanylsolutions.wawelauth.wawelcore.ping.WawelPingPayload;
+import org.fentanylsolutions.wawelauth.wawelserver.WawelServer;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;

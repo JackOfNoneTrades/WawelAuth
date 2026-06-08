@@ -3,6 +3,7 @@ package org.fentanylsolutions.wawelauth.wawelserver;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+import org.fentanylsolutions.wawelauth.wawelserver.compat.DynmapSkinUrlResolver;
 import org.junit.Assert;
 import org.junit.Test;
 
