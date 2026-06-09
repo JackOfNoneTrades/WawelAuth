@@ -231,6 +231,55 @@ public class Mixins extends FentMixins {
             .side(MiscUtil.Side.SERVER)
             .build();
 
+        registry.mixin("MixinNetNameSync")
+            .modid("betterquesting")
+            .extraModid("BetterQuesting")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinNetPartySync")
+            .modid("betterquesting")
+            .extraModid("BetterQuesting")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinNetPartyAction")
+            .modid("betterquesting")
+            .extraModid("BetterQuesting")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinQuestCommandBase")
+            .modid("betterquesting")
+            .extraModid("BetterQuesting")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinBQCommandAdmin")
+            .modid("betterquesting")
+            .extraModid("BetterQuesting")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinBQCopyProgress")
+            .modid("betterquesting")
+            .extraModid("BetterQuesting")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinGuiPartyInvite")
+            .modid("betterquesting")
+            .extraModid("BetterQuesting")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+        registry.mixin("MixinGuiPartyManage")
+            .modid("betterquesting")
+            .extraModid("BetterQuesting")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+
         registry.mixin("MixinTileEntityFancySkullRenderer")
             .modid("etfuturum")
             .phase(MixinUtil.Phase.LATE)

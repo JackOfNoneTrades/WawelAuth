@@ -65,6 +65,22 @@ public final class ProviderAwareUserListManager {
         return resolveLocalProviderKey(profileUuid);
     }
 
+    public static String resolveKnownProviderKey(UUID profileUuid) {
+        String providerKey = resolveInferredProviderKey(profileUuid);
+        if (providerKey != null) {
+            return providerKey;
+        }
+
+        for (ProviderAwareUserListType listType : ProviderAwareUserListType.values()) {
+            providerKey = trimToNull(getProviderBindings(listType).get(profileUuid));
+            if (providerKey != null) {
+                return providerKey;
+            }
+        }
+
+        return null;
+    }
+
     public static String resolveOnlineProviderKey(UUID profileUuid) {
         if (profileUuid == null || ProviderQualifiedPlayerLookup.findOnlinePlayer(profileUuid) == null) {
             return null;
@@ -156,6 +172,9 @@ public final class ProviderAwareUserListManager {
             addKnownProvidersFromList(providers, manager.func_152599_k(), ProviderAwareUserListType.WHITELIST);
             addKnownProvidersFromList(providers, manager.func_152608_h(), ProviderAwareUserListType.BANS);
             for (String providerKey : getProviderBindings(ProviderAwareUserListType.FORGE_PLAYERS).values()) {
+                addProviderKey(providers, providerKey);
+            }
+            for (String providerKey : getProviderBindings(ProviderAwareUserListType.BETTER_QUESTING_PLAYERS).values()) {
                 addProviderKey(providers, providerKey);
             }
         }

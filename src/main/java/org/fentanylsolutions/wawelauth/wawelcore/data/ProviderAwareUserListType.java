@@ -8,5 +8,6 @@ public enum ProviderAwareUserListType {
     OPS,
     WHITELIST,
     BANS,
-    FORGE_PLAYERS
+    FORGE_PLAYERS,
+    BETTER_QUESTING_PLAYERS
 }
