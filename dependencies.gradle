@@ -35,20 +35,20 @@
  */
 dependencies {
     // Pure runtime
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.159:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.100-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.161:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.101-GTNH:dev")
     runtimeOnlyNonPublishable("curse.maven:archaicfix-677782:6785842")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:7695645")) // 1.0.2-1.7.10
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.31:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.34:dev")
     //runtimeOnlyNonPublishable("org.fentanylsolutions.vintagedamageindicators:VintageDamageIndicators:test2")
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:skinport-234948:3212017"))
 
     // Compile + runtime
-    devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.11.4:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.11.11:dev")
     devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:0.0.49:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.72-1.7.10:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.2.39:dev")
-    devOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.37-GTNH:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.73-1.7.10:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.3.0:dev")
+    devOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.40-GTNH:dev")
 
     // Pure compile
     compileOnly("org.jetbrains:annotations:26.1.0")
