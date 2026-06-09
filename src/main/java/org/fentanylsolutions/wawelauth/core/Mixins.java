@@ -29,6 +29,10 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.SERVER)
             .build();
+        registry.mixin("MixinCommandBase")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.SERVER)
+            .build();
         registry.mixin("MixinCommandOp")
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.SERVER)
@@ -181,6 +185,18 @@ public class Mixins extends FentMixins {
             .extraModid("ServerUtilities")
             .phase(MixinUtil.Phase.LATE)
             .side(MiscUtil.Side.CLIENT)
+            .build();
+        registry.mixin("MixinUniverse")
+            .modid("serverutilities")
+            .extraModid("ServerUtilities")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinForgePlayer")
+            .modid("serverutilities")
+            .extraModid("ServerUtilities")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
             .build();
 
         registry.mixin("MixinTileEntityFancySkullRenderer")

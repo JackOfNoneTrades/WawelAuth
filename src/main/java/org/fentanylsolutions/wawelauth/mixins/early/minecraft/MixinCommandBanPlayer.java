@@ -7,6 +7,7 @@ import net.minecraft.server.management.PlayerProfileCache;
 import net.minecraft.server.management.ServerConfigurationManager;
 
 import org.fentanylsolutions.wawelauth.wawelserver.FallbackWhitelistLookup;
+import org.fentanylsolutions.wawelauth.wawelserver.ProviderQualifiedPlayerLookup;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -65,14 +66,7 @@ public class MixinCommandBanPlayer {
             return null;
         }
 
-        for (EntityPlayerMP player : manager.playerEntityList) {
-            GameProfile playerProfile = player.getGameProfile();
-            if (playerProfile != null && profile.getId()
-                .equals(playerProfile.getId())) {
-                return player;
-            }
-        }
-        return null;
+        return ProviderQualifiedPlayerLookup.findOnlinePlayer(manager, profile.getId());
     }
 
     @Unique
