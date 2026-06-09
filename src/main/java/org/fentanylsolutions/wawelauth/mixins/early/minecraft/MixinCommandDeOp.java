@@ -36,7 +36,7 @@ public class MixinCommandDeOp {
             }
         }
 
-        // Enforce provider-qualified syntax only for deop targets.
+        // Reject unqualified names.
         return null;
     }
 }

@@ -37,6 +37,14 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.SERVER)
             .build();
+        registry.mixin("MixinCommandBanPlayer")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinCommandPardonPlayer")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.SERVER)
+            .build();
         registry.mixin("MixinBanListIpv6")
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.SERVER)

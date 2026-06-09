@@ -28,7 +28,7 @@ public class MixinCommandWhitelist {
             return FallbackWhitelistLookup.resolveQualifiedProfile(rawInput);
         }
 
-        // Enforce provider-qualified syntax only for whitelist targets.
+        // Reject unqualified names.
         return null;
     }
 
@@ -51,7 +51,7 @@ public class MixinCommandWhitelist {
             }
         }
 
-        // Enforce provider-qualified syntax only for whitelist targets.
+        // Reject unqualified names.
         return null;
     }
 }
