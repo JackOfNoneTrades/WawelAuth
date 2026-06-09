@@ -28,7 +28,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.storage.UserListProviderBinding
 
 import com.mojang.authlib.GameProfile;
 
-public final class  ProviderAwareUserListManager {
+public final class ProviderAwareUserListManager {
 
     private ProviderAwareUserListManager() {}
 
@@ -155,6 +155,9 @@ public final class  ProviderAwareUserListManager {
             addKnownProvidersFromList(providers, manager.func_152603_m(), ProviderAwareUserListType.OPS);
             addKnownProvidersFromList(providers, manager.func_152599_k(), ProviderAwareUserListType.WHITELIST);
             addKnownProvidersFromList(providers, manager.func_152608_h(), ProviderAwareUserListType.BANS);
+            for (String providerKey : getProviderBindings(ProviderAwareUserListType.FORGE_PLAYERS).values()) {
+                addProviderKey(providers, providerKey);
+            }
         }
 
         return new ArrayList<>(providers);

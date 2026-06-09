@@ -1,11 +1,12 @@
 package org.fentanylsolutions.wawelauth.wawelcore.data;
 
 /**
- * Vanilla UserList categories that can carry auth provider metadata.
+ * Player lists or player-record sets that can carry auth provider metadata.
  */
 public enum ProviderAwareUserListType {
 
     OPS,
     WHITELIST,
-    BANS
+    BANS,
+    FORGE_PLAYERS
 }

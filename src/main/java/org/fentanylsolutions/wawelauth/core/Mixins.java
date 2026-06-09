@@ -194,6 +194,24 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.LATE)
             .side(MiscUtil.Side.CLIENT)
             .build();
+        registry.mixin("AccessorGuiManagePlayersButtonBase")
+            .modid("serverutilities")
+            .extraModid("ServerUtilities")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+        registry.mixin("MixinGuiManagePlayerButtons")
+            .modid("serverutilities")
+            .extraModid("ServerUtilities")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+        registry.mixin("MixinGuiTransferOwnershipButton")
+            .modid("serverutilities")
+            .extraModid("ServerUtilities")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
         registry.mixin("MixinUniverse")
             .modid("serverutilities")
             .extraModid("ServerUtilities")
@@ -201,6 +219,12 @@ public class Mixins extends FentMixins {
             .side(MiscUtil.Side.SERVER)
             .build();
         registry.mixin("MixinForgePlayer")
+            .modid("serverutilities")
+            .extraModid("ServerUtilities")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.SERVER)
+            .build();
+        registry.mixin("MixinForgeTeam")
             .modid("serverutilities")
             .extraModid("ServerUtilities")
             .phase(MixinUtil.Phase.LATE)
