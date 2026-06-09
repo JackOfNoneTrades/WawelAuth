@@ -51,12 +51,11 @@ import org.fentanylsolutions.wawelauth.wawelcore.config.JsonConfigIO;
 import org.fentanylsolutions.wawelauth.wawelcore.config.RegistrationPolicy;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.PasswordHasher;
-import org.fentanylsolutions.wawelauth.wawelcore.data.AdminPlayerListType;
+import org.fentanylsolutions.wawelauth.wawelcore.data.ProviderAwareUserListType;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelInvite;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelUser;
-import org.fentanylsolutions.wawelauth.wawelcore.storage.AdminPlayerListProviderBindingDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.InviteDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.ProfileDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.TokenDAO;
@@ -103,7 +102,6 @@ public class AdminWebService {
     private final ProfileDAO profileDAO;
     private final TokenDAO tokenDAO;
     private final InviteDAO inviteDAO;
-    private final AdminPlayerListProviderBindingDAO adminPlayerListProviderBindingDAO;
     private final RequestRateLimiter rateLimiter;
     private final ConcurrentMap<String, AdminSession> sessions = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, CachedAvatar> avatarCache = new ConcurrentHashMap<>();
@@ -118,14 +116,12 @@ public class AdminWebService {
     private final byte[] nerdSymbolsSubsetWoff2;
 
     public AdminWebService(ServerConfig serverConfig, UserDAO userDAO, ProfileDAO profileDAO, TokenDAO tokenDAO,
-        InviteDAO inviteDAO, AdminPlayerListProviderBindingDAO adminPlayerListProviderBindingDAO,
-        RequestRateLimiter rateLimiter) {
+        InviteDAO inviteDAO, RequestRateLimiter rateLimiter) {
         this.serverConfig = serverConfig;
         this.userDAO = userDAO;
         this.profileDAO = profileDAO;
         this.tokenDAO = tokenDAO;
         this.inviteDAO = inviteDAO;
-        this.adminPlayerListProviderBindingDAO = adminPlayerListProviderBindingDAO;
         this.rateLimiter = rateLimiter;
         this.indexHtml = loadResourceBytes("/assets/wawelauth/web/admin/index.html");
         this.appJs = loadResourceBytes("/assets/wawelauth/web/admin/app.js");
@@ -669,13 +665,15 @@ public class AdminWebService {
         return callOnServerThread(() -> {
             ServerConfigurationManager scm = requireServerConfigManager();
             UserListWhitelist whitelist = scm.func_152599_k() /* getWhiteListedPlayers */;
-            Map<UUID, String> providerKeys = adminPlayerListProviderBindingDAO
-                .findAllProviderKeys(AdminPlayerListType.WHITELIST);
             List<Map<String, Object>> entries = new ArrayList<>();
-            List<GameProfile> profiles = readUserListProfiles(whitelist.func_152691_c());
+            List<GameProfile> profiles = ProviderAwareUserListManager.getSavedProfiles(whitelist);
             for (GameProfile profile : profiles) {
                 if (profile == null || profile.getId() == null) continue;
-                entries.add(toListEntryJson(profile, providerKeys.get(profile.getId())));
+                String providerKey = ProviderAwareUserListManager.resolveProviderKey(
+                    ProviderAwareUserListType.WHITELIST,
+                    profile,
+                    true);
+                entries.add(toListEntryJson(profile, providerKey));
             }
 
             Collections.sort(
@@ -726,8 +724,10 @@ public class AdminWebService {
             scm.func_152601_d(/* addWhitelistedPlayer */resolved.profile);
             return null;
         });
-        adminPlayerListProviderBindingDAO
-            .putProviderKey(AdminPlayerListType.WHITELIST, resolved.profile.getId(), resolved.providerKey);
+        ProviderAwareUserListManager.storeProviderBinding(
+            ProviderAwareUserListType.WHITELIST,
+            resolved.profile,
+            resolved.providerKey);
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("added", true);
@@ -747,9 +747,7 @@ public class AdminWebService {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("removed", true);
         out.put("name", target.getName());
-        if (target.getId() != null) {
-            adminPlayerListProviderBindingDAO.delete(AdminPlayerListType.WHITELIST, target.getId());
-        }
+        ProviderAwareUserListManager.deleteProviderBinding(ProviderAwareUserListType.WHITELIST, target);
         return out;
     }
 
@@ -758,13 +756,15 @@ public class AdminWebService {
         return callOnServerThread(() -> {
             ServerConfigurationManager scm = requireServerConfigManager();
             UserListOps ops = scm.func_152603_m() /* getOppedPlayers */;
-            Map<UUID, String> providerKeys = adminPlayerListProviderBindingDAO
-                .findAllProviderKeys(AdminPlayerListType.OPS);
             List<Map<String, Object>> entries = new ArrayList<>();
-            List<GameProfile> profiles = readUserListProfiles(ops.func_152691_c());
+            List<GameProfile> profiles = ProviderAwareUserListManager.getSavedProfiles(ops);
             for (GameProfile profile : profiles) {
                 if (profile == null || profile.getId() == null) continue;
-                entries.add(toListEntryJson(profile, providerKeys.get(profile.getId())));
+                String providerKey = ProviderAwareUserListManager.resolveProviderKey(
+                    ProviderAwareUserListType.OPS,
+                    profile,
+                    true);
+                entries.add(toListEntryJson(profile, providerKey));
             }
 
             Collections.sort(
@@ -797,8 +797,10 @@ public class AdminWebService {
             scm.func_152605_a(/* addOp */resolved.profile);
             return null;
         });
-        adminPlayerListProviderBindingDAO
-            .putProviderKey(AdminPlayerListType.OPS, resolved.profile.getId(), resolved.providerKey);
+        ProviderAwareUserListManager.storeProviderBinding(
+            ProviderAwareUserListType.OPS,
+            resolved.profile,
+            resolved.providerKey);
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("added", true);
@@ -818,9 +820,7 @@ public class AdminWebService {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("removed", true);
         out.put("name", target.getName());
-        if (target.getId() != null) {
-            adminPlayerListProviderBindingDAO.delete(AdminPlayerListType.OPS, target.getId());
-        }
+        ProviderAwareUserListManager.deleteProviderBinding(ProviderAwareUserListType.OPS, target);
         return out;
     }
 
@@ -1976,7 +1976,6 @@ public class AdminWebService {
         out.put("uuid", UuidUtil.toUnsigned(profile.getId()));
         out.put("name", profile.getName());
 
-        boolean isLocal = profileDAO.findByUuid(profile.getId()) != null;
         ProviderChoice boundProvider = findProviderChoice(storedProviderKey);
         if (boundProvider != null) {
             out.put("provider", boundProvider.key);
@@ -1995,10 +1994,10 @@ public class AdminWebService {
             return out;
         }
 
-        out.put("provider", isLocal ? "local" : null);
-        out.put("providerLabel", isLocal ? "Local" : "Unknown");
-        out.put("providerKnown", isLocal);
-        out.put("avatarUrl", isLocal ? buildAvatarUrl("local", profile.getId()) : null);
+        out.put("provider", null);
+        out.put("providerLabel", "Unknown");
+        out.put("providerKnown", false);
+        out.put("avatarUrl", null);
         return out;
     }
 
@@ -2023,7 +2022,7 @@ public class AdminWebService {
     private GameProfile requireExistingWhitelistEntry(RequestContext ctx) {
         ServerConfigurationManager scm = requireServerConfigManager();
         UserListWhitelist whitelist = scm.func_152599_k() /* getWhiteListedPlayers */;
-        List<GameProfile> profiles = readUserListProfiles(whitelist.func_152691_c());
+        List<GameProfile> profiles = ProviderAwareUserListManager.getSavedProfiles(whitelist);
 
         String uuidRaw = trimToNull(ctx.optJsonString("uuid"));
         if (uuidRaw != null) {
@@ -2050,7 +2049,7 @@ public class AdminWebService {
     private GameProfile requireExistingOpEntry(RequestContext ctx) {
         ServerConfigurationManager scm = requireServerConfigManager();
         UserListOps ops = scm.func_152603_m() /* getOppedPlayers */;
-        List<GameProfile> profiles = readUserListProfiles(ops.func_152691_c());
+        List<GameProfile> profiles = ProviderAwareUserListManager.getSavedProfiles(ops);
 
         String uuidRaw = trimToNull(ctx.optJsonString("uuid"));
         if (uuidRaw != null) {
@@ -2072,51 +2071,6 @@ public class AdminWebService {
         }
 
         throw NetException.notFound("Op entry not found.");
-    }
-
-    private List<GameProfile> readUserListProfiles(File listFile) {
-        List<GameProfile> profiles = new ArrayList<>();
-        if (listFile == null || !listFile.exists()) {
-            return profiles;
-        }
-
-        try (FileInputStream in = new FileInputStream(listFile)) {
-            byte[] raw = readAll(in, MAX_HTTP_BYTES);
-            if (raw.length == 0) {
-                return profiles;
-            }
-
-            JsonElement root = new JsonParser().parse(new String(raw, StandardCharsets.UTF_8));
-            if (root == null || !root.isJsonArray()) {
-                return profiles;
-            }
-
-            JsonArray array = root.getAsJsonArray();
-            for (JsonElement element : array) {
-                if (element == null || !element.isJsonObject()) continue;
-                JsonObject object = element.getAsJsonObject();
-
-                String uuidRaw = trimToNull(readOptionalString(object, "uuid"));
-                if (uuidRaw == null) continue;
-
-                UUID uuid;
-                try {
-                    uuid = UUID.fromString(uuidRaw);
-                } catch (Exception e) {
-                    continue;
-                }
-
-                String name = trimToNull(readOptionalString(object, "name"));
-                if (name == null) {
-                    name = uuid.toString();
-                }
-                profiles.add(new GameProfile(uuid, name));
-            }
-        } catch (Exception e) {
-            WawelAuth.LOG.warn("Failed to read user list file {}: {}", listFile, e.getMessage());
-        }
-
-        return profiles;
     }
 
     private String resolveSkinUrl(ProviderChoice provider, UUID uuid, String uuidUnsigned) {

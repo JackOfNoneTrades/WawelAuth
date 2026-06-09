@@ -7,14 +7,14 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.KeyManager;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.PropertySigner;
-import org.fentanylsolutions.wawelauth.wawelcore.storage.AdminPlayerListProviderBindingDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.UserListProviderBindingDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.InviteDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.ProfileDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.SessionDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.TokenDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.UserDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.memory.InMemorySessionDAO;
-import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteAdminPlayerListProviderBindingDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteUserListProviderBindingDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteDatabase;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteInviteDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteProfileDAO;
@@ -39,7 +39,7 @@ public class WawelServer {
     private final ProfileDAO profileDAO;
     private final TokenDAO tokenDAO;
     private final InviteDAO inviteDAO;
-    private final AdminPlayerListProviderBindingDAO adminPlayerListProviderBindingDAO;
+    private final UserListProviderBindingDAO userListProviderBindingDAO;
     private final PublicPageService publicPageService;
 
     private WawelServer(File stateDir) {
@@ -69,7 +69,7 @@ public class WawelServer {
         tokenDAO = new SqliteTokenDAO(database);
         profileDAO = new SqliteProfileDAO(database);
         inviteDAO = new SqliteInviteDAO(database);
-        adminPlayerListProviderBindingDAO = new SqliteAdminPlayerListProviderBindingDAO(database);
+        userListProviderBindingDAO = new SqliteUserListProviderBindingDAO(database);
         SessionDAO sessionDAO = new InMemorySessionDAO(
             config.getTokens()
                 .getSessionTimeoutMs(),
@@ -102,7 +102,6 @@ public class WawelServer {
             profileDAO,
             tokenDAO,
             inviteDAO,
-            adminPlayerListProviderBindingDAO,
             rateLimiter);
         publicPageService = new PublicPageService(config);
 
@@ -192,8 +191,8 @@ public class WawelServer {
         return inviteDAO;
     }
 
-    public AdminPlayerListProviderBindingDAO getAdminPlayerListProviderBindingDAO() {
-        return adminPlayerListProviderBindingDAO;
+    public UserListProviderBindingDAO getUserListProviderBindingDAO() {
+        return userListProviderBindingDAO;
     }
 
     /**

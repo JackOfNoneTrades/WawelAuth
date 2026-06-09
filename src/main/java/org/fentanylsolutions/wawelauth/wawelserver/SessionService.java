@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 public class SessionService {
 
     private static final String WAWELAUTH_CLIENT_MARKER = "wawelauth_client";
+    private static final String LOCAL_ONLY_HAS_JOINED_PARAM = "wawelauth_local_only";
 
     private final TokenDAO tokenDAO;
     private final ProfileDAO profileDAO;
@@ -118,6 +119,10 @@ public class SessionService {
 
         PendingSession session = sessionDAO.consume(serverId, username, ip, timeoutMs);
         if (session == null) {
+            if (isLocalOnlyHasJoined(ctx)) {
+                return null;
+            }
+
             JsonObject fallback = fallbackProxyService.resolveHasJoined(username, serverId, ip);
             if (fallback != null) {
                 return fallback;
@@ -177,6 +182,14 @@ public class SessionService {
             return false;
         }
         String marker = ctx.getQueryParam(WAWELAUTH_CLIENT_MARKER);
+        return "1".equals(marker) || "true".equalsIgnoreCase(marker);
+    }
+
+    private static boolean isLocalOnlyHasJoined(RequestContext ctx) {
+        if (ctx == null) {
+            return false;
+        }
+        String marker = ctx.getQueryParam(LOCAL_ONLY_HAS_JOINED_PARAM);
         return "1".equals(marker) || "true".equalsIgnoreCase(marker);
     }
 }

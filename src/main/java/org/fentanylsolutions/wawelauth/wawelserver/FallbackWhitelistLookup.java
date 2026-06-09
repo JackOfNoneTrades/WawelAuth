@@ -95,6 +95,26 @@ public final class FallbackWhitelistLookup {
         }
     }
 
+    public static String resolveQualifiedProviderKey(String rawInput) {
+        QualifiedName qualified = parseQualifiedName(rawInput);
+        if (qualified == null) return null;
+        if (isLocalProviderAlias(qualified.providerName)) {
+            return "local";
+        }
+        FallbackServer fallback = findFallbackByName(qualified.providerName);
+        return fallback == null ? null : trimToNull(fallback.getName());
+    }
+
+    public static String getQualifiedUsername(String rawInput) {
+        QualifiedName qualified = parseQualifiedName(rawInput);
+        return qualified == null ? null : qualified.username;
+    }
+
+    public static String getQualifiedProviderName(String rawInput) {
+        QualifiedName qualified = parseQualifiedName(rawInput);
+        return qualified == null ? null : qualified.providerName;
+    }
+
     private static GameProfile resolveLocalProfile(String username) {
         WawelServer server = WawelServer.instance();
         if (server == null) {

@@ -290,6 +290,11 @@ wawelauth.gui.drop.texture_title=Drop image as...
 wawelauth.gui.drop.zone_skin=Skin
 wawelauth.gui.drop.zone_cape=Cape
 
+wawelauth.commands.name_requires_online=Plain name '%s' only works while that exact player is online. Use name@provider for offline players.
+wawelauth.commands.qualified_not_found=Could not resolve '%s'. Check the provider name and username.
+wawelauth.commands.list_entry_missing=No %s entry matches '%s'.
+wawelauth.commands.online_player_not_found=No online player matches '%s'.
+
 wawelauth.gui.skincustomization.button=Skin Customization...
 wawelauth.gui.skincustomization.title=Skin Layer Customization
 wawelauth.gui.skincustomization.cape=Cape

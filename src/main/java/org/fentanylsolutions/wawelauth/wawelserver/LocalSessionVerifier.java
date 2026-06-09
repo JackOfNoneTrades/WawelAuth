@@ -48,6 +48,7 @@ public final class LocalSessionVerifier {
 
     /** Player UUID -> session server URL of their auth provider. Set during hasJoined. */
     private static final ConcurrentHashMap<UUID, String> playerProviderSessionUrls = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, String> playerProviderNames = new ConcurrentHashMap<>();
 
     private LocalSessionVerifier() {}
 
@@ -84,6 +85,7 @@ public final class LocalSessionVerifier {
                     String localSessionUrl = resolveLocalSessionServerUrl();
                     if (localResult.getId() != null && localSessionUrl != null) {
                         playerProviderSessionUrls.put(localResult.getId(), localSessionUrl);
+                        playerProviderNames.put(localResult.getId(), "local");
                     }
                     return localResult;
                 }
@@ -110,6 +112,7 @@ public final class LocalSessionVerifier {
         Map<String, Object> args = new HashMap<String, Object>();
         args.put("username", username);
         args.put("serverId", serverId);
+        args.put("wawelauth_local_only", "1");
         URL checkUrl = HttpAuthenticationService.constantURL(baseUrl + "/sessionserver/session/minecraft/hasJoined");
         URL url = HttpAuthenticationService.concatenateURL(checkUrl, HttpAuthenticationService.buildQuery(args));
         return fetchProfile(url, username);
@@ -147,6 +150,10 @@ public final class LocalSessionVerifier {
                     WawelAuth.debug("Fallback hasJoined hit: " + displayName);
                     if (profile.getId() != null && rawSessionUrl != null) {
                         playerProviderSessionUrls.put(profile.getId(), rawSessionUrl);
+                        String providerName = trimToNull(fallback.getName());
+                        if (providerName != null) {
+                            playerProviderNames.put(profile.getId(), providerName);
+                        }
                     }
                     return profile;
                 }
@@ -366,6 +373,10 @@ public final class LocalSessionVerifier {
         return playerUuid == null ? null : playerProviderSessionUrls.get(playerUuid);
     }
 
+    public static String getPlayerProviderName(UUID playerUuid) {
+        return playerUuid == null ? null : playerProviderNames.get(playerUuid);
+    }
+
     /**
      * Get all tracked player-provider associations.
      */
@@ -377,6 +388,7 @@ public final class LocalSessionVerifier {
     public static void clearPlayer(UUID playerUuid) {
         if (playerUuid != null) {
             playerProviderSessionUrls.remove(playerUuid);
+            playerProviderNames.remove(playerUuid);
         }
     }
 

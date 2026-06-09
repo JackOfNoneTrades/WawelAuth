@@ -6,22 +6,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import org.fentanylsolutions.wawelauth.wawelcore.data.AdminPlayerListType;
-import org.fentanylsolutions.wawelauth.wawelcore.storage.AdminPlayerListProviderBindingDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.data.ProviderAwareUserListType;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.UserListProviderBindingDAO;
 
-public class SqliteAdminPlayerListProviderBindingDAO implements AdminPlayerListProviderBindingDAO {
+public class SqliteUserListProviderBindingDAO implements UserListProviderBindingDAO {
 
     private final SqliteDatabase db;
 
-    public SqliteAdminPlayerListProviderBindingDAO(SqliteDatabase db) {
+    public SqliteUserListProviderBindingDAO(SqliteDatabase db) {
         this.db = db;
     }
 
     @Override
-    public Map<UUID, String> findAllProviderKeys(AdminPlayerListType listType) {
+    public Map<UUID, String> findAllProviderKeys(ProviderAwareUserListType listType) {
         return db.query(conn -> {
             try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT profile_uuid, provider_key FROM admin_player_list_provider_bindings WHERE list_type = ?")) {
+                "SELECT profile_uuid, provider_key FROM user_list_provider_bindings WHERE list_type = ?")) {
                 ps.setString(1, listType.name());
                 try (ResultSet rs = ps.executeQuery()) {
                     Map<UUID, String> out = new LinkedHashMap<>();
@@ -42,10 +42,10 @@ public class SqliteAdminPlayerListProviderBindingDAO implements AdminPlayerListP
     }
 
     @Override
-    public void putProviderKey(AdminPlayerListType listType, UUID profileUuid, String providerKey) {
+    public void putProviderKey(ProviderAwareUserListType listType, UUID profileUuid, String providerKey) {
         db.execute(conn -> {
             try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT OR REPLACE INTO admin_player_list_provider_bindings (list_type, profile_uuid, provider_key, updated_at) VALUES (?, ?, ?, ?)")) {
+                "INSERT OR REPLACE INTO user_list_provider_bindings (list_type, profile_uuid, provider_key, updated_at) VALUES (?, ?, ?, ?)")) {
                 ps.setString(1, listType.name());
                 ps.setString(2, profileUuid.toString());
                 ps.setString(3, providerKey);
@@ -56,10 +56,10 @@ public class SqliteAdminPlayerListProviderBindingDAO implements AdminPlayerListP
     }
 
     @Override
-    public void delete(AdminPlayerListType listType, UUID profileUuid) {
+    public void delete(ProviderAwareUserListType listType, UUID profileUuid) {
         db.execute(conn -> {
             try (PreparedStatement ps = conn.prepareStatement(
-                "DELETE FROM admin_player_list_provider_bindings WHERE list_type = ? AND profile_uuid = ?")) {
+                "DELETE FROM user_list_provider_bindings WHERE list_type = ? AND profile_uuid = ?")) {
                 ps.setString(1, listType.name());
                 ps.setString(2, profileUuid.toString());
                 ps.executeUpdate();

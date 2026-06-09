@@ -24,7 +24,7 @@ public abstract class MixinCommandBase {
 
         EntityPlayerMP player = ProviderQualifiedPlayerLookup.resolveOnlinePlayer(username);
         if (player == null) {
-            throw new PlayerNotFoundException();
+            throw new PlayerNotFoundException("wawelauth.commands.online_player_not_found", username);
         }
 
         cir.setReturnValue(player);

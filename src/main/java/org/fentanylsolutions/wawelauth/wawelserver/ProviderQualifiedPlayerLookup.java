@@ -6,6 +6,8 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ServerConfigurationManager;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
+
 import com.mojang.authlib.GameProfile;
 
 public final class ProviderQualifiedPlayerLookup {
@@ -13,11 +15,26 @@ public final class ProviderQualifiedPlayerLookup {
     private ProviderQualifiedPlayerLookup() {}
 
     public static EntityPlayerMP resolveOnlinePlayer(String rawInput) {
-        if (!FallbackWhitelistLookup.isQualifiedProviderUsername(rawInput)) {
+        if (FallbackWhitelistLookup.isQualifiedProviderUsername(rawInput)) {
+            return findOnlinePlayer(FallbackWhitelistLookup.resolveQualifiedProfile(rawInput));
+        }
+
+        return findOnlinePlayerByName(rawInput);
+    }
+
+    public static EntityPlayerMP findOnlinePlayerByName(String rawInput) {
+        String username = StringUtil.trimToNull(rawInput);
+        if (username == null) {
             return null;
         }
 
-        return findOnlinePlayer(FallbackWhitelistLookup.resolveQualifiedProfile(rawInput));
+        MinecraftServer server = MinecraftServer.getServer();
+        if (server == null || server.getConfigurationManager() == null) {
+            return null;
+        }
+
+        return server.getConfigurationManager()
+            .func_152612_a(username);
     }
 
     public static EntityPlayerMP findOnlinePlayer(GameProfile profile) {
