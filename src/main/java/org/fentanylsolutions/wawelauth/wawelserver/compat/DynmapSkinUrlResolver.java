@@ -83,7 +83,7 @@ public final class DynmapSkinUrlResolver {
         return null;
     }
 
-    static String extractSkinUrlFromTexturesProperty(String texturesBase64) {
+    public static String extractSkinUrlFromTexturesProperty(String texturesBase64) {
         String value = StringUtil.trimToNull(texturesBase64);
         if (value == null) return null;
 
@@ -102,7 +102,7 @@ public final class DynmapSkinUrlResolver {
         }
     }
 
-    static String absolutizeSkinUrl(String rawSkinUrl, String apiRoot) {
+    public static String absolutizeSkinUrl(String rawSkinUrl, String apiRoot) {
         String value = StringUtil.trimToNull(rawSkinUrl);
         if (value == null) return null;
 
