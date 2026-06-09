@@ -1,5 +1,6 @@
 package org.fentanylsolutions.wawelauth.mixins.late.serverutilities;
 
+import java.util.List;
 import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
@@ -8,12 +9,15 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
+import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+
+import com.mojang.authlib.GameProfile;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -67,8 +71,8 @@ public abstract class MixinPlayerHeadIcon extends ImageIcon {
 
     @Unique
     private ResourceLocation wawelauth$resolveSkin() {
-        UUID profileUuid = wawelauth$resolveProfileUuid();
-        if (profileUuid == null) {
+        GameProfile profile = wawelauth$resolveProfile();
+        if (profile == null || profile.getId() == null) {
             return WawelTextureResolver.getDefaultSkin();
         }
 
@@ -77,90 +81,59 @@ public abstract class MixinPlayerHeadIcon extends ImageIcon {
             return WawelTextureResolver.getDefaultSkin();
         }
 
-        // SU only gives us a UUID, try all trusted providers
-        java.util.List<org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider> trusted = client
-            .getSessionBridge()
-            .getTrustedProviders();
-        if (!trusted.isEmpty()) {
-            return client.getTextureResolver()
-                .getSkinFromAnyProvider(profileUuid, wawelauth$resolveDisplayName(profileUuid), trusted);
+        List<ClientProvider> providers = client.resolvePlayerProviderCandidates(profile.getId());
+        if (providers.isEmpty()) {
+            return WawelTextureResolver.getDefaultSkin();
         }
 
-        // Not on WA server: try active provider or local account
-        org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider provider = client
-            .resolvePlayerProvider(profileUuid);
-        if (provider != null) {
-            return client.getTextureResolver()
-                .getSkin(profileUuid, wawelauth$resolveDisplayName(profileUuid), provider, false);
-        }
-
-        return WawelTextureResolver.getDefaultSkin();
+        return client.getTextureResolver()
+            .getSkinFromAnyProvider(profile.getId(), profile.getName(), providers);
     }
 
     @Unique
-    private UUID wawelauth$resolveProfileUuid() {
+    private GameProfile wawelauth$resolveProfile() {
         Minecraft mc = Minecraft.getMinecraft();
-        if ((Object) this == ClientUtils.localPlayerHead) {
-            if (mc.thePlayer != null && mc.thePlayer.getGameProfile() != null
-                && mc.thePlayer.getGameProfile()
-                    .getId() != null) {
-                return mc.thePlayer.getGameProfile()
-                    .getId();
-            }
-            if (mc.getSession() != null && mc.getSession()
-                .func_148256_e() != null) {
-                return mc.getSession()
-                    .func_148256_e()
-                    .getId();
-            }
+        GameProfile localProfile = wawelauth$getLocalProfile(mc);
+        if ((Object) this == ClientUtils.localPlayerHead && localProfile != null && localProfile.getId() != null) {
+            return localProfile;
         }
 
-        return uuid;
-    }
-
-    @Unique
-    private String wawelauth$resolveDisplayName(UUID profileUuid) {
-        if (profileUuid == null) {
+        if (uuid == null) {
             return null;
         }
 
-        Minecraft mc = Minecraft.getMinecraft();
-
-        if ((Object) this == ClientUtils.localPlayerHead) {
-            if (mc.thePlayer != null && mc.thePlayer.getGameProfile() != null
-                && mc.thePlayer.getGameProfile()
-                    .getName() != null) {
-                return mc.thePlayer.getGameProfile()
-                    .getName();
-            }
-            if (mc.thePlayer != null) {
-                return mc.thePlayer.getCommandSenderName();
-            }
+        if (localProfile != null && uuid.equals(localProfile.getId())) {
+            return localProfile;
         }
 
-        if (mc.getSession() != null && mc.getSession()
-            .func_148256_e() != null
-            && profileUuid.equals(
-                mc.getSession()
-                    .func_148256_e()
-                    .getId())) {
-            return mc.getSession()
-                .func_148256_e()
-                .getName();
-        }
-
-        if (mc.theWorld != null) {
-            EntityPlayer player = mc.theWorld.func_152378_a(profileUuid);
+        if (mc != null && mc.theWorld != null) {
+            EntityPlayer player = mc.theWorld.func_152378_a(uuid);
             if (player != null) {
-                if (player.getGameProfile() != null && player.getGameProfile()
-                    .getName() != null) {
-                    return player.getGameProfile()
-                        .getName();
+                GameProfile worldProfile = player.getGameProfile();
+                if (worldProfile != null && worldProfile.getId() != null) {
+                    return worldProfile;
                 }
-                return player.getCommandSenderName();
+                return new GameProfile(uuid, player.getCommandSenderName());
             }
         }
 
-        return null;
+        return new GameProfile(uuid, null);
+    }
+
+    @Unique
+    private static GameProfile wawelauth$getLocalProfile(Minecraft mc) {
+        if (mc == null) {
+            return null;
+        }
+        if (mc.thePlayer != null && mc.thePlayer.getGameProfile() != null) {
+            return mc.thePlayer.getGameProfile();
+        }
+        try {
+            return mc.getSession() == null ? null
+                : mc.getSession()
+                    .func_148256_e();
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 }
