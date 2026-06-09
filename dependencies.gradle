@@ -57,7 +57,6 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:GTNH-Web-Map:0.3.46:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.7.33:dev")
     compileOnly("com.github.GTNewHorizons:Botania:1.13.25-GTNH:dev")
-    compileOnly(rfg.deobf("curse.maven:forgeservertools-64744:2225866"))
 
     // Shadow
     shadowImplementation("org.bouncycastle:bcprov-jdk15to18:${bouncyCastleVersion}")
