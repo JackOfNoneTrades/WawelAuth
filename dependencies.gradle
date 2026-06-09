@@ -48,7 +48,6 @@ dependencies {
     devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:0.0.49:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.72-1.7.10:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.2.39:dev")
-    devOnlyNonPublishable(rfg.deobf("curse.maven:better-questing-238856:2950244"))
     devOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.37-GTNH:dev")
 
     // Pure compile
