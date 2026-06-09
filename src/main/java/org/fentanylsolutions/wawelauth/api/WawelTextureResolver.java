@@ -3,6 +3,8 @@ package org.fentanylsolutions.wawelauth.api;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -125,6 +127,30 @@ public class WawelTextureResolver {
             }
         }
         return getDefaultSkin();
+    }
+
+    public ProfileTextureResult getProfileTextures(GameProfile profile, MinecraftSessionService sessionService,
+        boolean requireSecure, List<ClientProvider> providers) {
+        if (profile == null || profile.getId() == null || sessionService == null) {
+            return ProfileTextureResult.passThrough();
+        }
+        if (providers == null || providers.isEmpty()) {
+            return ProfileTextureResult.passThrough();
+        }
+
+        for (ClientProvider provider : providers) {
+            try {
+                ProfileTextureResult result = getProfileTextures(profile, sessionService, requireSecure, provider);
+                if (!result.getTextures()
+                    .isEmpty()) {
+                    return result;
+                }
+            } catch (RuntimeException e) {
+                WawelAuth.debug("Provider texture lookup failed for " + profile.getId() + ": " + e.getMessage());
+            }
+        }
+
+        return ProfileTextureResult.empty();
     }
 
     // =========================================================================
@@ -270,6 +296,35 @@ public class WawelTextureResolver {
         }
     }
 
+    private ProfileTextureResult getProfileTextures(GameProfile profile, MinecraftSessionService sessionService,
+        boolean requireSecure, ClientProvider provider) {
+        if (profile == null || profile.getId() == null || sessionService == null || provider == null) {
+            return ProfileTextureResult.empty();
+        }
+
+        GameProfile filled = sessionBridge.fillProfileFromProvider(provider, profile, requireSecure);
+        if (filled == null) {
+            return ProfileTextureResult.empty();
+        }
+
+        try {
+            sessionBridge.setActiveProviderContext(provider);
+            Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> textures = sessionService
+                .getTextures(filled, requireSecure);
+            return ProfileTextureResult.resolved(
+                provider,
+                filled,
+                textures == null || textures.isEmpty() ? Collections.emptyMap() : new HashMap<>(textures));
+        } catch (InsecureTextureException e) {
+            WawelAuth.debug(
+                "Insecure texture for " + profile
+                    .getId() + " with requireSecure=" + requireSecure + ": " + e.getMessage());
+            return ProfileTextureResult.resolved(provider, filled, Collections.emptyMap());
+        } finally {
+            sessionBridge.clearActiveProviderContext();
+        }
+    }
+
     private void doFetch(TextureEntry entry, UUID profileId, String displayName, ClientProvider provider,
         boolean requireSecure) {
         if (!cache.isCurrent(entry)) {
@@ -294,14 +349,13 @@ public class WawelTextureResolver {
 
         // Fetch profile from the provider's session server
         GameProfile requestedProfile = new GameProfile(profileId, displayName);
-        GameProfile profile;
-        try {
-            profile = sessionBridge.fillProfileFromProvider(provider, requestedProfile, requireSecure);
-        } catch (Exception e) {
-            WawelAuth.debug("fillProfileFromProvider failed for " + profileId + ": " + e.getMessage());
-            cache.handleFetchFailureIfCurrent(entry);
-            return;
-        }
+        ProfileTextureResult profileTextures = getProfileTextures(
+            requestedProfile,
+            Minecraft.getMinecraft()
+                .func_152347_ac(),
+            requireSecure,
+            provider);
+        GameProfile profile = profileTextures.getProfile();
 
         if (profile == null || profile.getProperties()
             .isEmpty()) {
@@ -316,20 +370,7 @@ public class WawelTextureResolver {
             }
         }
 
-        // Parse textures via authlib (mixin handles signature/domain checks)
-        MinecraftSessionService sessionService = Minecraft.getMinecraft()
-            .func_152347_ac();
-        Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> textures;
-        try {
-            sessionBridge.setActiveProviderContext(provider);
-            textures = sessionService.getTextures(profile, requireSecure);
-        } catch (InsecureTextureException e) {
-            WawelAuth.debug(
-                "Insecure texture for " + profileId + " with requireSecure=" + requireSecure + ": " + e.getMessage());
-            textures = Collections.emptyMap();
-        } finally {
-            sessionBridge.clearActiveProviderContext();
-        }
+        Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> textures = profileTextures.getTextures();
         if (!cache.isCurrent(entry)) {
             return;
         }
@@ -442,5 +483,61 @@ public class WawelTextureResolver {
 
     void completeNoTextureIfCurrent(TextureEntry entry) {
         cache.completeNoTextureIfCurrent(entry, fallbackFor(entry.kind));
+    }
+
+    public static final class ProfileTextureResult {
+
+        private static final ProfileTextureResult PASS_THROUGH = new ProfileTextureResult(
+            false,
+            null,
+            null,
+            Collections.emptyMap());
+        private static final ProfileTextureResult EMPTY = new ProfileTextureResult(
+            true,
+            null,
+            null,
+            Collections.emptyMap());
+
+        private final boolean handled;
+        private final ClientProvider provider;
+        private final GameProfile profile;
+        private final Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> textures;
+
+        private ProfileTextureResult(boolean handled, ClientProvider provider, GameProfile profile,
+            Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> textures) {
+            this.handled = handled;
+            this.provider = provider;
+            this.profile = profile;
+            this.textures = textures != null ? textures : Collections.emptyMap();
+        }
+
+        static ProfileTextureResult passThrough() {
+            return PASS_THROUGH;
+        }
+
+        static ProfileTextureResult empty() {
+            return EMPTY;
+        }
+
+        static ProfileTextureResult resolved(ClientProvider provider, GameProfile profile,
+            Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> textures) {
+            return new ProfileTextureResult(true, provider, profile, textures);
+        }
+
+        public boolean isHandled() {
+            return handled;
+        }
+
+        public ClientProvider getProvider() {
+            return provider;
+        }
+
+        public GameProfile getProfile() {
+            return profile;
+        }
+
+        public Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> getTextures() {
+            return textures;
+        }
     }
 }

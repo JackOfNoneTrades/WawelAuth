@@ -1,6 +1,11 @@
 package org.fentanylsolutions.wawelauth.wawelclient;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
@@ -220,6 +225,67 @@ public class WawelClient {
         }
 
         return null;
+    }
+
+    public List<ClientProvider> resolvePlayerProviderCandidates(UUID playerUuid) {
+        if (playerUuid == null) {
+            return Collections.emptyList();
+        }
+
+        if (!PreviewEntityRenderContext.isRenderingInGui && Minecraft.getMinecraft().theWorld != null
+            && connectionProviderCache.isActive()) {
+            ClientProvider connectionProvider = connectionProviderCache.getPlayerProvider(playerUuid);
+            if (connectionProvider != null) {
+                return Collections.singletonList(connectionProvider);
+            }
+        }
+
+        List<ClientProvider> providers = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (ClientProvider provider : sessionBridge.getTrustedProviders()) {
+            addProviderCandidate(providers, seen, provider);
+        }
+
+        addProviderCandidate(providers, seen, resolvePlayerProvider(playerUuid));
+        return providers.isEmpty() ? Collections.emptyList() : providers;
+    }
+
+    private static void addProviderCandidate(List<ClientProvider> providers, Set<String> seen,
+        ClientProvider provider) {
+        if (provider == null) {
+            return;
+        }
+        if (seen.add(providerCandidateKey(provider))) {
+            providers.add(provider);
+        }
+    }
+
+    private static String providerCandidateKey(ClientProvider provider) {
+        String name = trimToNull(provider.getName());
+        if (name != null) {
+            return "name:" + name.toLowerCase();
+        }
+
+        String sessionUrl = trimToNull(provider.getSessionServerUrl());
+        if (sessionUrl != null) {
+            return "session:" + sessionUrl.toLowerCase();
+        }
+
+        String apiRoot = trimToNull(provider.getApiRoot());
+        if (apiRoot != null) {
+            return "api:" + apiRoot.toLowerCase();
+        }
+
+        return "identity:" + System.identityHashCode(provider);
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /** Resolve provider by name, or null. */

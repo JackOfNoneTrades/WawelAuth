@@ -1,6 +1,9 @@
 package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 
 import java.io.File;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import net.minecraft.client.Minecraft;
@@ -12,16 +15,20 @@ import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
+import org.fentanylsolutions.wawelauth.api.WawelTextureResolver.ProfileTextureResult;
 import org.fentanylsolutions.wawelauth.client.render.IProviderAwareSkinManager;
 import org.fentanylsolutions.wawelauth.client.render.ProviderThreadDownloadImageData;
 import org.fentanylsolutions.wawelauth.client.render.SkinManagerCompatImageBuffer;
 import org.fentanylsolutions.wawelauth.client.render.SkinTextureState;
+import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.mojang.authlib.GameProfile;
@@ -57,10 +64,44 @@ public abstract class MixinSkinManager implements IProviderAwareSkinManager {
     @Final
     private MinecraftSessionService field_152797_e;
 
+    @Inject(method = "func_152788_a", at = @At("HEAD"), cancellable = true)
+    private void wawelauth$getProviderProfileTextures(GameProfile profile,
+        CallbackInfoReturnable<Map<Type, MinecraftProfileTexture>> cir) {
+        WawelClient client = WawelClient.instance();
+        if (client == null || profile == null || profile.getId() == null) {
+            return;
+        }
+        ProfileTextureResult result = client.getTextureResolver()
+            .getProfileTextures(
+                profile,
+                field_152797_e,
+                false,
+                client.resolvePlayerProviderCandidates(profile.getId()));
+        if (result.isHandled()) {
+            cir.setReturnValue(result.getTextures());
+        }
+    }
+
     @Inject(method = "func_152789_a", at = @At("HEAD"), cancellable = true)
     private void wawelauth$registerTextureWithoutAnonymousCallback(MinecraftProfileTexture texture, Type textureType,
         SkinManager.SkinAvailableCallback callback, CallbackInfoReturnable<ResourceLocation> cir) {
         cir.setReturnValue(wawelauth$loadTexture(texture, textureType, callback, null));
+    }
+
+    @Inject(method = "func_152790_a", at = @At("HEAD"), cancellable = true)
+    private void wawelauth$loadProfileTexturesProviderAware(GameProfile profile,
+        SkinManager.SkinAvailableCallback callback, boolean requireSecure, CallbackInfo ci) {
+        WawelClient client = WawelClient.instance();
+        if (client == null || profile == null || profile.getId() == null) {
+            return;
+        }
+        List<ClientProvider> providers = client.resolvePlayerProviderCandidates(profile.getId());
+        if (providers.isEmpty()) {
+            return;
+        }
+
+        wawelauth$loadProfileTextures(profile, callback, requireSecure, providers);
+        ci.cancel();
     }
 
     @Override
@@ -95,6 +136,11 @@ public abstract class MixinSkinManager implements IProviderAwareSkinManager {
     @Override
     public void wawelauth$loadProfileTextures(final GameProfile profile,
         final SkinManager.SkinAvailableCallback callback, final boolean requireSecure, final ClientProvider provider) {
+        if (provider != null) {
+            wawelauth$loadProfileTextures(profile, callback, requireSecure, Collections.singletonList(provider));
+            return;
+        }
+
         field_152794_b.submit(() -> {
             final java.util.HashMap<Type, MinecraftProfileTexture> textures = new java.util.HashMap<>();
 
@@ -111,6 +157,33 @@ public abstract class MixinSkinManager implements IProviderAwareSkinManager {
                 textures
                     .putAll(field_152797_e.getTextures(field_152797_e.fillProfileProperties(profile, false), false));
             }
+
+            Minecraft.getMinecraft()
+                .func_152344_a(() -> {
+                    if (textures.containsKey(Type.SKIN)) {
+                        wawelauth$loadTexture(textures.get(Type.SKIN), Type.SKIN, callback, provider);
+                    }
+
+                    if (textures.containsKey(Type.CAPE)) {
+                        wawelauth$loadTexture(textures.get(Type.CAPE), Type.CAPE, callback, provider);
+                    }
+                });
+        });
+    }
+
+    @Unique
+    private void wawelauth$loadProfileTextures(final GameProfile profile,
+        final SkinManager.SkinAvailableCallback callback, final boolean requireSecure,
+        final List<ClientProvider> providers) {
+        field_152794_b.submit(() -> {
+            WawelClient client = WawelClient.instance();
+            if (client == null) {
+                return;
+            }
+            ProfileTextureResult result = client.getTextureResolver()
+                .getProfileTextures(profile, field_152797_e, requireSecure, providers);
+            final Map<Type, MinecraftProfileTexture> textures = result.getTextures();
+            final ClientProvider provider = result.getProvider();
 
             Minecraft.getMinecraft()
                 .func_152344_a(() -> {
