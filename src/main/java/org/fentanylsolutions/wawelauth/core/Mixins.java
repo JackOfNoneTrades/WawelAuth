@@ -222,12 +222,6 @@ public class Mixins extends FentMixins {
             .side(MiscUtil.Side.CLIENT)
             .build();
 
-        registry.mixin("MixinLOTRGuiMap")
-            .modid("lotr")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
         registry.mixin("MixinVoiceHandler")
             .modid("ServerTools")
             .phase(MixinUtil.Phase.LATE)
