@@ -1,6 +1,11 @@
 package org.fentanylsolutions.wawelauth.wawelserver;
 
 import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
@@ -29,6 +34,9 @@ import org.fentanylsolutions.wawelauth.wawelnet.HttpRouter;
  */
 public class WawelServer {
 
+    private static final int HTTP_WORKER_THREADS = 8;
+    private static final int HTTP_WORKER_QUEUE_CAPACITY = 128;
+
     private static WawelServer instance;
 
     private final ServerConfig serverConfig;
@@ -41,9 +49,25 @@ public class WawelServer {
     private final InviteDAO inviteDAO;
     private final UserListProviderBindingDAO userListProviderBindingDAO;
     private final PublicPageService publicPageService;
+    private final ExecutorService httpWorkerPool;
 
     private WawelServer(File stateDir) {
         WawelAuth.LOG.info("Starting Wawel Auth server module...");
+
+        // Bounded pool keeps blocking route handlers (PBKDF2, fallback proxy, ImageIO)
+        // off the Netty event loops shared with player connections.
+        AtomicInteger threadIndex = new AtomicInteger(1);
+        httpWorkerPool = new ThreadPoolExecutor(
+            HTTP_WORKER_THREADS,
+            HTTP_WORKER_THREADS,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(HTTP_WORKER_QUEUE_CAPACITY),
+            runnable -> {
+                Thread thread = new Thread(runnable, "WawelAuth-HTTP-Worker-" + threadIndex.getAndIncrement());
+                thread.setDaemon(true);
+                return thread;
+            });
 
         if (!stateDir.exists() && !stateDir.mkdirs()) {
             throw new RuntimeException("Failed to create state directory: " + stateDir.getAbsolutePath());
@@ -142,6 +166,7 @@ public class WawelServer {
     public static synchronized void stop() {
         if (instance == null) return;
         WawelAuth.LOG.info("Stopping WawelAuth server module...");
+        instance.httpWorkerPool.shutdownNow();
         try {
             instance.database.close();
         } catch (Exception e) {
@@ -156,6 +181,10 @@ public class WawelServer {
 
     public HttpRouter getRouter() {
         return router;
+    }
+
+    public ExecutorService getHttpWorkerPool() {
+        return httpWorkerPool;
     }
 
     public ServerConfig getServerConfig() {

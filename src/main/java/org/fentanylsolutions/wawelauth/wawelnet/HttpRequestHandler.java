@@ -2,6 +2,7 @@ package org.fentanylsolutions.wawelauth.wawelnet;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.fentanylsolutions.fentlib.services.http.ReverseProxyHttpHandler;
 import org.fentanylsolutions.wawelauth.WawelAuth;
@@ -73,14 +74,53 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
             return;
         }
 
+        RequestContext reqCtx = new RequestContext(
+            request,
+            match.getPathParams(),
+            ctx.channel()
+                .remoteAddress(),
+            ctx.pipeline()
+                .get("https_ssl") instanceof SslHandler);
+
+        // The full request has arrived and responses always close the connection,
+        // so the read timeout would only misfire while a worker is still busy.
+        if (ctx.pipeline()
+            .get("http_timeout") != null) {
+            ctx.pipeline()
+                .remove("http_timeout");
+        }
+
+        // Run the handler on the worker pool. Blocking there (PBKDF2, fallback
+        // proxy HTTP, ImageIO, SQLite) must never park the Netty event loops
+        // shared with player connections.
+        request.retain();
         try {
-            RequestContext reqCtx = new RequestContext(
-                request,
-                match.getPathParams(),
+            server.getHttpWorkerPool()
+                .execute(() -> {
+                    try {
+                        dispatch(ctx, request, match, reqCtx, path);
+                    } finally {
+                        request.release();
+                    }
+                });
+        } catch (RejectedExecutionException e) {
+            request.release();
+            WawelAuth.LOG.warn(
+                "HTTP worker pool saturated, rejecting {} {} from {}",
+                request.getMethod(),
+                path,
                 ctx.channel()
-                    .remoteAddress(),
-                ctx.pipeline()
-                    .get("https_ssl") instanceof SslHandler);
+                    .remoteAddress());
+            sendJson(
+                ctx,
+                HttpResponseStatus.SERVICE_UNAVAILABLE,
+                "{\"error\":\"ServerUnavailable\",\"errorMessage\":\"Server is overloaded, try again later\"}");
+        }
+    }
+
+    private static void dispatch(ChannelHandlerContext ctx, FullHttpRequest request, HttpRouter.MatchResult match,
+        RequestContext reqCtx, String path) {
+        try {
             Object result = match.getHandler()
                 .handle(reqCtx);
 
