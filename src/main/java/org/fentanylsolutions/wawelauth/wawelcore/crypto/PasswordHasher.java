@@ -1,5 +1,7 @@
 package org.fentanylsolutions.wawelauth.wawelcore.crypto;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -58,6 +60,18 @@ public class PasswordHasher {
         return constantTimeEquals(expected, actual);
     }
 
+    /**
+     * Runs the same PBKDF2 verification work against deterministic dummy inputs.
+     * Used when a password subject does not exist, so missing users and wrong
+     * passwords for existing users have comparable response timing.
+     */
+    public static boolean verifyDummy(String password, String subject) {
+        String normalizedSubject = subject == null ? "" : subject;
+        byte[] salt = firstBytes(sha256("wawelauth-dummy-salt:" + normalizedSubject), SALT_BYTES);
+        byte[] hash = sha256("wawelauth-dummy-hash:" + normalizedSubject);
+        return verify(password, bytesToHex(hash), bytesToHex(salt));
+    }
+
     private static byte[] pbkdf2(char[] password, byte[] salt) {
         try {
             PBEKeySpec spec = new PBEKeySpec(password, salt, ITERATIONS, HASH_BITS);
@@ -71,6 +85,21 @@ public class PasswordHasher {
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             throw new RuntimeException("PBKDF2 not available", e);
         }
+    }
+
+    private static byte[] sha256(String value) {
+        try {
+            return MessageDigest.getInstance("SHA-256")
+                .digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
+    }
+
+    private static byte[] firstBytes(byte[] input, int length) {
+        byte[] out = new byte[length];
+        System.arraycopy(input, 0, out, 0, Math.min(input.length, length));
+        return out;
     }
 
     private static boolean constantTimeEquals(byte[] a, byte[] b) {

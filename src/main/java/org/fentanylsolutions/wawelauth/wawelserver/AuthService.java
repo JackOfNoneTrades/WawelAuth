@@ -287,11 +287,13 @@ public class AuthService {
 
         WawelUser user = userDAO.findByUsername(username);
         if (user == null) {
+            PasswordHasher.verifyDummy(password, username);
             recordPasswordFailure(ctx, username);
             throw NetException.forbidden("Invalid credentials. Invalid username or password.");
         }
 
         if (user.isLocked()) {
+            PasswordHasher.verifyDummy(password, username);
             recordPasswordFailure(ctx, username);
             throw NetException.forbidden("Account is locked.");
         }
@@ -543,6 +545,7 @@ public class AuthService {
 
         WawelUser user = userDAO.findByUsername(username);
         if (user == null) {
+            PasswordHasher.verifyDummy(password, username);
             recordPasswordFailure(ctx, username);
             throw NetException.forbidden("Invalid credentials. Invalid username or password.");
         }
