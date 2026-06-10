@@ -73,6 +73,8 @@ public class TextureService {
             throw NetException.forbidden("Profile is not allowed to upload " + textureType.getApiName() + " textures.");
         }
 
+        String previousHash = profile.getTextureHash(textureType);
+
         // Parse multipart body
         FullHttpRequest request = ctx.getRequest();
 
@@ -239,6 +241,11 @@ public class TextureService {
                         .getApiName() + " uploaded for profile " + profile.getName() + " (hash: " + hash + ")");
             } else {
                 throw NetException.illegalArgument("File is not a valid PNG or GIF image.");
+            }
+
+            // Clean up the replaced file if no other profile references this hash.
+            if (previousHash != null && !profileDAO.isTextureHashReferenced(previousHash)) {
+                textureFileStore.delete(previousHash);
             }
 
         } catch (IOException e) {

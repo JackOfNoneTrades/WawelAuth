@@ -81,6 +81,24 @@ public class TextureFileStore {
         }
     }
 
+    /**
+     * Returns the hashes of all stored texture files.
+     */
+    public java.util.Set<String> listStoredHashes() {
+        java.util.Set<String> hashes = new java.util.HashSet<>();
+        File[] files = textureDir.listFiles();
+        if (files == null) {
+            return hashes;
+        }
+        for (File file : files) {
+            String name = file.getName();
+            if (name.endsWith(".png") || name.endsWith(".gif")) {
+                hashes.add(name.substring(0, name.length() - 4));
+            }
+        }
+        return hashes;
+    }
+
     public boolean exists(String hash) {
         return pngFileFor(hash).exists() || gifFileFor(hash).exists();
     }

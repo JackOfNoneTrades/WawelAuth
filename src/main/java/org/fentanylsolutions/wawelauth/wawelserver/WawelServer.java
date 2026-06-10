@@ -101,6 +101,7 @@ public class WawelServer {
 
         // File stores
         TextureFileStore textureFileStore = new TextureFileStore(stateDir);
+        sweepOrphanedTextures(textureFileStore);
 
         // Services
         ProfileService profileService = new ProfileService(signer);
@@ -153,6 +154,19 @@ public class WawelServer {
                 .substring(
                     keyManager.getPublicKeyBase64()
                         .length() - 8));
+    }
+
+    private void sweepOrphanedTextures(TextureFileStore textureFileStore) {
+        int deleted = 0;
+        for (String hash : textureFileStore.listStoredHashes()) {
+            if (!profileDAO.isTextureHashReferenced(hash)) {
+                textureFileStore.delete(hash);
+                deleted++;
+            }
+        }
+        if (deleted > 0) {
+            WawelAuth.LOG.info("Deleted {} orphaned texture file(s).", deleted);
+        }
     }
 
     public static synchronized void start(File stateDir) {
