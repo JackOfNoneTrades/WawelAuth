@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.BindException;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -168,7 +169,7 @@ public class MicrosoftOAuthClient {
         synchronized (LOOPBACK_LOCK) {
             cancelActiveLoopbackLocked(tr("wawelauth.gui.login.error.microsoft_restarted"));
             try {
-                server = HttpServer.create(new InetSocketAddress(LOOPBACK_PORT), 0);
+                server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), LOOPBACK_PORT), 0);
             } catch (BindException e) {
                 throw new IOException(tr("wawelauth.gui.login.error.microsoft_callback_port_busy"), e);
             }

@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.BindException;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -383,7 +384,8 @@ public abstract class ProviderOAuthClient {
         synchronized (LOOPBACK_LOCK) {
             cancelActiveLoopbackLocked(tr("wawelauth.gui.login.error.oauth_restarted"));
             try {
-                server = HttpServer.create(new InetSocketAddress(resolvePort(redirectUri)), 0);
+                server = HttpServer
+                    .create(new InetSocketAddress(InetAddress.getLoopbackAddress(), resolvePort(redirectUri)), 0);
             } catch (BindException e) {
                 throw new IOException(tr("wawelauth.gui.login.error.oauth_callback_port_busy"), e);
             }
