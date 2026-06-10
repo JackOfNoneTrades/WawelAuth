@@ -4,11 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.InetAddress;
-import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -58,7 +55,6 @@ public class FallbackProxyService {
     private static final int READ_TIMEOUT_MS = 10_000;
     private static final int MAX_JSON_BYTES = 1_048_576; // 1 MB
     private static final int MAX_TEXTURE_BYTES = 4_194_304; // 4 MB
-    private static final int MAX_TEXTURE_REDIRECTS = 5;
     private static final long CACHE_EXPIRE_AFTER_ACCESS_MINUTES = 30L;
     private static final long PROFILE_CACHE_MAX_BYTES = 16L * 1024L * 1024L;
     private static final long TEXTURE_CACHE_MAX_BYTES = 64L * 1024L * 1024L;
@@ -197,7 +193,7 @@ public class FallbackProxyService {
         }
 
         String upstreamUrl = decodeUrlPathSegment(encodedUrl);
-        validateProxyUrlForFallback(entry, upstreamUrl);
+        FallbackTextureHttp.validateAllowedTextureUrl(entry.fallback, upstreamUrl);
 
         String cacheKey = entry.key + "|" + upstreamUrl;
         CachedTexture cached = getCachedTexture(cacheKey);
@@ -385,80 +381,6 @@ public class FallbackProxyService {
         }
     }
 
-    private URI validateProxyUrlForFallback(FallbackEntry entry, String upstreamUrl) {
-        URI uri;
-        try {
-            uri = URI.create(upstreamUrl);
-        } catch (Exception e) {
-            throw NetException.illegalArgument("Invalid upstream texture URL.");
-        }
-
-        String scheme = uri.getScheme();
-        String host = uri.getHost();
-        if (scheme == null || host == null) {
-            throw NetException.illegalArgument("Invalid upstream texture URL.");
-        }
-        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
-            throw NetException.forbidden("Only HTTP(S) texture URLs are allowed.");
-        }
-
-        if (!isHostAllowedForFallback(entry, host)) {
-            throw NetException.forbidden("Texture URL host is not allowed for this fallback.");
-        }
-
-        return uri;
-    }
-
-    private boolean isHostAllowedForFallback(FallbackEntry entry, String host) {
-        String loweredHost = host.toLowerCase();
-
-        for (String pattern : entry.fallback.getSkinDomains()) {
-            if (hostMatchesPattern(loweredHost, pattern)) {
-                return true;
-            }
-        }
-
-        String sessionHost = extractHost(entry.fallback.getSessionServerUrl());
-        if (sessionHost != null && loweredHost.equals(sessionHost)) {
-            return true;
-        }
-
-        String accountHost = extractHost(entry.fallback.getAccountUrl());
-        if (accountHost != null && loweredHost.equals(accountHost)) {
-            return true;
-        }
-
-        String servicesHost = extractHost(entry.fallback.getServicesUrl());
-        if (servicesHost != null && loweredHost.equals(servicesHost)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    private static String extractHost(String rawUrl) {
-        String normalized = normalizeUrl(rawUrl);
-        if (normalized == null) return null;
-        try {
-            URI uri = URI.create(normalized);
-            String host = uri.getHost();
-            return host == null ? null : host.toLowerCase();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static boolean hostMatchesPattern(String host, String patternRaw) {
-        String pattern = trimToNull(patternRaw);
-        if (pattern == null) return false;
-
-        String lower = pattern.toLowerCase();
-        if (lower.startsWith(".")) {
-            return host.equals(lower.substring(1)) || host.endsWith(lower);
-        }
-        return host.equals(lower);
-    }
-
     private static String decodeUrlPathSegment(String encodedUrl) {
         try {
             int rem = encodedUrl.length() % 4;
@@ -505,42 +427,15 @@ public class FallbackProxyService {
     }
 
     private TextureResponse getBinary(FallbackEntry entry, String url) throws IOException {
-        String currentUrl = url;
-        for (int redirectCount = 0; redirectCount <= MAX_TEXTURE_REDIRECTS; redirectCount++) {
-            URI currentUri = validateProxyUrlForFallback(entry, currentUrl);
-            validatePublicProxyHost(currentUri.getHost());
-
-            HttpURLConnection conn = openConnection(currentUri.toString(), false);
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Accept", "image/png,image/*;q=0.8,*/*;q=0.1");
-
-            try {
-                int status = conn.getResponseCode();
-                if (isRedirectStatus(status)) {
-                    String location = conn.getHeaderField("Location");
-                    if (location == null || location.trim()
-                        .isEmpty()) {
-                        return new TextureResponse(status, null, conn.getContentType());
-                    }
-                    if (redirectCount == MAX_TEXTURE_REDIRECTS) {
-                        throw new IOException("Upstream texture redirect limit exceeded");
-                    }
-                    currentUrl = resolveRedirectUrl(currentUri, location);
-                    continue;
-                }
-
-                InputStream stream = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
-                if (stream == null) {
-                    return new TextureResponse(status, null, conn.getContentType());
-                }
-                byte[] data = readStreamBytes(stream, MAX_TEXTURE_BYTES);
-                return new TextureResponse(status, data, conn.getContentType());
-            } finally {
-                conn.disconnect();
-            }
-        }
-
-        throw new IOException("Upstream texture redirect limit exceeded");
+        FallbackTextureHttp.Response response = FallbackTextureHttp.fetch(
+            entry.fallback,
+            url,
+            MAX_TEXTURE_BYTES,
+            FallbackTextureHttp.DEFAULT_MAX_REDIRECTS,
+            CONNECT_TIMEOUT_MS,
+            READ_TIMEOUT_MS,
+            "image/png,image/*;q=0.8,*/*;q=0.1");
+        return new TextureResponse(response.status, response.data, response.contentType);
     }
 
     private static HttpURLConnection openConnection(String url) throws IOException {
@@ -554,100 +449,6 @@ public class FallbackProxyService {
         conn.setInstanceFollowRedirects(followRedirects);
         conn.setRequestProperty("User-Agent", "WawelAuth");
         return conn;
-    }
-
-    private static boolean isRedirectStatus(int status) {
-        return status == HttpURLConnection.HTTP_MOVED_PERM || status == HttpURLConnection.HTTP_MOVED_TEMP
-            || status == HttpURLConnection.HTTP_SEE_OTHER
-            || status == 307
-            || status == 308;
-    }
-
-    private static String resolveRedirectUrl(URI currentUri, String location) throws IOException {
-        try {
-            URI redirected = currentUri.resolve(location.trim());
-            return redirected.toString();
-        } catch (IllegalArgumentException e) {
-            throw new IOException("Invalid upstream texture redirect", e);
-        }
-    }
-
-    private static void validatePublicProxyHost(String host) throws IOException {
-        InetAddress[] addresses;
-        try {
-            addresses = InetAddress.getAllByName(host);
-        } catch (UnknownHostException e) {
-            throw new IOException("Unable to resolve texture URL host: " + host, e);
-        }
-
-        if (addresses.length == 0) {
-            throw new IOException("Unable to resolve texture URL host: " + host);
-        }
-
-        for (InetAddress address : addresses) {
-            if (isBlockedProxyAddress(address)) {
-                throw new IOException("Texture URL resolves to a private or local address: " + host);
-            }
-        }
-    }
-
-    private static boolean isBlockedProxyAddress(InetAddress address) {
-        if (address.isAnyLocalAddress() || address.isLoopbackAddress()
-            || address.isLinkLocalAddress()
-            || address.isSiteLocalAddress()
-            || address.isMulticastAddress()) {
-            return true;
-        }
-
-        byte[] bytes = address.getAddress();
-        if (bytes.length == 4) {
-            return isBlockedIpv4Address(bytes);
-        }
-        if (bytes.length == 16) {
-            if (isIpv4MappedIpv6Address(bytes)) {
-                byte[] ipv4 = new byte[] { bytes[12], bytes[13], bytes[14], bytes[15] };
-                return isBlockedIpv4Address(ipv4);
-            }
-            return isBlockedIpv6Address(bytes);
-        }
-
-        return true;
-    }
-
-    private static boolean isBlockedIpv4Address(byte[] bytes) {
-        int b0 = bytes[0] & 0xff;
-        int b1 = bytes[1] & 0xff;
-        int b2 = bytes[2] & 0xff;
-
-        return b0 == 0 || b0 == 10
-            || b0 == 127
-            || (b0 == 100 && b1 >= 64 && b1 <= 127)
-            || (b0 == 169 && b1 == 254)
-            || (b0 == 172 && b1 >= 16 && b1 <= 31)
-            || (b0 == 192 && b1 == 0 && b2 == 0)
-            || (b0 == 192 && b1 == 0 && b2 == 2)
-            || (b0 == 192 && b1 == 168)
-            || (b0 == 198 && (b1 == 18 || b1 == 19))
-            || (b0 == 198 && b1 == 51 && b2 == 100)
-            || (b0 == 203 && b1 == 0 && b2 == 113)
-            || b0 >= 224;
-    }
-
-    private static boolean isBlockedIpv6Address(byte[] bytes) {
-        int b0 = bytes[0] & 0xff;
-        int b1 = bytes[1] & 0xff;
-
-        return (b0 & 0xfe) == 0xfc
-            || (b0 == 0x20 && b1 == 0x01 && (bytes[2] & 0xff) == 0x0d && (bytes[3] & 0xff) == 0xb8);
-    }
-
-    private static boolean isIpv4MappedIpv6Address(byte[] bytes) {
-        for (int i = 0; i < 10; i++) {
-            if (bytes[i] != 0) {
-                return false;
-            }
-        }
-        return bytes[10] == (byte) 0xff && bytes[11] == (byte) 0xff;
     }
 
     private static String readStream(InputStream stream, int maxBytes) throws IOException {

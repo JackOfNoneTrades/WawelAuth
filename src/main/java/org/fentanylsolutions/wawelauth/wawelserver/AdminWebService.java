@@ -2097,7 +2097,7 @@ public class AdminWebService {
             return null;
         }
         String skinUrl = fetchFallbackSkinUrl(provider.fallback, uuidUnsigned);
-        return skinUrl == null ? null : fetchBinary(skinUrl, MAX_HTTP_BYTES);
+        return skinUrl == null ? null : fetchFallbackSkinBytes(provider.fallback, skinUrl);
     }
 
     private String fetchFallbackSkinUrl(FallbackServer fallback, String uuidUnsigned) {
@@ -2111,6 +2111,22 @@ public class AdminWebService {
             return null;
         }
         return parseSkinUrlFromProfileResponse(profile);
+    }
+
+    private byte[] fetchFallbackSkinBytes(FallbackServer fallback, String skinUrl) {
+        try {
+            FallbackTextureHttp.Response response = FallbackTextureHttp.fetch(
+                fallback,
+                skinUrl,
+                MAX_HTTP_BYTES,
+                FallbackTextureHttp.DEFAULT_MAX_REDIRECTS,
+                HTTP_CONNECT_TIMEOUT_MS,
+                HTTP_READ_TIMEOUT_MS,
+                "*/*");
+            return response.status == 200 ? response.data : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String resolveSessionMinecraftBase(String rawSessionServerUrl) {
