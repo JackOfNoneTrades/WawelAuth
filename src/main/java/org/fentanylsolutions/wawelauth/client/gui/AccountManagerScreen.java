@@ -8,10 +8,13 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.entity.EntityLivingBase;
 
 import org.fentanylsolutions.fentlib.util.FileUtil;
 import org.fentanylsolutions.fentlib.util.GuiText;
@@ -107,6 +110,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private PlayerPreviewEntity previewFrontEntity;
     private PlayerPreviewEntity previewBackEntity;
+    private WorldClient savedWorld;
+    private EntityClientPlayerMP savedPlayer;
+    private EntityLivingBase savedRenderViewEntity;
     private AddProviderDialog addProviderDialog;
     private LoginDialog loginDialog;
     private RegisterDialog registerDialog;
@@ -1106,6 +1112,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         entity.prevRotationYawHead = yaw;
         entity.rotationPitch = 0.0F;
 
+        savedWorld = mc.theWorld;
+        savedPlayer = mc.thePlayer;
+        savedRenderViewEntity = mc.renderViewEntity;
         mc.renderViewEntity = entity;
         mc.theWorld = DummyWorldClient.INSTANCE;
         mc.thePlayer = DummyEntityClientPlayerMP.INSTANCE;
@@ -1113,9 +1122,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private void postEntityPreview() {
         Minecraft mc = Minecraft.getMinecraft();
-        mc.renderViewEntity = null;
-        mc.theWorld = null;
-        mc.thePlayer = null;
+        mc.renderViewEntity = savedRenderViewEntity;
+        mc.theWorld = savedWorld;
+        mc.thePlayer = savedPlayer;
+        savedRenderViewEntity = null;
+        savedWorld = null;
+        savedPlayer = null;
     }
 
     private PreviewBackMode normalizeCapePreviewMode(PreviewBackMode mode) {

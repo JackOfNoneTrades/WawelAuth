@@ -147,6 +147,7 @@ public final class TextureDropOverlay {
 
         OverlayScreen() {
             super("wawelauth");
+            openParentOnClose(true);
         }
 
         @Override
