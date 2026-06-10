@@ -81,6 +81,13 @@ public class JsonConfigIO {
         }
     }
 
+    /**
+     * Deep copy a config object via a GSON round-trip.
+     */
+    public static <T> T deepCopy(T config, Class<T> type) {
+        return GSON.fromJson(GSON.toJsonTree(config), type);
+    }
+
     private static <T> T createDefault(Class<T> type) {
         try {
             return type.newInstance();

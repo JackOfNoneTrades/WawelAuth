@@ -910,29 +910,46 @@ public class AdminWebService {
         requireSession(ctx);
         JsonObject body = ctx.getJsonBody();
 
+        // Stage into a copy so a validation failure leaves the live config untouched.
+        ServerConfig staged = JsonConfigIO.deepCopy(serverConfig, ServerConfig.class);
+        applyServerConfigUpdates(staged, body);
+        staged.ensureApiRootInSkinDomains();
+        try {
+            staged.validateOrThrow();
+        } catch (IllegalStateException e) {
+            throw NetException.illegalArgument(e.getMessage());
+        }
+
+        applyServerConfigUpdates(serverConfig, body);
+        serverConfig.ensureApiRootInSkinDomains();
+        persistServerConfig();
+        return buildServerConfigResponse();
+    }
+
+    private void applyServerConfigUpdates(ServerConfig target, JsonObject body) {
         String value = readOptionalString(body, "serverName");
         if (value != null) {
-            serverConfig.setServerName(value);
+            target.setServerName(value);
         }
 
         value = readOptionalString(body, "publicBaseUrl");
         if (value != null) {
-            serverConfig.setPublicBaseUrl(value);
+            target.setPublicBaseUrl(value);
         }
 
         value = readOptionalString(body, "apiRoot");
         if (value != null) {
-            serverConfig.setApiRoot(value);
+            target.setApiRoot(value);
         }
 
         value = readOptionalString(body, "publicPagePath");
         if (value != null) {
-            serverConfig.setPublicPagePath(value);
+            target.setPublicPagePath(value);
         }
 
         value = readOptionalString(body, "publicInfoApiPath");
         if (value != null) {
-            serverConfig.setPublicInfoApiPath(value);
+            target.setPublicInfoApiPath(value);
         }
 
         value = readOptionalString(body, "serverAddress");
@@ -940,7 +957,7 @@ public class AdminWebService {
             value = readOptionalString(body, "server-address");
         }
         if (value != null) {
-            serverConfig.setServerAddress(value);
+            target.setServerAddress(value);
         }
 
         JsonArray skinDomainsArr = readOptionalArray(body, "skinDomains");
@@ -951,24 +968,24 @@ public class AdminWebService {
                 if (d != null && !d.trim()
                     .isEmpty()) domains.add(d.trim());
             }
-            serverConfig.setSkinDomains(domains);
+            target.setSkinDomains(domains);
         }
 
         JsonObject meta = readOptionalObject(body, "meta");
         if (meta != null) {
             value = readOptionalString(meta, "serverHomepage");
             if (value != null) {
-                serverConfig.getMeta()
+                target.getMeta()
                     .setServerHomepage(value);
             }
             value = readOptionalString(meta, "serverRegister");
             if (value != null) {
-                serverConfig.getMeta()
+                target.getMeta()
                     .setServerRegister(value);
             }
             value = readOptionalString(meta, "publicDescription");
             if (value != null) {
-                serverConfig.getMeta()
+                target.getMeta()
                     .setPublicDescription(value);
             }
         }
@@ -977,17 +994,17 @@ public class AdminWebService {
         if (features != null) {
             Boolean bool = readOptionalBoolean(features, "legacySkinApi");
             if (bool != null) {
-                serverConfig.getFeatures()
+                target.getFeatures()
                     .setLegacySkinApi(bool);
             }
             bool = readOptionalBoolean(features, "noMojangNamespace");
             if (bool != null) {
-                serverConfig.getFeatures()
+                target.getFeatures()
                     .setNoMojangNamespace(bool);
             }
             bool = readOptionalBoolean(features, "usernameCheck");
             if (bool != null) {
-                serverConfig.getFeatures()
+                target.getFeatures()
                     .setUsernameCheck(bool);
             }
         }
@@ -997,7 +1014,7 @@ public class AdminWebService {
             value = readOptionalString(registration, "policy");
             if (value != null) {
                 try {
-                    serverConfig.getRegistration()
+                    target.getRegistration()
                         .setPolicy(RegistrationPolicy.valueOf(value.toUpperCase(Locale.ROOT)));
                 } catch (IllegalArgumentException e) {
                     throw NetException.illegalArgument("registration.policy must be OPEN, INVITE_ONLY, or CLOSED.");
@@ -1006,7 +1023,7 @@ public class AdminWebService {
 
             value = readOptionalString(registration, "playerNameRegex");
             if (value != null) {
-                serverConfig.getRegistration()
+                target.getRegistration()
                     .setPlayerNameRegex(value);
             }
 
@@ -1020,7 +1037,7 @@ public class AdminWebService {
                             t.trim()
                                 .toLowerCase());
                 }
-                serverConfig.getRegistration()
+                target.getRegistration()
                     .setDefaultUploadableTextures(texTypes);
             }
         }
@@ -1033,7 +1050,7 @@ public class AdminWebService {
                     throw NetException
                         .illegalArgument("invites.defaultUses must be -1 (unlimited) or a positive integer.");
                 }
-                serverConfig.getInvites()
+                target.getInvites()
                     .setDefaultUses(defaultUses);
             }
         }
@@ -1045,7 +1062,7 @@ public class AdminWebService {
                 if (maxPerUser < 1) {
                     throw NetException.illegalArgument("tokens.maxPerUser must be >= 1.");
                 }
-                serverConfig.getTokens()
+                target.getTokens()
                     .setMaxPerUser(maxPerUser);
             }
 
@@ -1054,7 +1071,7 @@ public class AdminWebService {
                 if (timeoutMs < 1) {
                     throw NetException.illegalArgument("tokens.sessionTimeoutMs must be >= 1.");
                 }
-                serverConfig.getTokens()
+                target.getTokens()
                     .setSessionTimeoutMs(timeoutMs);
             }
         }
@@ -1063,38 +1080,32 @@ public class AdminWebService {
         if (rateLimits != null) {
             Boolean enabled = readOptionalBoolean(rateLimits, "enabled");
             if (enabled != null) {
-                serverConfig.getRateLimits()
+                target.getRateLimits()
                     .setEnabled(enabled);
             }
 
-            updateRateLimitInt(rateLimits, "adminLoginAttempts", serverConfig.getRateLimits()::setAdminLoginAttempts);
+            updateRateLimitInt(rateLimits, "adminLoginAttempts", target.getRateLimits()::setAdminLoginAttempts);
             updateRateLimitInt(
                 rateLimits,
                 "adminLoginWindowSeconds",
-                serverConfig.getRateLimits()::setAdminLoginWindowSeconds);
-            updateRateLimitInt(rateLimits, "passwordIpAttempts", serverConfig.getRateLimits()::setPasswordIpAttempts);
+                target.getRateLimits()::setAdminLoginWindowSeconds);
+            updateRateLimitInt(rateLimits, "passwordIpAttempts", target.getRateLimits()::setPasswordIpAttempts);
             updateRateLimitInt(
                 rateLimits,
                 "passwordSubjectAttempts",
-                serverConfig.getRateLimits()::setPasswordSubjectAttempts);
-            updateRateLimitInt(
-                rateLimits,
-                "passwordWindowSeconds",
-                serverConfig.getRateLimits()::setPasswordWindowSeconds);
-            updateRateLimitInt(rateLimits, "tokenIpAttempts", serverConfig.getRateLimits()::setTokenIpAttempts);
-            updateRateLimitInt(rateLimits, "tokenWindowSeconds", serverConfig.getRateLimits()::setTokenWindowSeconds);
-            updateRateLimitInt(
-                rateLimits,
-                "registrationIpAttempts",
-                serverConfig.getRateLimits()::setRegistrationIpAttempts);
+                target.getRateLimits()::setPasswordSubjectAttempts);
+            updateRateLimitInt(rateLimits, "passwordWindowSeconds", target.getRateLimits()::setPasswordWindowSeconds);
+            updateRateLimitInt(rateLimits, "tokenIpAttempts", target.getRateLimits()::setTokenIpAttempts);
+            updateRateLimitInt(rateLimits, "tokenWindowSeconds", target.getRateLimits()::setTokenWindowSeconds);
+            updateRateLimitInt(rateLimits, "registrationIpAttempts", target.getRateLimits()::setRegistrationIpAttempts);
             updateRateLimitInt(
                 rateLimits,
                 "registrationSubjectAttempts",
-                serverConfig.getRateLimits()::setRegistrationSubjectAttempts);
+                target.getRateLimits()::setRegistrationSubjectAttempts);
             updateRateLimitInt(
                 rateLimits,
                 "registrationWindowSeconds",
-                serverConfig.getRateLimits()::setRegistrationWindowSeconds);
+                target.getRateLimits()::setRegistrationWindowSeconds);
         }
 
         JsonObject textures = readOptionalObject(body, "textures");
@@ -1102,61 +1113,61 @@ public class AdminWebService {
             Integer maxSkinWidth = readOptionalInt(textures, "maxSkinWidth");
             if (maxSkinWidth != null) {
                 if (maxSkinWidth < 1) throw NetException.illegalArgument("textures.maxSkinWidth must be >= 1.");
-                serverConfig.getTextures()
+                target.getTextures()
                     .setMaxSkinWidth(maxSkinWidth);
             }
 
             Integer maxSkinHeight = readOptionalInt(textures, "maxSkinHeight");
             if (maxSkinHeight != null) {
                 if (maxSkinHeight < 1) throw NetException.illegalArgument("textures.maxSkinHeight must be >= 1.");
-                serverConfig.getTextures()
+                target.getTextures()
                     .setMaxSkinHeight(maxSkinHeight);
             }
 
             Integer maxCapeWidth = readOptionalInt(textures, "maxCapeWidth");
             if (maxCapeWidth != null) {
                 if (maxCapeWidth < 1) throw NetException.illegalArgument("textures.maxCapeWidth must be >= 1.");
-                serverConfig.getTextures()
+                target.getTextures()
                     .setMaxCapeWidth(maxCapeWidth);
             }
 
             Integer maxCapeHeight = readOptionalInt(textures, "maxCapeHeight");
             if (maxCapeHeight != null) {
                 if (maxCapeHeight < 1) throw NetException.illegalArgument("textures.maxCapeHeight must be >= 1.");
-                serverConfig.getTextures()
+                target.getTextures()
                     .setMaxCapeHeight(maxCapeHeight);
             }
 
             Integer maxFileSizeBytes = readOptionalInt(textures, "maxFileSizeBytes");
             if (maxFileSizeBytes != null) {
                 if (maxFileSizeBytes < 1) throw NetException.illegalArgument("textures.maxFileSizeBytes must be >= 1.");
-                serverConfig.getTextures()
+                target.getTextures()
                     .setMaxFileSizeBytes(maxFileSizeBytes);
             }
 
             Boolean allowElytra = readOptionalBoolean(textures, "allowElytra");
             if (allowElytra != null) {
-                serverConfig.getTextures()
+                target.getTextures()
                     .setAllowElytra(allowElytra);
             }
 
             Boolean allowAnimatedCapes = readOptionalBoolean(textures, "allowAnimatedCapes");
             if (allowAnimatedCapes != null) {
-                serverConfig.getTextures()
+                target.getTextures()
                     .setAllowAnimatedCapes(allowAnimatedCapes);
             }
             Integer maxCapeFrameCount = readOptionalInt(textures, "maxCapeFrameCount");
             if (maxCapeFrameCount != null) {
                 if (maxCapeFrameCount < 2)
                     throw NetException.illegalArgument("textures.maxCapeFrameCount must be >= 2.");
-                serverConfig.getTextures()
+                target.getTextures()
                     .setMaxCapeFrameCount(maxCapeFrameCount);
             }
             Integer maxAnimatedCapeFileSize = readOptionalInt(textures, "maxAnimatedCapeFileSizeBytes");
             if (maxAnimatedCapeFileSize != null) {
                 if (maxAnimatedCapeFileSize < 1)
                     throw NetException.illegalArgument("textures.maxAnimatedCapeFileSizeBytes must be >= 1.");
-                serverConfig.getTextures()
+                target.getTextures()
                     .setMaxAnimatedCapeFileSizeBytes(maxAnimatedCapeFileSize);
             }
         }
@@ -1165,7 +1176,7 @@ public class AdminWebService {
         if (http != null) {
             Boolean httpsEnabled = readOptionalBoolean(http, "httpsEnabled");
             if (httpsEnabled != null) {
-                serverConfig.getHttp()
+                target.getHttp()
                     .setHttpsEnabled(httpsEnabled);
             }
 
@@ -1174,7 +1185,7 @@ public class AdminWebService {
                 if (readTimeoutSeconds < 1) {
                     throw NetException.illegalArgument("http.readTimeoutSeconds must be >= 1.");
                 }
-                serverConfig.getHttp()
+                target.getHttp()
                     .setReadTimeoutSeconds(readTimeoutSeconds);
             }
 
@@ -1189,7 +1200,7 @@ public class AdminWebService {
                             + ServerConfig.MAX_TLS_HANDSHAKE_TIMEOUT_SECONDS
                             + ".");
                 }
-                serverConfig.getHttp()
+                target.getHttp()
                     .setTlsHandshakeTimeoutSeconds(tlsHandshakeTimeoutSeconds);
             }
 
@@ -1198,19 +1209,11 @@ public class AdminWebService {
                 if (maxContentLengthBytes < 1) {
                     throw NetException.illegalArgument("http.maxContentLengthBytes must be >= 1.");
                 }
-                serverConfig.getHttp()
+                target.getHttp()
                     .setMaxContentLengthBytes(maxContentLengthBytes);
             }
         }
 
-        serverConfig.ensureApiRootInSkinDomains();
-        try {
-            serverConfig.validateOrThrow();
-        } catch (IllegalStateException e) {
-            throw NetException.illegalArgument(e.getMessage());
-        }
-        persistServerConfig();
-        return buildServerConfigResponse();
     }
 
     private Object getServerProperties(RequestContext ctx) {
@@ -1628,7 +1631,7 @@ public class AdminWebService {
         if (configDir == null) {
             throw NetException.illegalArgument("Config directory is not initialized.");
         }
-        JsonConfigIO.save(new File(configDir, "server.json"), serverConfig);
+        JsonConfigIO.save(new File(configDir, "server.json"), serverConfig.toPersistable());
     }
 
     private Map<String, Object> buildServerConfigResponse() {

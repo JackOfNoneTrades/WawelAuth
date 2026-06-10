@@ -67,7 +67,12 @@ public class ServerConfig {
     private RateLimits rateLimits = new RateLimits();
     private Http http = new Http();
     private Admin admin = new Admin();
-    private List<FallbackServer> fallbackServers = new ArrayList<>();
+    // Runtime-injected from fallback-servers.json at load; transient so the
+    // enabled-filtered list and discovered signature keys never persist into server.json.
+    private transient List<FallbackServer> fallbackServers = new ArrayList<>();
+
+    // Host auto-added to skinDomains at startup; stripped again on persist.
+    private transient String autoAddedSkinDomain;
 
     public boolean isWawelAuthEnabled() {
         return wawelAuthEnabled;
@@ -212,6 +217,8 @@ public class ServerConfig {
 
     public void setSkinDomains(List<String> skinDomains) {
         this.skinDomains = skinDomains;
+        // The new list is pure declared intent; the auto-added host (if any) was replaced.
+        this.autoAddedSkinDomain = null;
     }
 
     public Meta getMeta() {
@@ -280,6 +287,7 @@ public class ServerConfig {
             String host = new URI(effectiveApiRoot).getHost();
             if (host != null && !getSkinDomains().contains(host)) {
                 getSkinDomains().add(host);
+                autoAddedSkinDomain = host;
             }
         } catch (Exception e) {
             WawelAuth.LOG.warn(
@@ -287,6 +295,20 @@ public class ServerConfig {
                 effectiveApiRoot,
                 e.getMessage());
         }
+    }
+
+    /**
+     * Returns a copy suitable for writing to server.json: declared values only,
+     * with runtime-injected state stripped. Transient fields (fallbackServers,
+     * autoAddedSkinDomain) are already excluded by serialization.
+     */
+    public ServerConfig toPersistable() {
+        ServerConfig copy = JsonConfigIO.deepCopy(this, ServerConfig.class);
+        if (autoAddedSkinDomain != null) {
+            copy.getSkinDomains()
+                .remove(autoAddedSkinDomain);
+        }
+        return copy;
     }
 
     public static String normalizeApiRoutePrefix(String rawApiRoot) {
