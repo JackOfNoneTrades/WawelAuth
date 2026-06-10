@@ -103,19 +103,13 @@ public final class LocalSessionVerifier {
 
     private static GameProfile queryLocalHasJoined(String username, String serverId)
         throws AuthenticationUnavailableException {
-        String baseUrl = resolveLocalApiRoot();
-        if (baseUrl == null) {
-            WawelAuth.LOG.warn("WawelAuth enabled but local API root could not be resolved for hasJoined");
+        WawelServer server = WawelServer.instance();
+        if (server == null) {
             return null;
         }
 
-        Map<String, Object> args = new HashMap<String, Object>();
-        args.put("username", username);
-        args.put("serverId", serverId);
-        args.put("wawelauth_local_only", "1");
-        URL checkUrl = HttpAuthenticationService.constantURL(baseUrl + "/sessionserver/session/minecraft/hasJoined");
-        URL url = HttpAuthenticationService.concatenateURL(checkUrl, HttpAuthenticationService.buildQuery(args));
-        return fetchProfile(url, username);
+        Map<String, Object> profile = server.consumeLocalHasJoinedProfile(username, serverId, null);
+        return profileFromResponseMap(profile, username);
     }
 
     private static GameProfile queryConfiguredFallbacks(String username, String serverId, ServerConfig config)
@@ -339,6 +333,63 @@ public final class LocalSessionVerifier {
                 conn.disconnect();
             }
         }
+    }
+
+    private static GameProfile profileFromResponseMap(Map<String, Object> root, String fallbackName) {
+        if (root == null) {
+            return null;
+        }
+
+        String id = stringValue(root.get("id"));
+        if (id == null || id.isEmpty()) {
+            return null;
+        }
+
+        UUID uuid;
+        try {
+            uuid = UUIDTypeAdapter.fromString(id);
+        } catch (Exception e) {
+            WawelAuth.debug("Local hasJoined returned invalid UUID: " + id);
+            return null;
+        }
+
+        String safeName = trimToNull(stringValue(root.get("name")));
+        if (safeName == null) {
+            safeName = trimToNull(fallbackName);
+        }
+        if (safeName == null) {
+            safeName = "UnknownPlayer";
+        }
+
+        GameProfile result = new GameProfile(uuid, safeName);
+        Object properties = root.get("properties");
+        if (properties instanceof Iterable<?>) {
+            for (Object element : (Iterable<?>) properties) {
+                if (!(element instanceof Map<?, ?>)) {
+                    continue;
+                }
+                Map<?, ?> property = (Map<?, ?>) element;
+                String propName = stringValue(property.get("name"));
+                String propValue = stringValue(property.get("value"));
+                if (propName == null || propValue == null) {
+                    continue;
+                }
+
+                // 1.7.10 S0CPacketSpawnPlayer needs signature as a mandatory string.
+                // Null signature would crash packet encoding, so skip unsigned.
+                String signature = trimToNull(stringValue(property.get("signature")));
+                if (signature == null) {
+                    continue;
+                }
+                result.getProperties()
+                    .put(propName, new Property(propName, propValue, signature));
+            }
+        }
+        return result;
+    }
+
+    private static String stringValue(Object value) {
+        return value instanceof String ? (String) value : null;
     }
 
     private static String readUtf8(InputStream in) throws IOException {

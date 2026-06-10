@@ -1,6 +1,7 @@
 package org.fentanylsolutions.wawelauth.wawelserver;
 
 import java.io.File;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -50,6 +51,7 @@ public class WawelServer {
     private final UserListProviderBindingDAO userListProviderBindingDAO;
     private final PublicPageService publicPageService;
     private final ExecutorService httpWorkerPool;
+    private final SessionService sessionService;
 
     private WawelServer(File stateDir) {
         WawelAuth.LOG.info("Starting Wawel Auth server module...");
@@ -114,12 +116,7 @@ public class WawelServer {
             profileService,
             rateLimiter);
         FallbackProxyService fallbackProxyService = new FallbackProxyService(config);
-        SessionService sessionService = new SessionService(
-            tokenDAO,
-            profileDAO,
-            sessionDAO,
-            profileService,
-            fallbackProxyService);
+        sessionService = new SessionService(tokenDAO, profileDAO, sessionDAO, profileService, fallbackProxyService);
         TextureService textureService = new TextureService(tokenDAO, profileDAO, textureFileStore);
         AdminWebService adminWebService = new AdminWebService(
             config,
@@ -127,7 +124,8 @@ public class WawelServer {
             profileDAO,
             tokenDAO,
             inviteDAO,
-            rateLimiter);
+            rateLimiter,
+            textureFileStore);
         publicPageService = new PublicPageService(config);
 
         // Router
@@ -199,6 +197,10 @@ public class WawelServer {
 
     public ExecutorService getHttpWorkerPool() {
         return httpWorkerPool;
+    }
+
+    public Map<String, Object> consumeLocalHasJoinedProfile(String username, String serverId, String ip) {
+        return sessionService.consumeLocalHasJoinedProfile(username, serverId, ip);
     }
 
     public ServerConfig getServerConfig() {

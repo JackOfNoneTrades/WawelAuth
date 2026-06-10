@@ -1,5 +1,6 @@
 package org.fentanylsolutions.wawelauth.wawelserver;
 
+import java.util.Map;
 import java.util.UUID;
 
 import org.fentanylsolutions.wawelauth.Config;
@@ -113,12 +114,8 @@ public class SessionService {
             return null; // 204: silent fail
         }
 
-        long timeoutMs = Config.server()
-            .getTokens()
-            .getSessionTimeoutMs();
-
-        PendingSession session = sessionDAO.consume(serverId, username, ip, timeoutMs);
-        if (session == null) {
+        Map<String, Object> localProfile = consumeLocalHasJoinedProfile(username, serverId, ip);
+        if (localProfile == null) {
             if (isLocalOnlyHasJoined(ctx)) {
                 return null;
             }
@@ -130,10 +127,31 @@ public class SessionService {
             return null; // 204: silent fail
         }
 
-        // Build full signed profile response (hasJoined is always signed)
+        return localProfile;
+    }
+
+    /**
+     * In-process local hasJoined verification. This is used by the embedded HTTP
+     * route and by the Minecraft login verifier; the latter must not call back
+     * into the embedded HTTP server just to read local session state.
+     */
+    public Map<String, Object> consumeLocalHasJoinedProfile(String username, String serverId, String ip) {
+        if (username == null || serverId == null) {
+            return null;
+        }
+
+        long timeoutMs = Config.server()
+            .getTokens()
+            .getSessionTimeoutMs();
+
+        PendingSession session = sessionDAO.consume(serverId, username, ip, timeoutMs);
+        if (session == null) {
+            return null;
+        }
+
         WawelProfile profile = profileDAO.findByUuid(session.getProfileUuid());
         if (profile == null) {
-            return null; // 204: profile was deleted between join and hasJoined
+            return null;
         }
 
         return profileService.buildFullProfile(profile, true);

@@ -39,7 +39,6 @@ import net.minecraft.server.management.UserListOps;
 import net.minecraft.server.management.UserListWhitelist;
 
 import org.fentanylsolutions.fentlib.util.NetUtil;
-import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
@@ -103,6 +102,7 @@ public class AdminWebService {
     private final TokenDAO tokenDAO;
     private final InviteDAO inviteDAO;
     private final RequestRateLimiter rateLimiter;
+    private final TextureFileStore textureFileStore;
     private final ConcurrentMap<String, AdminSession> sessions = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, CachedAvatar> avatarCache = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<MainThreadTask<?>> mainThreadQueue = new ConcurrentLinkedQueue<>();
@@ -116,13 +116,14 @@ public class AdminWebService {
     private final byte[] nerdSymbolsSubsetWoff2;
 
     public AdminWebService(ServerConfig serverConfig, UserDAO userDAO, ProfileDAO profileDAO, TokenDAO tokenDAO,
-        InviteDAO inviteDAO, RequestRateLimiter rateLimiter) {
+        InviteDAO inviteDAO, RequestRateLimiter rateLimiter, TextureFileStore textureFileStore) {
         this.serverConfig = serverConfig;
         this.userDAO = userDAO;
         this.profileDAO = profileDAO;
         this.tokenDAO = tokenDAO;
         this.inviteDAO = inviteDAO;
         this.rateLimiter = rateLimiter;
+        this.textureFileStore = textureFileStore;
         this.indexHtml = loadResourceBytes("/assets/wawelauth/web/admin/index.html");
         this.appJs = loadResourceBytes("/assets/wawelauth/web/admin/app.js");
         this.stylesCss = loadResourceBytes("/assets/wawelauth/web/admin/styles.css");
@@ -648,12 +649,11 @@ public class AdminWebService {
         }
         avatarCache.remove(cacheKey);
 
-        String skinUrl = resolveSkinUrl(provider, uuid, uuidUnsigned);
-        if (skinUrl == null) {
+        byte[] skinBytes = resolveSkinBytes(provider, uuid, uuidUnsigned);
+        if (skinBytes == null) {
             throw NetException.notFound("No skin available.");
         }
 
-        byte[] skinBytes = fetchBinary(skinUrl, MAX_HTTP_BYTES);
         byte[] avatarPng = renderFacePng(skinBytes);
         avatarCache.put(cacheKey, new CachedAvatar(avatarPng, System.currentTimeMillis() + AVATAR_CACHE_TTL_MS));
 
@@ -2065,21 +2065,24 @@ public class AdminWebService {
         throw NetException.notFound("Op entry not found.");
     }
 
-    private String resolveSkinUrl(ProviderChoice provider, UUID uuid, String uuidUnsigned) {
+    private byte[] resolveSkinBytes(ProviderChoice provider, UUID uuid, String uuidUnsigned) {
         if ("local".equals(provider.type)) {
             WawelProfile profile = profileDAO.findByUuid(uuid);
             if (profile == null) return null;
             String hash = trimToNull(profile.getSkinHash());
             if (hash == null) return null;
-            String base = resolveLocalApiRoot();
-            if (base == null) return null;
-            return appendPath(base, "/textures/" + hash);
+            byte[] data = textureFileStore.read(hash);
+            if (data == null || data.length > MAX_HTTP_BYTES) {
+                return null;
+            }
+            return data;
         }
 
         if (provider.fallback == null) {
             return null;
         }
-        return fetchFallbackSkinUrl(provider.fallback, uuidUnsigned);
+        String skinUrl = fetchFallbackSkinUrl(provider.fallback, uuidUnsigned);
+        return skinUrl == null ? null : fetchBinary(skinUrl, MAX_HTTP_BYTES);
     }
 
     private String fetchFallbackSkinUrl(FallbackServer fallback, String uuidUnsigned) {
@@ -2119,25 +2122,6 @@ public class AdminWebService {
         } catch (Exception ignored) {}
 
         return base + "/session/minecraft";
-    }
-
-    private String resolveLocalApiRoot() {
-        String configured = normalizeUrl(serverConfig.getEffectiveApiRoot());
-        if (configured != null) {
-            return configured;
-        }
-
-        MinecraftServer server = MinecraftServer.getServer();
-        if (server == null) return null;
-
-        int port = server.getServerPort();
-        if (port <= 0) {
-            port = server.getPort();
-        }
-        if (port <= 0) return null;
-        InetAddress loopback = InetAddress.getLoopbackAddress();
-        String host = loopback == null ? "127.0.0.1" : loopback.getHostAddress();
-        return "http://" + NetworkAddressUtil.formatHostPort(host, port);
     }
 
     private static String parseSkinUrlFromProfileResponse(JsonObject profile) {
