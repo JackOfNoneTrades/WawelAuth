@@ -43,6 +43,7 @@ public class SqliteDatabase {
 
     private final String dbPath;
     private Connection connection;
+    private int transactionDepth = 0;
 
     public SqliteDatabase(String dbPath) {
         this.dbPath = dbPath;
@@ -106,7 +107,9 @@ public class SqliteDatabase {
 
     /**
      * Executes the given action inside a BEGIN/COMMIT transaction.
-     * If the action throws, the transaction is rolled back.
+     * If the action throws anything (including Errors), the transaction is
+     * rolled back. Nested calls join the outermost transaction instead of
+     * committing it mid-flight.
      * <p>
      * Holds the connection lock for the entire transaction, so concurrent
      * threads cannot interleave their operations with this transaction.
@@ -114,19 +117,33 @@ public class SqliteDatabase {
      * acquire the lock via {@link #query}/{@link #execute}) work correctly.
      */
     public synchronized void runInTransaction(Runnable action) {
+        if (transactionDepth > 0) {
+            action.run();
+            return;
+        }
         try {
             connection.setAutoCommit(false);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to begin transaction", e);
+        }
+        transactionDepth++;
+        boolean committed = false;
+        try {
+            action.run();
+            connection.commit();
+            committed = true;
+        } catch (SQLException e) {
+            throw new RuntimeException("Transaction failed", e);
+        } finally {
+            transactionDepth--;
             try {
-                action.run();
-                connection.commit();
-            } catch (Exception e) {
-                connection.rollback();
-                throw e;
-            } finally {
+                if (!committed) {
+                    connection.rollback();
+                }
                 connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                WawelAuth.LOG.error("Failed to roll back transaction", e);
             }
-        } catch (SQLException sqlEx) {
-            throw new RuntimeException("Transaction control failed", sqlEx);
         }
     }
 
