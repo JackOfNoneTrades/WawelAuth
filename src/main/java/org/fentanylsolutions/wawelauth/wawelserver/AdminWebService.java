@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntConsumer;
 
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -1577,12 +1578,23 @@ public class AdminWebService {
         try {
             boolean ok = task.latch.await(MAIN_THREAD_WAIT_MS, TimeUnit.MILLISECONDS);
             if (!ok) {
-                throw NetException.illegalArgument("Timed out waiting for main-thread server operation.");
+                if (task.cancel()) {
+                    throw NetException.illegalArgument("Timed out waiting for main-thread server operation.");
+                }
+                // The task started executing right at the deadline; it cannot be
+                // cancelled anymore, so wait for the truthful outcome instead of
+                // reporting a failure for an operation that ran.
+                task.latch.await();
             }
         } catch (InterruptedException e) {
             Thread.currentThread()
                 .interrupt();
-            throw NetException.illegalArgument("Interrupted while waiting for main-thread server operation.");
+            if (task.cancel()) {
+                throw NetException.illegalArgument("Interrupted while waiting for main-thread server operation.");
+            }
+            throw NetException.illegalArgument(
+                "Interrupted while waiting for main-thread server operation; "
+                    + "the operation may still have completed.");
         }
 
         if (task.error != null) {
@@ -2489,8 +2501,13 @@ public class AdminWebService {
 
     private static final class MainThreadTask<T> {
 
+        private static final int PENDING = 0;
+        private static final int RUNNING = 1;
+        private static final int CANCELLED = 2;
+
         final Callable<T> callable;
         final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicInteger state = new AtomicInteger(PENDING);
         volatile T result;
         volatile Throwable error;
 
@@ -2499,6 +2516,9 @@ public class AdminWebService {
         }
 
         void run() {
+            if (!state.compareAndSet(PENDING, RUNNING)) {
+                return; // cancelled after the waiter timed out; must not execute late
+            }
             try {
                 result = callable.call();
             } catch (Throwable t) {
@@ -2506,6 +2526,10 @@ public class AdminWebService {
             } finally {
                 latch.countDown();
             }
+        }
+
+        boolean cancel() {
+            return state.compareAndSet(PENDING, CANCELLED);
         }
     }
 
