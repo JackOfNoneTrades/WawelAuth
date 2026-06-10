@@ -193,10 +193,27 @@ public class AuthService {
         }
         resetPasswordSubject(subject);
 
+        WawelServer server = WawelServer.instance();
+        if (server == null) {
+            throw NetException.forbidden("Server registration module is not available.");
+        }
+
         PasswordHasher.HashResult hash = PasswordHasher.hash(newPassword);
         user.setPasswordHash(hash.getHash());
         user.setPasswordSalt(hash.getSalt());
-        userDAO.update(user);
+
+        // Invalidate every other session so leaked tokens die with the old
+        // password, but keep the requesting session alive.
+        String requestingToken = accessToken;
+        server.runInTransaction(() -> {
+            userDAO.update(user);
+            for (WawelToken token : tokenDAO.findByUser(user.getUuid())) {
+                if (!token.getAccessToken()
+                    .equals(requestingToken)) {
+                    tokenDAO.delete(token.getAccessToken());
+                }
+            }
+        });
 
         return null; // 204
     }
