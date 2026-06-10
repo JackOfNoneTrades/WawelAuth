@@ -370,7 +370,8 @@ public class YggdrasilHttpClient {
             responseBody = "";
         }
 
-        WawelAuth.debug("HTTP response " + status + ": " + truncate(responseBody, 200));
+        WawelAuth.debug(
+            "HTTP response " + status + ": " + truncate(ProviderProxySupport.redactSensitiveJson(responseBody), 200));
 
         if (status >= 200 && status < 300) {
             if (responseBody.isEmpty()) {

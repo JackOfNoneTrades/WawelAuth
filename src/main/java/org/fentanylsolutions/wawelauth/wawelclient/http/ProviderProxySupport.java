@@ -148,6 +148,20 @@ public final class ProviderProxySupport {
         return sb.toString();
     }
 
+    /**
+     * Masks token and credential values in a JSON body before it is written
+     * to a debug log, so /authenticate and /refresh responses do not leak
+     * live session tokens into latest.log.
+     */
+    public static String redactSensitiveJson(String body) {
+        if (body == null || body.isEmpty()) {
+            return body;
+        }
+        return body.replaceAll(
+            "(\"(?:accessToken|clientToken|refreshToken|password|token)\"\\s*:\\s*\")[^\"]*(\")",
+            "$1<redacted>$2");
+    }
+
     static boolean matchesProxyRequest(ProviderProxySettings settings, String requestingHost,
         InetAddress requestingSite, int requestingPort) {
         if (settings == null || !settings.isEnabled() || !settings.hasEndpoint()) {

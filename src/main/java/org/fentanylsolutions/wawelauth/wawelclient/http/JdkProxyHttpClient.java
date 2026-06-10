@@ -245,7 +245,10 @@ final class JdkProxyHttpClient {
             URI finalUri = (URI) httpResponseClass.getMethod("uri")
                 .invoke(response);
 
-            WawelAuth.debug("HTTP response " + status + ": " + truncate(responseBody, 200));
+            WawelAuth.debug(
+                "HTTP response " + status
+                    + ": "
+                    + truncate(ProviderProxySupport.redactSensitiveJson(responseBody), 200));
             return new ResponseData(
                 status,
                 responseBytes != null ? responseBytes : new byte[0],
