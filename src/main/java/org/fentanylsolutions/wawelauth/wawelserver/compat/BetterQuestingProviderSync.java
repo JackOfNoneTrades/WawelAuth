@@ -56,8 +56,9 @@ public final class BetterQuestingProviderSync {
             if (entry == null || entry.getValue() == null) {
                 continue;
             }
-            members.addAll(entry.getValue()
-                .getMembers());
+            members.addAll(
+                entry.getValue()
+                    .getMembers());
         }
 
         sendProviderSync(resolveRecipients(players), members);
@@ -112,8 +113,7 @@ public final class BetterQuestingProviderSync {
                 sent++;
             } catch (Exception e) {
                 WawelAuth.debug(
-                    "[BetterQuesting] Failed to send provider sync to "
-                        + recipient.getCommandSenderName()
+                    "[BetterQuesting] Failed to send provider sync to " + recipient.getCommandSenderName()
                         + ": "
                         + e.getMessage());
             }
@@ -121,8 +121,7 @@ public final class BetterQuestingProviderSync {
 
         if (sent > 0) {
             WawelAuth.debug(
-                "[BetterQuesting] Sent provider sync to "
-                    + sent
+                "[BetterQuesting] Sent provider sync to " + sent
                     + " player(s) with "
                     + providers.size()
                     + " association(s)");
@@ -179,9 +178,10 @@ public final class BetterQuestingProviderSync {
         Set<UUID> wanted = new LinkedHashSet<>(playerIds);
         List<EntityPlayerMP> players = new ArrayList<>();
         for (EntityPlayerMP player : allOnlinePlayers()) {
-            if (player != null && player.getGameProfile() != null && wanted.contains(
-                player.getGameProfile()
-                    .getId())) {
+            if (player != null && player.getGameProfile() != null
+                && wanted.contains(
+                    player.getGameProfile()
+                        .getId())) {
                 players.add(player);
             }
         }

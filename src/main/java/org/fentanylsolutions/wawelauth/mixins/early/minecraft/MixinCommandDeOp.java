@@ -26,19 +26,19 @@ public class MixinCommandDeOp {
             value = "INVOKE",
             target = "Lnet/minecraft/server/management/UserListOps;func_152700_a(Ljava/lang/String;)Lcom/mojang/authlib/GameProfile;")) // UserListOps.getByName
     private GameProfile wawelauth$resolveQualifiedDeOpEntry(UserListOps userListOps, String rawInput) {
-        return ProviderAwareCommandResolver.resolveProfileForListRemove(rawInput, userListOps, ProviderAwareUserListType.OPS, "op");
+        return ProviderAwareCommandResolver
+            .resolveProfileForListRemove(rawInput, userListOps, ProviderAwareUserListType.OPS, "op");
     }
 
     @Inject(method = "addTabCompletionOptions", at = @At("HEAD"), cancellable = true)
-    private void wawelauth$completeProviderQualifiedDeOp(
-        ICommandSender sender,
-        String[] args,
+    private void wawelauth$completeProviderQualifiedDeOp(ICommandSender sender, String[] args,
         CallbackInfoReturnable<List<String>> cir) {
         if (args.length == 1) {
             UserListOps ops = MinecraftServer.getServer()
                 .getConfigurationManager()
                 .func_152603_m();
-            cir.setReturnValue(ProviderAwareCommandResolver.completeSavedList(args[0], ops, ProviderAwareUserListType.OPS));
+            cir.setReturnValue(
+                ProviderAwareCommandResolver.completeSavedList(args[0], ops, ProviderAwareUserListType.OPS));
         }
     }
 }

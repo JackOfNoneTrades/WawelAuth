@@ -47,8 +47,9 @@ public final class BetterQuestingCommandResolver {
         }
 
         EntityPlayerMP online = ProviderQualifiedPlayerLookup.findOnlinePlayerByName(input);
-        if (online == null || online.getGameProfile() == null || online.getGameProfile()
-            .getId() == null) {
+        if (online == null || online.getGameProfile() == null
+            || online.getGameProfile()
+                .getId() == null) {
             throw new CommandException("wawelauth.commands.name_requires_online", input);
         }
 
@@ -135,13 +136,15 @@ public final class BetterQuestingCommandResolver {
     }
 
     public static void rememberOnlineProvider(EntityPlayerMP player) {
-        if (player == null || player.getGameProfile() == null || player.getGameProfile()
-            .getId() == null) {
+        if (player == null || player.getGameProfile() == null
+            || player.getGameProfile()
+                .getId() == null) {
             return;
         }
 
-        String providerKey = ProviderAwareUserListManager.resolveOnlineProviderKey(player.getGameProfile()
-            .getId());
+        String providerKey = ProviderAwareUserListManager.resolveOnlineProviderKey(
+            player.getGameProfile()
+                .getId());
         if (providerKey != null) {
             ProviderAwareUserListManager.storeProviderBinding(LIST_TYPE, player.getGameProfile(), providerKey);
         }
@@ -157,10 +160,8 @@ public final class BetterQuestingCommandResolver {
             return;
         }
 
-        ProviderAwareUserListManager.storeProviderBinding(
-            LIST_TYPE,
-            new GameProfile(playerId, trimToNull(playerName)),
-            providerKey);
+        ProviderAwareUserListManager
+            .storeProviderBinding(LIST_TYPE, new GameProfile(playerId, trimToNull(playerName)), providerKey);
     }
 
     private static UUID resolveSelector(ICommandSender sender, String input) {
@@ -176,8 +177,9 @@ public final class BetterQuestingCommandResolver {
 
     private static UUID resolveQualifiedPlayerId(String input) {
         EntityPlayerMP online = ProviderQualifiedPlayerLookup.resolveOnlinePlayer(input);
-        if (online != null && online.getGameProfile() != null && online.getGameProfile()
-            .getId() != null) {
+        if (online != null && online.getGameProfile() != null
+            && online.getGameProfile()
+                .getId() != null) {
             rememberOnlineProvider(online);
             return QuestingAPI.getQuestingUUID(online);
         }

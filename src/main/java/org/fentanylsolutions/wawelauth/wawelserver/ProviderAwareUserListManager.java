@@ -32,15 +32,13 @@ public final class ProviderAwareUserListManager {
 
     private ProviderAwareUserListManager() {}
 
-    public static String resolveProviderKey(ProviderAwareUserListType listType, GameProfile profile, boolean persistInferred) {
+    public static String resolveProviderKey(ProviderAwareUserListType listType, GameProfile profile,
+        boolean persistInferred) {
         return resolveProviderKey(listType, profile, getProviderBindings(listType), persistInferred);
     }
 
-    public static String resolveProviderKey(
-        ProviderAwareUserListType listType,
-        GameProfile profile,
-        Map<UUID, String> providerBindings,
-        boolean persistInferred) {
+    public static String resolveProviderKey(ProviderAwareUserListType listType, GameProfile profile,
+        Map<UUID, String> providerBindings, boolean persistInferred) {
         if (profile == null || profile.getId() == null) {
             return null;
         }
@@ -94,7 +92,8 @@ public final class ProviderAwareUserListManager {
         return resolveProviderKeyFromSessionUrl(LocalSessionVerifier.getPlayerProviderSessionUrl(profileUuid));
     }
 
-    public static void storeProviderBinding(ProviderAwareUserListType listType, GameProfile profile, String providerKey) {
+    public static void storeProviderBinding(ProviderAwareUserListType listType, GameProfile profile,
+        String providerKey) {
         String key = trimToNull(providerKey);
         if (listType == null || profile == null || profile.getId() == null || key == null) {
             return;
@@ -108,7 +107,8 @@ public final class ProviderAwareUserListManager {
         try {
             dao.putProviderKey(listType, profile.getId(), key);
         } catch (Exception e) {
-            WawelAuth.LOG.warn("Failed to store {} provider binding for {}: {}", listType, profile.getId(), e.getMessage());
+            WawelAuth.LOG
+                .warn("Failed to store {} provider binding for {}: {}", listType, profile.getId(), e.getMessage());
         }
     }
 
@@ -125,7 +125,8 @@ public final class ProviderAwareUserListManager {
         try {
             dao.delete(listType, profile.getId());
         } catch (Exception e) {
-            WawelAuth.LOG.warn("Failed to delete {} provider binding for {}: {}", listType, profile.getId(), e.getMessage());
+            WawelAuth.LOG
+                .warn("Failed to delete {} provider binding for {}: {}", listType, profile.getId(), e.getMessage());
         }
     }
 
@@ -199,7 +200,8 @@ public final class ProviderAwareUserListManager {
         return null;
     }
 
-    public static GameProfile findProfileByQualifiedBinding(String rawInput, UserList list, ProviderAwareUserListType listType) {
+    public static GameProfile findProfileByQualifiedBinding(String rawInput, UserList list,
+        ProviderAwareUserListType listType) {
         String username = trimToNull(FallbackWhitelistLookup.getQualifiedUsername(rawInput));
         String providerKey = trimToNull(FallbackWhitelistLookup.resolveQualifiedProviderKey(rawInput));
         if (providerKey == null) {
@@ -211,8 +213,9 @@ public final class ProviderAwareUserListManager {
 
         Map<UUID, String> providerBindings = getProviderBindings(listType);
         for (GameProfile profile : getSavedProfiles(list)) {
-            if (profile.getId() == null || profile.getName() == null || !profile.getName()
-                .equalsIgnoreCase(username)) {
+            if (profile.getId() == null || profile.getName() == null
+                || !profile.getName()
+                    .equalsIgnoreCase(username)) {
                 continue;
             }
 
@@ -261,14 +264,11 @@ public final class ProviderAwareUserListManager {
         }
     }
 
-    private static void addKnownProvidersFromList(
-        LinkedHashSet<String> providers,
-        UserList list,
+    private static void addKnownProvidersFromList(LinkedHashSet<String> providers, UserList list,
         ProviderAwareUserListType listType) {
         Map<UUID, String> providerBindings = getProviderBindings(listType);
         for (GameProfile profile : getSavedProfiles(list)) {
-            String providerKey = profile.getId() == null
-                ? null
+            String providerKey = profile.getId() == null ? null
                 : resolveProviderKey(listType, profile, providerBindings, false);
             addProviderKey(providers, providerKey);
         }

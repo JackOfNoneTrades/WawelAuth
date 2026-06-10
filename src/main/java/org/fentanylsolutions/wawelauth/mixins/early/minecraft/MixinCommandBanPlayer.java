@@ -43,9 +43,8 @@ public class MixinCommandBanPlayer {
             target = "Lnet/minecraft/server/management/PlayerProfileCache;func_152655_a(Ljava/lang/String;)Lcom/mojang/authlib/GameProfile;")) // PlayerProfileCache.getGameProfileForUsername
     private GameProfile wawelauth$resolveQualifiedBanEntry(PlayerProfileCache profileCache, String rawInput) {
         wawelauth$qualifiedBanInput = rawInput;
-        wawelauth$qualifiedBanProfile = ProviderAwareCommandResolver.resolveProfileForListAdd(
-            rawInput,
-            ProviderAwareUserListType.BANS);
+        wawelauth$qualifiedBanProfile = ProviderAwareCommandResolver
+            .resolveProfileForListAdd(rawInput, ProviderAwareUserListType.BANS);
         return wawelauth$qualifiedBanProfile;
     }
 
@@ -64,9 +63,7 @@ public class MixinCommandBanPlayer {
     }
 
     @Inject(method = "addTabCompletionOptions", at = @At("HEAD"), cancellable = true)
-    private void wawelauth$completeProviderQualifiedBan(
-        ICommandSender sender,
-        String[] args,
+    private void wawelauth$completeProviderQualifiedBan(ICommandSender sender, String[] args,
         CallbackInfoReturnable<List<String>> cir) {
         if (args.length == 1) {
             cir.setReturnValue(ProviderAwareCommandResolver.completeBanTargets(args[0]));

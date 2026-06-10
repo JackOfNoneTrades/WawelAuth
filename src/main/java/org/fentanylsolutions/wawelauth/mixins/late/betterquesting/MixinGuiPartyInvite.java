@@ -16,8 +16,7 @@ public abstract class MixinGuiPartyInvite {
             value = "INVOKE",
             target = "Lbetterquesting/api2/client/gui/controls/PanelTextField;setMaxLength(I)Lbetterquesting/api2/client/gui/controls/PanelTextField;"),
         remap = false)
-    private PanelTextField<String> wawelauth$allowProviderQualifiedInviteNames(PanelTextField<String> field,
-        int size) {
+    private PanelTextField<String> wawelauth$allowProviderQualifiedInviteNames(PanelTextField<String> field, int size) {
         return field.setMaxLength(64);
     }
 }

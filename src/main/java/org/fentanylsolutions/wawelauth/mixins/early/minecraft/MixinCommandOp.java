@@ -29,9 +29,7 @@ public class MixinCommandOp {
     }
 
     @Inject(method = "addTabCompletionOptions", at = @At("HEAD"), cancellable = true)
-    private void wawelauth$completeProviderQualifiedOp(
-        ICommandSender sender,
-        String[] args,
+    private void wawelauth$completeProviderQualifiedOp(ICommandSender sender, String[] args,
         CallbackInfoReturnable<List<String>> cir) {
         if (args.length == 1) {
             cir.setReturnValue(ProviderAwareCommandResolver.completeOpAdd(args[0]));

@@ -669,10 +669,8 @@ public class AdminWebService {
             List<GameProfile> profiles = ProviderAwareUserListManager.getSavedProfiles(whitelist);
             for (GameProfile profile : profiles) {
                 if (profile == null || profile.getId() == null) continue;
-                String providerKey = ProviderAwareUserListManager.resolveProviderKey(
-                    ProviderAwareUserListType.WHITELIST,
-                    profile,
-                    true);
+                String providerKey = ProviderAwareUserListManager
+                    .resolveProviderKey(ProviderAwareUserListType.WHITELIST, profile, true);
                 entries.add(toListEntryJson(profile, providerKey));
             }
 
@@ -724,10 +722,8 @@ public class AdminWebService {
             scm.func_152601_d(/* addWhitelistedPlayer */resolved.profile);
             return null;
         });
-        ProviderAwareUserListManager.storeProviderBinding(
-            ProviderAwareUserListType.WHITELIST,
-            resolved.profile,
-            resolved.providerKey);
+        ProviderAwareUserListManager
+            .storeProviderBinding(ProviderAwareUserListType.WHITELIST, resolved.profile, resolved.providerKey);
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("added", true);
@@ -760,10 +756,8 @@ public class AdminWebService {
             List<GameProfile> profiles = ProviderAwareUserListManager.getSavedProfiles(ops);
             for (GameProfile profile : profiles) {
                 if (profile == null || profile.getId() == null) continue;
-                String providerKey = ProviderAwareUserListManager.resolveProviderKey(
-                    ProviderAwareUserListType.OPS,
-                    profile,
-                    true);
+                String providerKey = ProviderAwareUserListManager
+                    .resolveProviderKey(ProviderAwareUserListType.OPS, profile, true);
                 entries.add(toListEntryJson(profile, providerKey));
             }
 
@@ -797,10 +791,8 @@ public class AdminWebService {
             scm.func_152605_a(/* addOp */resolved.profile);
             return null;
         });
-        ProviderAwareUserListManager.storeProviderBinding(
-            ProviderAwareUserListType.OPS,
-            resolved.profile,
-            resolved.providerKey);
+        ProviderAwareUserListManager
+            .storeProviderBinding(ProviderAwareUserListType.OPS, resolved.profile, resolved.providerKey);
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("added", true);

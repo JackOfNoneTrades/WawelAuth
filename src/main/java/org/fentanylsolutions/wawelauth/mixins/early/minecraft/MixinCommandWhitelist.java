@@ -36,17 +36,12 @@ public class MixinCommandWhitelist {
             value = "INVOKE",
             target = "Lnet/minecraft/server/management/UserListWhitelist;func_152706_a(Ljava/lang/String;)Lcom/mojang/authlib/GameProfile;")) // UserListWhitelist.getByName
     private GameProfile wawelauth$resolveQualifiedWhitelistRemove(UserListWhitelist whitelist, String rawInput) {
-        return ProviderAwareCommandResolver.resolveProfileForListRemove(
-            rawInput,
-            whitelist,
-            ProviderAwareUserListType.WHITELIST,
-            "whitelist");
+        return ProviderAwareCommandResolver
+            .resolveProfileForListRemove(rawInput, whitelist, ProviderAwareUserListType.WHITELIST, "whitelist");
     }
 
     @Inject(method = "addTabCompletionOptions", at = @At("HEAD"), cancellable = true)
-    private void wawelauth$completeProviderQualifiedWhitelist(
-        ICommandSender sender,
-        String[] args,
+    private void wawelauth$completeProviderQualifiedWhitelist(ICommandSender sender, String[] args,
         CallbackInfoReturnable<List<String>> cir) {
         if (args.length != 2) {
             return;
@@ -62,7 +57,8 @@ public class MixinCommandWhitelist {
                 .getConfigurationManager()
                 .func_152599_k();
             cir.setReturnValue(
-                ProviderAwareCommandResolver.completeSavedList(args[1], whitelist, ProviderAwareUserListType.WHITELIST));
+                ProviderAwareCommandResolver
+                    .completeSavedList(args[1], whitelist, ProviderAwareUserListType.WHITELIST));
         }
     }
 }

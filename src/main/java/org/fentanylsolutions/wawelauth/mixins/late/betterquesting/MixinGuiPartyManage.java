@@ -56,10 +56,12 @@ public abstract class MixinGuiPartyManage {
         }
 
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc != null && mc.thePlayer != null && mc.thePlayer.getGameProfile() != null
+        if (mc != null && mc.thePlayer != null
+            && mc.thePlayer.getGameProfile() != null
             && storedValue != null
-            && storedValue.equals(mc.thePlayer.getGameProfile()
-                .getName())) {
+            && storedValue.equals(
+                mc.thePlayer.getGameProfile()
+                    .getName())) {
             return QuestingAPI.getQuestingUUID(mc.thePlayer);
         }
 

@@ -194,6 +194,12 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.LATE)
             .side(MiscUtil.Side.CLIENT)
             .build();
+        registry.mixin("MixinTabSkinCache")
+            .modid("serverutilities")
+            .extraModid("ServerUtilities")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
         registry.mixin("AccessorGuiManagePlayersButtonBase")
             .modid("serverutilities")
             .extraModid("ServerUtilities")

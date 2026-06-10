@@ -29,11 +29,8 @@ public final class ProviderAwareCommandResolver {
         return target.profile;
     }
 
-    public static GameProfile resolveProfileForListRemove(
-        String rawInput,
-        UserList list,
-        ProviderAwareUserListType listType,
-        String listName) {
+    public static GameProfile resolveProfileForListRemove(String rawInput, UserList list,
+        ProviderAwareUserListType listType, String listName) {
         GameProfile profile = resolveExistingListTarget(rawInput, list, listType, listName);
         ProviderAwareUserListManager.deleteProviderBinding(listType, profile);
         return profile;
@@ -82,8 +79,9 @@ public final class ProviderAwareCommandResolver {
         }
 
         EntityPlayerMP online = ProviderQualifiedPlayerLookup.findOnlinePlayerByName(input);
-        if (online == null || online.getGameProfile() == null || online.getGameProfile()
-            .getId() == null) {
+        if (online == null || online.getGameProfile() == null
+            || online.getGameProfile()
+                .getId() == null) {
             throw new CommandException("wawelauth.commands.name_requires_online", input);
         }
 
@@ -91,11 +89,8 @@ public final class ProviderAwareCommandResolver {
         return new ResolvedTarget(profile, ProviderAwareUserListManager.resolveOnlineProviderKey(profile.getId()));
     }
 
-    private static GameProfile resolveExistingListTarget(
-        String rawInput,
-        UserList list,
-        ProviderAwareUserListType listType,
-        String listName) {
+    private static GameProfile resolveExistingListTarget(String rawInput, UserList list,
+        ProviderAwareUserListType listType, String listName) {
         String input = trimToNull(rawInput);
         if (input == null) {
             throw new CommandException("wawelauth.commands.list_entry_missing", listName, "");
@@ -111,10 +106,8 @@ public final class ProviderAwareCommandResolver {
         }
 
         if (FallbackWhitelistLookup.isQualifiedProviderUsername(input)) {
-            GameProfile savedByBinding = ProviderAwareUserListManager.findProfileByQualifiedBinding(
-                input,
-                list,
-                listType);
+            GameProfile savedByBinding = ProviderAwareUserListManager
+                .findProfileByQualifiedBinding(input, list, listType);
             if (savedByBinding != null) {
                 return savedByBinding;
             }
@@ -132,13 +125,16 @@ public final class ProviderAwareCommandResolver {
         }
 
         EntityPlayerMP online = ProviderQualifiedPlayerLookup.findOnlinePlayerByName(input);
-        if (online == null || online.getGameProfile() == null || online.getGameProfile()
-            .getId() == null) {
+        if (online == null || online.getGameProfile() == null
+            || online.getGameProfile()
+                .getId() == null) {
             throw new CommandException("wawelauth.commands.name_requires_online", input);
         }
 
-        GameProfile saved = ProviderAwareUserListManager.findProfileByUuid(list, online.getGameProfile()
-            .getId());
+        GameProfile saved = ProviderAwareUserListManager.findProfileByUuid(
+            list,
+            online.getGameProfile()
+                .getId());
         if (saved != null) {
             return saved;
         }
@@ -193,8 +189,8 @@ public final class ProviderAwareCommandResolver {
     }
 
     private static String commandTarget(GameProfile profile) {
-        String providerKey = profile == null ? null : ProviderAwareUserListManager.resolveOnlineProviderKey(
-            profile.getId());
+        String providerKey = profile == null ? null
+            : ProviderAwareUserListManager.resolveOnlineProviderKey(profile.getId());
         if (providerKey != null) {
             return qualifiedName(profile, providerKey);
         }

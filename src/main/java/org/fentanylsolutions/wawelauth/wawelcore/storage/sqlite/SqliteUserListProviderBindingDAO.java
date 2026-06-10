@@ -58,8 +58,8 @@ public class SqliteUserListProviderBindingDAO implements UserListProviderBinding
     @Override
     public void delete(ProviderAwareUserListType listType, UUID profileUuid) {
         db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
-                "DELETE FROM user_list_provider_bindings WHERE list_type = ? AND profile_uuid = ?")) {
+            try (PreparedStatement ps = conn
+                .prepareStatement("DELETE FROM user_list_provider_bindings WHERE list_type = ? AND profile_uuid = ?")) {
                 ps.setString(1, listType.name());
                 ps.setString(2, profileUuid.toString());
                 ps.executeUpdate();

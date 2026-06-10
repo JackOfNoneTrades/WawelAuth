@@ -7,19 +7,19 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.KeyManager;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.PropertySigner;
-import org.fentanylsolutions.wawelauth.wawelcore.storage.UserListProviderBindingDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.InviteDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.ProfileDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.SessionDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.TokenDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.UserDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.UserListProviderBindingDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.memory.InMemorySessionDAO;
-import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteUserListProviderBindingDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteDatabase;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteInviteDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteProfileDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteTokenDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteUserDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteUserListProviderBindingDAO;
 import org.fentanylsolutions.wawelauth.wawelnet.HttpRouter;
 
 /**

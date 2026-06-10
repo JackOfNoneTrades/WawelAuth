@@ -26,19 +26,19 @@ public class MixinCommandPardonPlayer {
             value = "INVOKE",
             target = "Lnet/minecraft/server/management/UserListBans;func_152703_a(Ljava/lang/String;)Lcom/mojang/authlib/GameProfile;")) // UserListBans.getBannedProfile
     private GameProfile wawelauth$resolveQualifiedPardonEntry(UserListBans bans, String rawInput) {
-        return ProviderAwareCommandResolver.resolveProfileForListRemove(rawInput, bans, ProviderAwareUserListType.BANS, "ban");
+        return ProviderAwareCommandResolver
+            .resolveProfileForListRemove(rawInput, bans, ProviderAwareUserListType.BANS, "ban");
     }
 
     @Inject(method = "addTabCompletionOptions", at = @At("HEAD"), cancellable = true)
-    private void wawelauth$completeProviderQualifiedPardon(
-        ICommandSender sender,
-        String[] args,
+    private void wawelauth$completeProviderQualifiedPardon(ICommandSender sender, String[] args,
         CallbackInfoReturnable<List<String>> cir) {
         if (args.length == 1) {
             UserListBans bans = MinecraftServer.getServer()
                 .getConfigurationManager()
                 .func_152608_h();
-            cir.setReturnValue(ProviderAwareCommandResolver.completeSavedList(args[0], bans, ProviderAwareUserListType.BANS));
+            cir.setReturnValue(
+                ProviderAwareCommandResolver.completeSavedList(args[0], bans, ProviderAwareUserListType.BANS));
         }
     }
 }

@@ -8,12 +8,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(
-    targets = {
-        "serverutils.client.gui.teams.GuiManageMembers$ButtonPlayer",
+    targets = { "serverutils.client.gui.teams.GuiManageMembers$ButtonPlayer",
         "serverutils.client.gui.teams.GuiManageAllies$ButtonPlayer",
         "serverutils.client.gui.teams.GuiManageModerators$ButtonPlayer",
-        "serverutils.client.gui.teams.GuiManageEnemies$ButtonPlayer"
-    },
+        "serverutils.client.gui.teams.GuiManageEnemies$ButtonPlayer" },
     remap = false)
 public abstract class MixinGuiManagePlayerButtons {
 
