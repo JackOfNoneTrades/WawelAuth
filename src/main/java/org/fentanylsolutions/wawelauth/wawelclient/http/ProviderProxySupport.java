@@ -70,8 +70,10 @@ public final class ProviderProxySupport {
                         .trim(),
                     settings.getPort()
                         .intValue()));
-            conn = (HttpURLConnection) new URL(url).openConnection(proxy);
-            if (proxyType == Proxy.Type.HTTP && settings.hasCredentials()) {
+            URL target = new URL(url);
+            conn = (HttpURLConnection) target.openConnection(proxy);
+            boolean httpsTarget = "https".equalsIgnoreCase(target.getProtocol());
+            if (proxyType == Proxy.Type.HTTP && settings.hasCredentials() && !httpsTarget) {
                 String user = settings.getUsername() != null ? settings.getUsername() : "";
                 String pass = settings.getPassword() != null ? settings.getPassword() : "";
                 String token = Base64.getEncoder()
