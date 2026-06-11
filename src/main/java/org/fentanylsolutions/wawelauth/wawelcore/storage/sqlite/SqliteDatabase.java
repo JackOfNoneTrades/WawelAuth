@@ -254,6 +254,7 @@ public class SqliteDatabase {
             INSERT OR IGNORE INTO user_list_provider_bindings (list_type, profile_uuid, provider_key, updated_at)
             SELECT list_type, profile_uuid, provider_key, updated_at FROM admin_player_list_provider_bindings
             """);
+        stmt.execute("DROP TABLE admin_player_list_provider_bindings");
         if (copied > 0) {
             WawelAuth.LOG.info("Migrated {} user list provider bindings.", copied);
         }
