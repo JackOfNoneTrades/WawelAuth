@@ -122,7 +122,7 @@ public class AuthService {
 
         WawelServer server = WawelServer.instance();
         if (server == null) {
-            throw NetException.forbidden("Server registration module is not available.");
+            throw NetException.serviceUnavailable("Server registration module is not available.");
         }
 
         try {
@@ -195,7 +195,7 @@ public class AuthService {
 
         WawelServer server = WawelServer.instance();
         if (server == null) {
-            throw NetException.forbidden("Server registration module is not available.");
+            throw NetException.serviceUnavailable("Server registration module is not available.");
         }
 
         PasswordHasher.HashResult hash = PasswordHasher.hash(newPassword);
@@ -251,7 +251,7 @@ public class AuthService {
 
         WawelServer server = WawelServer.instance();
         if (server == null) {
-            throw NetException.forbidden("Server registration module is not available.");
+            throw NetException.serviceUnavailable("Server registration module is not available.");
         }
 
         UUID userUuid = user.getUuid();

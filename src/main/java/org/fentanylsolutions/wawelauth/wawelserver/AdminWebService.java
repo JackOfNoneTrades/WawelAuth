@@ -1321,7 +1321,7 @@ public class AdminWebService {
     private File resolveServerPropertiesFile() {
         MinecraftServer server = MinecraftServer.getServer();
         if (server == null) {
-            throw NetException.illegalArgument("Minecraft server is not running.");
+            throw NetException.serviceUnavailable("Minecraft server is not running.");
         }
         return server.getFile("server.properties");
     }
@@ -1578,7 +1578,7 @@ public class AdminWebService {
             boolean ok = task.latch.await(MAIN_THREAD_WAIT_MS, TimeUnit.MILLISECONDS);
             if (!ok) {
                 if (task.cancel()) {
-                    throw NetException.illegalArgument("Timed out waiting for main-thread server operation.");
+                    throw NetException.serviceUnavailable("Timed out waiting for main-thread server operation.");
                 }
                 // The task started executing right at the deadline; it cannot be
                 // cancelled anymore, so wait for the truthful outcome instead of
@@ -1589,9 +1589,9 @@ public class AdminWebService {
             Thread.currentThread()
                 .interrupt();
             if (task.cancel()) {
-                throw NetException.illegalArgument("Interrupted while waiting for main-thread server operation.");
+                throw NetException.serviceUnavailable("Interrupted while waiting for main-thread server operation.");
             }
-            throw NetException.illegalArgument(
+            throw NetException.serviceUnavailable(
                 "Interrupted while waiting for main-thread server operation; "
                     + "the operation may still have completed.");
         }
@@ -1640,7 +1640,7 @@ public class AdminWebService {
     private void persistServerConfig() {
         File configDir = Config.getConfigDir();
         if (configDir == null) {
-            throw NetException.illegalArgument("Config directory is not initialized.");
+            throw NetException.serviceUnavailable("Config directory is not initialized.");
         }
         JsonConfigIO.save(new File(configDir, "server.json"), serverConfig.toPersistable());
     }
@@ -2016,11 +2016,11 @@ public class AdminWebService {
     private ServerConfigurationManager requireServerConfigManager() {
         MinecraftServer server = MinecraftServer.getServer();
         if (server == null) {
-            throw NetException.illegalArgument("Minecraft server is not running.");
+            throw NetException.serviceUnavailable("Minecraft server is not running.");
         }
         ServerConfigurationManager scm = server.getConfigurationManager();
         if (scm == null) {
-            throw NetException.illegalArgument("Server configuration manager is not available.");
+            throw NetException.serviceUnavailable("Server configuration manager is not available.");
         }
         return scm;
     }
