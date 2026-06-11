@@ -64,7 +64,6 @@ public class SessionBridge {
     private volatile ClientAccount activeAccount;
     private volatile ClientProvider activeProvider;
     private volatile String lastActivationError;
-    private volatile String connectedSessionServerBase;
     private volatile List<ClientProvider> trustedProviders = Collections.emptyList();
     private volatile List<PublicKey> trustedKeys = Collections.emptyList();
     private final ConcurrentHashMap<String, GameProfile> profileCache = new ConcurrentHashMap<>();
@@ -180,7 +179,6 @@ public class SessionBridge {
         this.activeAccount = null;
         this.activeProvider = null;
         this.lastActivationError = null;
-        this.connectedSessionServerBase = null;
         this.trustedProviders = Collections.emptyList();
         this.trustedKeys = Collections.emptyList();
         this.profileCache.clear();
@@ -237,7 +235,6 @@ public class SessionBridge {
      */
     public void applyServerCapabilities(ServerCapabilities capabilities) {
         ClientProvider active = this.activeProvider;
-        this.connectedSessionServerBase = resolveConnectedSessionServerBase(capabilities);
         setTrustedProviders(buildConnectionTrustedProviders(active, capabilities));
     }
 
@@ -705,17 +702,6 @@ public class SessionBridge {
         return resolved.isEmpty() ? Collections.emptyList() : resolved;
     }
 
-    private static String resolveConnectedSessionServerBase(ServerCapabilities capabilities) {
-        if (capabilities == null || !capabilities.isWawelAuthAdvertised() || !capabilities.isLocalAuthSupported()) {
-            return null;
-        }
-        String apiRoot = WawelPingPayload.normalizeUrl(capabilities.getLocalAuthApiRoot());
-        if (apiRoot == null) {
-            return null;
-        }
-        return apiRoot + "/sessionserver";
-    }
-
     private static String extractHost(String rawUrl) {
         if (rawUrl == null || rawUrl.trim()
             .isEmpty()) return null;
@@ -950,42 +936,6 @@ public class SessionBridge {
             capePath);
     }
 
-    private static boolean isUsableProfileProvider(ClientProvider provider) {
-        return provider != null && !isOfflineProvider(provider);
-    }
-
-    private static boolean hasUsableProfileProvider(List<ClientProvider> providers) {
-        if (providers == null || providers.isEmpty()) {
-            return false;
-        }
-        for (ClientProvider provider : providers) {
-            if (isUsableProfileProvider(provider)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean containsMojangProvider(List<ClientProvider> providers) {
-        if (providers == null || providers.isEmpty()) {
-            return false;
-        }
-        for (ClientProvider provider : providers) {
-            if (isMojangProvider(provider)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isClientWorldLoaded() {
-        try {
-            return Minecraft.getMinecraft().theWorld != null;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
     private static boolean isUsableLauncherSession(Session session) {
         if (session == null) {
             return false;
@@ -1002,29 +952,6 @@ public class SessionBridge {
         if (fingerprint == null) return null;
         String trimmed = fingerprint.trim();
         return trimmed.isEmpty() ? null : trimmed.toLowerCase();
-    }
-
-    private GameProfile lookupProfileFromSessionBase(String sessionBase, GameProfile profile, boolean requireSecure) {
-        String cacheKey = buildProfileCacheKey("server:" + sessionBase, profile.getId(), requireSecure);
-        GameProfile cached = profileCache.get(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
-
-        if (Minecraft.getMinecraft()
-            .func_152345_ab()) {
-            queueProfileFetchFromSessionBase(sessionBase, profile, requireSecure, cacheKey);
-            return profile;
-        }
-
-        GameProfile fetched = fetchProfileFromSessionServer(sessionBase, profile, requireSecure);
-        if (hasProperties(fetched)) {
-            String altKey = buildProfileCacheKey("server:" + sessionBase, profile.getId(), !requireSecure);
-            cacheFetchedProfile(cacheKey, altKey, fetched, requireSecure);
-            return fetched;
-        }
-
-        return null;
     }
 
     private GameProfile lookupProfileFromProvider(ClientProvider provider, GameProfile profile, boolean requireSecure) {
@@ -1070,32 +997,6 @@ public class SessionBridge {
                 }
             } catch (Exception e) {
                 WawelAuth.debug("Background profile fetch failed: " + e.getMessage());
-            } finally {
-                profileFetchInFlight.remove(cacheKey);
-            }
-        });
-    }
-
-    private void queueProfileFetchFromSessionBase(String sessionBase, GameProfile profile, boolean requireSecure,
-        String cacheKey) {
-        if (profileFetchInFlight.putIfAbsent(cacheKey, Boolean.TRUE) != null) {
-            return;
-        }
-
-        final String sessionBaseSnapshot = sessionBase;
-        final UUID profileId = profile.getId();
-        final String profileName = profile.getName();
-
-        profileFetchExecutor.submit(() -> {
-            try {
-                GameProfile probe = new GameProfile(profileId, profileName);
-                GameProfile fetched = fetchProfileFromSessionServer(sessionBaseSnapshot, probe, requireSecure);
-                if (hasProperties(fetched)) {
-                    String altKey = buildProfileCacheKey("server:" + sessionBaseSnapshot, profileId, !requireSecure);
-                    cacheFetchedProfile(cacheKey, altKey, fetched, requireSecure);
-                }
-            } catch (Exception e) {
-                WawelAuth.debug("Background server profile fetch failed: " + e.getMessage());
             } finally {
                 profileFetchInFlight.remove(cacheKey);
             }
@@ -1196,23 +1097,6 @@ public class SessionBridge {
             }
             // Non-Mojang: re-throw so mixin sees failure and callers retry
             throw new RuntimeException("Provider profile fetch failed: " + provider.getName(), e);
-        }
-    }
-
-    private GameProfile fetchProfileFromSessionServer(String sessionBase, GameProfile profile, boolean requireSecure) {
-        try {
-            String uuid = UuidUtil.toUnsigned(profile.getId());
-            String base = WawelPingPayload.normalizeUrl(sessionBase);
-            if (base == null) return null;
-
-            String url = base + "/session/minecraft/profile/" + uuid;
-            url += requireSecure ? "?unsigned=false&wawelauth_client=1" : "?wawelauth_client=1";
-
-            JsonObject response = httpClient.getJson(url);
-            return buildProfileFromJson(profile, response);
-        } catch (Exception e) {
-            WawelAuth.debug("Failed to fill profile properties from connected server: " + e.getMessage());
-            return null;
         }
     }
 

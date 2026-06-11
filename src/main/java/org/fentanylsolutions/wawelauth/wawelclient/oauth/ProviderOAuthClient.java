@@ -4,22 +4,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.BindException;
 import java.net.HttpURLConnection;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import net.minecraft.util.StatCollector;
@@ -32,17 +25,12 @@ import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderProxySupport;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.sun.net.httpserver.HttpServer;
 
 public abstract class ProviderOAuthClient {
 
     private static final int CONNECT_TIMEOUT_MS = 15_000;
     private static final int READ_TIMEOUT_MS = 15_000;
-    private static final int CALLBACK_TIMEOUT_SECONDS = 300;
     private static final int MAX_RESPONSE_BYTES = 1024 * 1024;
-    private static final String CALLBACK_LOGO_DATA_URL = loadCallbackLogoDataUrl();
-    private static final Object LOOPBACK_LOCK = new Object();
-    private static ActiveLoopback activeLoopback;
 
     public abstract boolean supports(String providerName);
 
@@ -57,27 +45,16 @@ public abstract class ProviderOAuthClient {
         Consumer<String> deviceCodeStatus = deviceCodeSink != null ? deviceCodeSink : s -> {};
         deviceCodeStatus.accept(null);
 
-        OAuthTokens tokens;
-        if (usesDeviceCodeFlow()) {
-            status.accept(tr("wawelauth.gui.login.status.oauth_request_device_code"));
-            DeviceCodeResponse deviceCode = requestDeviceCode(provider);
-            deviceCodeStatus.accept(deviceCode.getUserCode());
-            status.accept(tr("wawelauth.gui.login.status.oauth_open_browser"));
-            openBrowser(deviceCode.getOpenBrowserUrl());
-            status.accept(
-                deviceCode.getUserCode() != null
-                    ? tr("wawelauth.gui.login.status.oauth_waiting_code", deviceCode.getUserCode())
-                    : tr("wawelauth.gui.login.status.oauth_waiting"));
-            tokens = pollForDeviceTokens(deviceCode, provider);
-        } else {
-            String state = UUID.randomUUID()
-                .toString()
-                .replace("-", "");
-            status.accept(tr("wawelauth.gui.login.status.oauth_open_browser"));
-            String code = awaitAuthorizationCode(state, buildAuthorizeUrl(state, loginHint));
-            status.accept(tr("wawelauth.gui.login.status.oauth_exchange_code"));
-            tokens = exchangeAuthorizationCode(code, provider);
-        }
+        status.accept(tr("wawelauth.gui.login.status.oauth_request_device_code"));
+        DeviceCodeResponse deviceCode = requestDeviceCode(provider);
+        deviceCodeStatus.accept(deviceCode.getUserCode());
+        status.accept(tr("wawelauth.gui.login.status.oauth_open_browser"));
+        openBrowser(deviceCode.getOpenBrowserUrl());
+        status.accept(
+            deviceCode.getUserCode() != null
+                ? tr("wawelauth.gui.login.status.oauth_waiting_code", deviceCode.getUserCode())
+                : tr("wawelauth.gui.login.status.oauth_waiting"));
+        OAuthTokens tokens = pollForDeviceTokens(deviceCode, provider);
 
         return completeLogin(tokens, provider, status, null, null, null);
     }
@@ -116,10 +93,6 @@ public abstract class ProviderOAuthClient {
 
     protected abstract String getScopes();
 
-    protected String getAuthorizeUrl() {
-        return null;
-    }
-
     protected String getRedirectUri() {
         return null;
     }
@@ -130,16 +103,6 @@ public abstract class ProviderOAuthClient {
 
     protected boolean includeScopesInRefreshRequest() {
         return false;
-    }
-
-    protected boolean usesDeviceCodeFlow() {
-        return StringUtil.trimToNull(getDeviceCodeUrl()) != null;
-    }
-
-    protected void customizeAuthorizeParams(Map<String, String> params, String loginHint) {
-        if (StringUtil.trimToNull(loginHint) != null) {
-            params.put("login_hint", loginHint.trim());
-        }
     }
 
     protected final JsonObject postJson(String url, JsonObject body, String authorization, ClientProvider provider)
@@ -231,40 +194,6 @@ public abstract class ProviderOAuthClient {
         if (clientId == null || isPlaceholder(clientId)) {
             throw new IOException(tr("wawelauth.gui.login.error.oauth_unconfigured", providerLabel(provider)));
         }
-        if (!usesDeviceCodeFlow()) {
-            String clientSecret = StringUtil.trimToNull(getClientSecret());
-            String redirectUri = StringUtil.trimToNull(getRedirectUri());
-            String authorizeUrl = StringUtil.trimToNull(getAuthorizeUrl());
-            if (authorizeUrl == null || redirectUri == null || clientSecret == null || isPlaceholder(clientSecret)) {
-                throw new IOException(tr("wawelauth.gui.login.error.oauth_unconfigured", providerLabel(provider)));
-            }
-            parseLoopbackRedirectUri(redirectUri);
-        }
-    }
-
-    private String buildAuthorizeUrl(String state, String loginHint) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("client_id", getClientId());
-        params.put("response_type", "code");
-        params.put("redirect_uri", getRedirectUri());
-        if (StringUtil.trimToNull(getScopes()) != null) {
-            params.put("scope", getScopes());
-        }
-        params.put("state", state);
-        customizeAuthorizeParams(params, loginHint);
-        return getAuthorizeUrl() + "?" + encodeForm(params);
-    }
-
-    private OAuthTokens exchangeAuthorizationCode(String code, ClientProvider provider) throws IOException {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("client_id", getClientId());
-        if (StringUtil.trimToNull(getClientSecret()) != null) {
-            params.put("client_secret", getClientSecret());
-        }
-        params.put("grant_type", "authorization_code");
-        params.put("code", code);
-        params.put("redirect_uri", getRedirectUri());
-        return parseOAuthTokens(postForm(getTokenUrl(), params, provider), null);
     }
 
     private OAuthTokens refreshTokens(String refreshToken, ClientProvider provider) throws IOException {
@@ -363,98 +292,6 @@ public abstract class ProviderOAuthClient {
         throw new IOException(tr("wawelauth.gui.login.error.oauth_timeout"));
     }
 
-    private String awaitAuthorizationCode(String expectedState, String authorizeUrl) throws IOException {
-        URI redirectUri = parseLoopbackRedirectUri(getRedirectUri());
-        AtomicReference<String> codeRef = new AtomicReference<>();
-        AtomicReference<String> stateRef = new AtomicReference<>();
-        AtomicReference<String> errorRef = new AtomicReference<>();
-        AtomicReference<String> errorDescriptionRef = new AtomicReference<>();
-        AtomicReference<String> cancelMessageRef = new AtomicReference<>();
-        CountDownLatch latch = new CountDownLatch(1);
-
-        HttpServer server;
-        ActiveLoopback loopback;
-        synchronized (LOOPBACK_LOCK) {
-            cancelActiveLoopbackLocked(tr("wawelauth.gui.login.error.oauth_restarted"));
-            try {
-                server = HttpServer
-                    .create(new InetSocketAddress(InetAddress.getLoopbackAddress(), resolvePort(redirectUri)), 0);
-            } catch (BindException e) {
-                throw new IOException(tr("wawelauth.gui.login.error.oauth_callback_port_busy"), e);
-            }
-            String redirectPath = normalizePath(redirectUri.getPath());
-            server.createContext(redirectPath, exchange -> {
-                try {
-                    Map<String, String> query = parseQuery(
-                        exchange.getRequestURI()
-                            .getRawQuery());
-                    codeRef.set(query.get("code"));
-                    stateRef.set(query.get("state"));
-                    errorRef.set(firstNonBlank(query.get("error"), query.get("error_code")));
-                    errorDescriptionRef.set(firstNonBlank(query.get("error_description"), query.get("error_message")));
-
-                    boolean hasCode = StringUtil.trimToNull(codeRef.get()) != null;
-                    boolean hasError = StringUtil.trimToNull(errorRef.get()) != null;
-                    boolean stateMatches = expectedState != null && expectedState.equals(stateRef.get());
-                    String response = buildCallbackPageHtml(
-                        hasCode,
-                        hasError,
-                        stateMatches,
-                        errorRef.get(),
-                        errorDescriptionRef.get());
-                    byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
-                    exchange.getResponseHeaders()
-                        .set("Content-Type", "text/html; charset=utf-8");
-                    exchange.sendResponseHeaders(200, bytes.length);
-                    try (OutputStream os = exchange.getResponseBody()) {
-                        os.write(bytes);
-                    }
-                } finally {
-                    latch.countDown();
-                }
-            });
-            server.start();
-            loopback = new ActiveLoopback(server, latch, cancelMessageRef);
-            activeLoopback = loopback;
-        }
-
-        try {
-            openBrowser(authorizeUrl);
-            boolean completed;
-            try {
-                completed = latch.await(CALLBACK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread()
-                    .interrupt();
-                throw new IOException(tr("wawelauth.gui.login.error.oauth_interrupted"), e);
-            }
-            if (!completed) {
-                throw new IOException(tr("wawelauth.gui.login.error.oauth_timeout"));
-            }
-        } finally {
-            server.stop(0);
-            synchronized (LOOPBACK_LOCK) {
-                if (activeLoopback == loopback) {
-                    activeLoopback = null;
-                }
-            }
-        }
-
-        if (cancelMessageRef.get() != null) {
-            throw new IOException(cancelMessageRef.get());
-        }
-        if (StringUtil.trimToNull(errorRef.get()) != null) {
-            throw new IOException(tr("wawelauth.gui.login.error.oauth_failed", errorRef.get()));
-        }
-        if (StringUtil.trimToNull(codeRef.get()) == null) {
-            throw new IOException(tr("wawelauth.gui.login.error.oauth_missing_code"));
-        }
-        if (expectedState != null && !expectedState.equals(stateRef.get())) {
-            throw new IOException(tr("wawelauth.gui.login.error.oauth_state_mismatch"));
-        }
-        return codeRef.get();
-    }
-
     private JsonObject postForm(String url, Map<String, String> params, ClientProvider provider) throws IOException {
         ProviderProxySettings proxySettings = provider != null ? provider.getProxySettings() : null;
         byte[] payload = encodeForm(params).getBytes(StandardCharsets.UTF_8);
@@ -536,177 +373,6 @@ public abstract class ProviderOAuthClient {
                 .interrupt();
             throw new IOException(tr("wawelauth.gui.login.error.oauth_interrupted"), e);
         }
-    }
-
-    private static String buildCallbackPageHtml(boolean hasCode, boolean hasError, boolean stateMatches, String error,
-        String errorDescription) {
-        String title;
-        String badgeClass;
-        String message;
-        if (hasError) {
-            title = tr("wawelauth.oauth.callback.title_failed");
-            badgeClass = "badge-error";
-            message = tr("wawelauth.oauth.callback.message_failed");
-        } else if (!hasCode) {
-            title = tr("wawelauth.oauth.callback.title_incomplete");
-            badgeClass = "badge-error";
-            message = tr("wawelauth.oauth.callback.message_incomplete");
-        } else if (!stateMatches) {
-            title = tr("wawelauth.oauth.callback.title_rejected");
-            badgeClass = "badge-error";
-            message = tr("wawelauth.oauth.callback.message_rejected");
-        } else {
-            title = tr("wawelauth.oauth.callback.title_complete");
-            badgeClass = "badge-ok";
-            message = tr("wawelauth.oauth.callback.message_complete");
-        }
-
-        String errorSummary = StringUtil.trimToNull(firstNonBlank(errorDescription, error));
-        if (errorSummary != null && hasError) {
-            message = message + " " + errorSummary;
-        }
-
-        return "<!doctype html>" + "<html lang=\"en\"><head><meta charset=\"utf-8\">"
-            + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-            + "<title>"
-            + escapeHtml(tr("wawelauth.oauth.callback.page_title"))
-            + "</title>"
-            + "<style>"
-            + ":root{--bg:#0f1117;--panel:#171a22;--muted:#9aa3b2;--text:#f3f5fa;--ok:#46d483;--err:#ff6b6b;}"
-            + "*{box-sizing:border-box}"
-            + "body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Arial,sans-serif;background:radial-gradient(1200px 700px at 20% -10%,#1c2230 0,var(--bg) 60%);color:var(--text)}"
-            + ".wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}"
-            + ".card{width:min(860px,100%);background:linear-gradient(180deg,#1a1f2b,var(--panel));border:1px solid #252b39;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.45);padding:22px}"
-            + ".head{display:flex;gap:14px;align-items:center;margin-bottom:14px}"
-            + ".logo{display:block;width:56px;height:56px;object-fit:contain;flex:0 0 auto}"
-            + ".logo-fallback{width:56px;height:56px;display:flex;align-items:center;justify-content:center;color:#7d8aa3;font-size:28px;font-weight:700;line-height:1;flex:0 0 auto}"
-            + ".title{margin:0;font-size:22px;line-height:1.2}"
-            + ".sub{margin:4px 0 0;color:var(--muted);font-size:14px}"
-            + ".badge{display:inline-block;margin-top:4px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.02em}"
-            + ".badge-ok{background:rgba(70,212,131,.16);color:var(--ok);border:1px solid rgba(70,212,131,.4)}"
-            + ".badge-error{background:rgba(255,107,107,.15);color:var(--err);border:1px solid rgba(255,107,107,.4)}"
-            + ".msg{margin:14px 0 0;color:var(--text);font-size:18px;line-height:1.35}"
-            + "</style></head><body><div class=\"wrap\"><div class=\"card\">"
-            + "<div class=\"head\">"
-            + logoMarkup()
-            + "<div>"
-            + "<h1 class=\"title\">"
-            + escapeHtml(tr("wawelauth.oauth.callback.brand"))
-            + "</h1>"
-            + "<p class=\"sub\">"
-            + escapeHtml(tr("wawelauth.oauth.callback.subtitle"))
-            + "</p>"
-            + "<span class=\"badge "
-            + badgeClass
-            + "\">"
-            + escapeHtml(title)
-            + "</span>"
-            + "</div></div>"
-            + "<p class=\"msg\">"
-            + escapeHtml(message)
-            + "</p>"
-            + "</div></div></body></html>";
-    }
-
-    private static String logoMarkup() {
-        if (CALLBACK_LOGO_DATA_URL == null) {
-            return "<div class=\"logo-fallback\">W</div>";
-        }
-        return "<img class=\"logo\" src=\"" + CALLBACK_LOGO_DATA_URL + "\" alt=\"Wawel Auth logo\">";
-    }
-
-    private static String escapeHtml(String value) {
-        if (value == null) return "";
-        StringBuilder out = new StringBuilder(value.length() + 16);
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            switch (c) {
-                case '&':
-                    out.append("&amp;");
-                    break;
-                case '<':
-                    out.append("&lt;");
-                    break;
-                case '>':
-                    out.append("&gt;");
-                    break;
-                case '"':
-                    out.append("&quot;");
-                    break;
-                case '\'':
-                    out.append("&#39;");
-                    break;
-                default:
-                    out.append(c);
-                    break;
-            }
-        }
-        return out.toString();
-    }
-
-    private static String loadCallbackLogoDataUrl() {
-        try (InputStream in = ProviderOAuthClient.class
-            .getResourceAsStream("/assets/wawelauth/Logo_Dragon_Outline.png")) {
-            if (in == null) {
-                return null;
-            }
-            byte[] bytes = readBytes(in);
-            if (bytes.length == 0) {
-                return null;
-            }
-            return "data:image/png;base64," + Base64.getEncoder()
-                .encodeToString(bytes);
-        } catch (IOException e) {
-            return null;
-        }
-    }
-
-    private static URI parseLoopbackRedirectUri(String rawUri) throws IOException {
-        try {
-            URI uri = new URI(rawUri);
-            String host = StringUtil.trimToNull(uri.getHost());
-            if (host == null
-                || (!"localhost".equalsIgnoreCase(host) && !"127.0.0.1".equals(host) && !"::1".equals(host))) {
-                throw new IOException("OAuth redirect URI must use localhost or loopback");
-            }
-            return uri;
-        } catch (URISyntaxException e) {
-            throw new IOException("Invalid OAuth redirect URI: " + rawUri, e);
-        }
-    }
-
-    private static int resolvePort(URI uri) {
-        if (uri.getPort() > 0) {
-            return uri.getPort();
-        }
-        String scheme = uri.getScheme();
-        if ("http".equalsIgnoreCase(scheme)) {
-            return 80;
-        }
-        if ("https".equalsIgnoreCase(scheme)) {
-            return 443;
-        }
-        return 28061;
-    }
-
-    private static String normalizePath(String path) {
-        String normalized = StringUtil.trimToNull(path);
-        if (normalized == null) {
-            return "/oauth/callback";
-        }
-        return normalized.startsWith("/") ? normalized : ("/" + normalized);
-    }
-
-    private static void cancelActiveLoopbackLocked(String reason) {
-        if (activeLoopback == null) {
-            return;
-        }
-        activeLoopback.cancelMessage.compareAndSet(null, reason);
-        try {
-            activeLoopback.server.stop(0);
-        } catch (Exception ignored) {}
-        activeLoopback.latch.countDown();
-        activeLoopback = null;
     }
 
     private static void openBrowser(String url) throws IOException {
@@ -824,30 +490,6 @@ public abstract class ProviderOAuthClient {
             return URLEncoder.encode(value, "UTF-8");
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private static Map<String, String> parseQuery(String rawQuery) {
-        Map<String, String> result = new LinkedHashMap<>();
-        if (StringUtil.trimToNull(rawQuery) == null) {
-            return result;
-        }
-        String[] parts = rawQuery.split("&");
-        for (String part : parts) {
-            int idx = part.indexOf('=');
-            if (idx <= 0) {
-                continue;
-            }
-            result.put(urlDecode(part.substring(0, idx)), urlDecode(part.substring(idx + 1)));
-        }
-        return result;
-    }
-
-    private static String urlDecode(String value) {
-        try {
-            return URLDecoder.decode(value, "UTF-8");
-        } catch (Exception e) {
-            return value;
         }
     }
 
@@ -988,19 +630,6 @@ public abstract class ProviderOAuthClient {
 
         private String getOpenBrowserUrl() {
             return firstNonBlank(verificationUriComplete, verificationUri);
-        }
-    }
-
-    private static final class ActiveLoopback {
-
-        private final HttpServer server;
-        private final CountDownLatch latch;
-        private final AtomicReference<String> cancelMessage;
-
-        private ActiveLoopback(HttpServer server, CountDownLatch latch, AtomicReference<String> cancelMessage) {
-            this.server = server;
-            this.latch = latch;
-            this.cancelMessage = cancelMessage;
         }
     }
 
