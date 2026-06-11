@@ -181,10 +181,9 @@ public class SkinLayers3DSetup {
             if (skinLocation.equals(cached.skinLocation)) {
                 return cached.mesh;
             }
-            // Skin changed, cleanup old
-            if (cached.mesh != null) {
-                cached.mesh.cleanup();
-            }
+            // Remove the entry along with the cleanup so a failed rebuild
+            // cannot leave a destroyed mesh served under the old location.
+            updateSkullCache(profile.getId(), null);
         }
 
         BufferedImage skinImage = getSkinImage(skinLocation);
