@@ -9,6 +9,9 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
 
@@ -67,6 +70,8 @@ public class JsonConfigIO {
 
     /**
      * Save a config to a JSON file with pretty printing (UTF-8).
+     * Writes to a temp file and renames it into place so a crash mid-write
+     * cannot leave a truncated config behind.
      */
     public static <T> void save(File file, T config) {
         File parent = file.getParentFile();
@@ -74,10 +79,38 @@ public class JsonConfigIO {
             WawelAuth.LOG.error("Failed to create config directory: {}", parent);
             return;
         }
-        try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
-            GSON.toJson(config, writer);
+        File dir = parent != null ? parent
+            : file.getAbsoluteFile()
+                .getParentFile();
+        File tmp = null;
+        try {
+            tmp = File.createTempFile(file.getName() + ".", ".tmp", dir);
+            try (FileOutputStream fos = new FileOutputStream(tmp);
+                Writer writer = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
+                GSON.toJson(config, writer);
+                writer.flush();
+                fos.getFD()
+                    .sync();
+            }
+            moveAtomically(tmp, file);
         } catch (IOException e) {
             WawelAuth.LOG.error("Failed to save config {}", file.getName(), e);
+        } finally {
+            if (tmp != null && tmp.exists() && !tmp.delete()) {
+                WawelAuth.LOG.warn("Failed to delete temp config file {}", tmp.getName());
+            }
+        }
+    }
+
+    private static void moveAtomically(File source, File destination) throws IOException {
+        try {
+            Files.move(
+                source.toPath(),
+                destination.toPath(),
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

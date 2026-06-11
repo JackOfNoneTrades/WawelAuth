@@ -4,6 +4,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
 
@@ -21,6 +24,17 @@ public class TextureFileStore {
         this.textureDir = new File(stateDir, "textures");
         if (!textureDir.exists() && !textureDir.mkdirs()) {
             WawelAuth.LOG.warn("Failed to create texture directory: {}", textureDir.getAbsolutePath());
+        }
+        deleteLeftoverTempFiles();
+    }
+
+    private void deleteLeftoverTempFiles() {
+        File[] files = textureDir.listFiles((dir, name) -> name.endsWith(".tmp"));
+        if (files == null) return;
+        for (File file : files) {
+            if (!file.delete()) {
+                WawelAuth.LOG.warn("Failed to delete leftover temp texture file: {}", file.getName());
+            }
         }
     }
 
@@ -52,9 +66,7 @@ public class TextureFileStore {
         if (file.exists()) {
             return; // content-addressed dedup
         }
-        try (FileOutputStream fos = new FileOutputStream(file)) {
-            fos.write(data);
-        }
+        writeAtomically(file, data);
     }
 
     public void writeGif(String hash, byte[] data) throws IOException {
@@ -62,8 +74,35 @@ public class TextureFileStore {
         if (file.exists()) {
             return; // content-addressed dedup
         }
-        try (FileOutputStream fos = new FileOutputStream(file)) {
-            fos.write(data);
+        writeAtomically(file, data);
+    }
+
+    /**
+     * Writes to a unique temp file and renames it into place, so a crash
+     * mid-write cannot persist a corrupt file under a valid hash name
+     * (the dedup check would then block the correct content forever).
+     */
+    private void writeAtomically(File destination, byte[] data) throws IOException {
+        File tmp = File.createTempFile(destination.getName() + ".", ".tmp", textureDir);
+        try {
+            try (FileOutputStream fos = new FileOutputStream(tmp)) {
+                fos.write(data);
+                fos.getFD()
+                    .sync();
+            }
+            try {
+                Files.move(
+                    tmp.toPath(),
+                    destination.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            if (tmp.exists() && !tmp.delete()) {
+                WawelAuth.LOG.warn("Failed to delete temp texture file: {}", tmp.getName());
+            }
         }
     }
 
