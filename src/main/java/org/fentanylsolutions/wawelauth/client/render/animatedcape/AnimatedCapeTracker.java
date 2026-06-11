@@ -1,5 +1,6 @@
 package org.fentanylsolutions.wawelauth.client.render.animatedcape;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,12 +24,19 @@ public final class AnimatedCapeTracker {
     private AnimatedCapeTracker() {}
 
     public static void register(UUID uuid, AnimatedCapeTexture texture) {
-        CAPES.put(uuid, texture);
+        AnimatedCapeTexture previous = CAPES.put(uuid, texture);
+        // Same location means createFromDecoded already replaced the GL texture.
+        if (previous != null && !previous.getResourceLocation()
+            .equals(texture.getResourceLocation())) {
+            previous.delete();
+        }
         WawelAuth.debug("Registered animated cape for " + uuid);
     }
 
     public static void remove(UUID uuid) {
-        if (CAPES.remove(uuid) != null) {
+        AnimatedCapeTexture removed = CAPES.remove(uuid);
+        if (removed != null) {
+            removed.delete();
             WawelAuth.debug("Removed animated cape for " + uuid);
         }
     }
@@ -48,11 +56,17 @@ public final class AnimatedCapeTracker {
         }
     }
 
-    /** Clears all tracked capes. Call on world unload. */
+    /** Clears all tracked capes and frees their GL textures. Call on world unload. */
     public static void clearAll() {
-        if (!CAPES.isEmpty()) {
-            WawelAuth.debug("Clearing " + CAPES.size() + " animated cape(s)");
-            CAPES.clear();
+        if (CAPES.isEmpty()) {
+            return;
+        }
+        WawelAuth.debug("Clearing " + CAPES.size() + " animated cape(s)");
+        for (Iterator<AnimatedCapeTexture> it = CAPES.values()
+            .iterator(); it.hasNext();) {
+            it.next()
+                .delete();
+            it.remove();
         }
     }
 }

@@ -77,6 +77,11 @@ public class AnimatedCapeTexture {
         return resourceLocation;
     }
 
+    /** Unregisters and frees the GL texture. Main thread only. */
+    public void delete() {
+        Minecraft.getMinecraft().renderEngine.deleteTexture(resourceLocation);
+    }
+
     /**
      * Intermediate result from decoding a GIF on a background thread.
      * Contains only CPU-side data: no OpenGL resources.
