@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -64,6 +65,13 @@ public class AccountManager {
      */
     private final ConcurrentHashMap<Long, AccountStatus> statusCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Long> statusStorageSyncAt = new ConcurrentHashMap<>();
+
+    /**
+     * Per-account locks serializing token mutation so the background refresh
+     * scheduler and an interactive login worker cannot clobber each other's
+     * token writes for the same account.
+     */
+    private final ConcurrentHashMap<Long, ReentrantLock> accountTokenLocks = new ConcurrentHashMap<>();
 
     public AccountManager(ClientAccountDAO accountDAO, ClientProviderDAO providerDAO, YggdrasilHttpClient httpClient) {
 
@@ -986,14 +994,21 @@ public class AccountManager {
 
         ClientAccount existing = accountDAO.findByProviderAndProfile(providerName, result.getProfileUuid());
         if (existing != null) {
-            account.setId(existing.getId());
-            account.setCreatedAt(existing.getCreatedAt());
-            accountDAO.update(account);
+            ReentrantLock lock = accountTokenLock(existing.getId());
+            lock.lock();
+            try {
+                account.setId(existing.getId());
+                account.setCreatedAt(existing.getCreatedAt());
+                accountDAO.update(account);
+                statusCache.put(account.getId(), account.getStatus());
+            } finally {
+                lock.unlock();
+            }
         } else {
             long id = accountDAO.create(account);
             account.setId(id);
+            statusCache.put(account.getId(), account.getStatus());
         }
-        statusCache.put(account.getId(), account.getStatus());
 
         WawelAuth.LOG
             .info("Authenticated Microsoft account '{}' on provider '{}'", account.getProfileName(), providerName);
@@ -1037,17 +1052,46 @@ public class AccountManager {
 
         ClientAccount existing = accountDAO.findByProviderAndProfile(providerName, result.getProfileUuid());
         if (existing != null) {
-            account.setId(existing.getId());
-            account.setCreatedAt(existing.getCreatedAt());
-            accountDAO.update(account);
+            ReentrantLock lock = accountTokenLock(existing.getId());
+            lock.lock();
+            try {
+                account.setId(existing.getId());
+                account.setCreatedAt(existing.getCreatedAt());
+                accountDAO.update(account);
+                statusCache.put(account.getId(), account.getStatus());
+            } finally {
+                lock.unlock();
+            }
         } else {
             long id = accountDAO.create(account);
             account.setId(id);
+            statusCache.put(account.getId(), account.getStatus());
         }
-        statusCache.put(account.getId(), account.getStatus());
 
         WawelAuth.LOG.info("Authenticated OAuth account '{}' on provider '{}'", account.getProfileName(), providerName);
         return account;
+    }
+
+    private ReentrantLock accountTokenLock(long accountId) {
+        return accountTokenLocks.computeIfAbsent(accountId, k -> new ReentrantLock());
+    }
+
+    /**
+     * Refresh the in-memory token-bearing fields from storage. Called while
+     * holding the per-account lock so a refresh never acts on a token that an
+     * interactive login already replaced.
+     */
+    private void reloadTokenState(ClientAccount account) {
+        ClientAccount fresh = accountDAO.findById(account.getId());
+        if (fresh == null) {
+            return;
+        }
+        account.setAccessToken(fresh.getAccessToken());
+        account.setClientToken(fresh.getClientToken());
+        account.setRefreshToken(fresh.getRefreshToken());
+        account.setProfileUuid(fresh.getProfileUuid());
+        account.setProfileName(fresh.getProfileName());
+        account.setStatus(fresh.getStatus());
     }
 
     /**
@@ -1055,6 +1099,17 @@ public class AccountManager {
      * Returns the resulting status.
      */
     private AccountStatus doValidateOrRefresh(ClientAccount account) {
+        ReentrantLock lock = accountTokenLock(account.getId());
+        lock.lock();
+        try {
+            reloadTokenState(account);
+            return doValidateOrRefreshLocked(account);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private AccountStatus doValidateOrRefreshLocked(ClientAccount account) {
         ClientProvider provider = providerDAO.findByName(account.getProviderName());
         if (provider == null) {
             WawelAuth.LOG.warn("Provider '{}' not found for account {}", account.getProviderName(), account.getId());
@@ -1067,7 +1122,7 @@ public class AccountManager {
         }
 
         if (BuiltinProviders.isMojangProvider(provider.getName())) {
-            return doValidateOrRefreshMicrosoft(account, provider);
+            return doValidateOrRefreshMicrosoftLocked(account, provider);
         }
         if (isProviderOauthManagedAccount(provider, account)) {
             return doValidateOrRefreshProviderOauth(account, provider);
@@ -1198,6 +1253,17 @@ public class AccountManager {
     }
 
     private AccountStatus doValidateOrRefreshMicrosoft(ClientAccount account, ClientProvider provider) {
+        ReentrantLock lock = accountTokenLock(account.getId());
+        lock.lock();
+        try {
+            reloadTokenState(account);
+            return doValidateOrRefreshMicrosoftLocked(account, provider);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private AccountStatus doValidateOrRefreshMicrosoftLocked(ClientAccount account, ClientProvider provider) {
         provider = applyRuntimeProviderOverrides(provider);
         long now = System.currentTimeMillis();
         account.setLastRefreshAttemptAt(now);
