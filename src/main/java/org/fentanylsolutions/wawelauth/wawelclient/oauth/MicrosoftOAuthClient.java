@@ -11,6 +11,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -82,6 +85,7 @@ public class MicrosoftOAuthClient {
     private static final int CALLBACK_TIMEOUT_SECONDS = 300;
     private static final String CALLBACK_LOGO_DATA_URL = loadCallbackLogoDataUrl();
     private static final Object LOOPBACK_LOCK = new Object();
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static ActiveLoopback activeLoopback;
 
     /**
@@ -92,12 +96,13 @@ public class MicrosoftOAuthClient {
         String state = UUID.randomUUID()
             .toString()
             .replace("-", "");
+        String codeVerifier = generateCodeVerifier();
 
         status.accept(tr("wawelauth.gui.login.status.microsoft_open_browser"));
-        String authCode = awaitAuthorizationCode(state, buildAuthorizeUrl(state, provider));
+        String authCode = awaitAuthorizationCode(state, buildAuthorizeUrl(state, codeVerifier, provider));
 
         status.accept(tr("wawelauth.gui.login.status.microsoft_exchange_code"));
-        MsToken msToken = exchangeAuthorizationCode(authCode, provider);
+        MsToken msToken = exchangeAuthorizationCode(authCode, codeVerifier, provider);
 
         return loginWithMsToken(msToken, provider, status);
     }
@@ -253,7 +258,8 @@ public class MicrosoftOAuthClient {
         return code;
     }
 
-    private MsToken exchangeAuthorizationCode(String code, ClientProvider provider) throws IOException {
+    private MsToken exchangeAuthorizationCode(String code, String codeVerifier, ClientProvider provider)
+        throws IOException {
         MicrosoftEndpoints endpoints = resolveEndpoints(provider);
         ProviderProxySettings proxySettings = provider != null ? provider.getProxySettings() : null;
         Map<String, String> params = new LinkedHashMap<>();
@@ -262,6 +268,7 @@ public class MicrosoftOAuthClient {
         params.put("code", code);
         params.put("grant_type", "authorization_code");
         params.put("redirect_uri", REDIRECT_URI);
+        params.put("code_verifier", codeVerifier);
 
         JsonObject obj = postForm(endpoints.msTokenUrl, params, proxySettings, provider);
         return parseMsToken(obj);
@@ -361,7 +368,7 @@ public class MicrosoftOAuthClient {
         return new MsToken(accessToken, refreshToken);
     }
 
-    private String buildAuthorizeUrl(String state, ClientProvider provider) {
+    private String buildAuthorizeUrl(String state, String codeVerifier, ClientProvider provider) {
         MicrosoftEndpoints endpoints = resolveEndpoints(provider);
         Map<String, String> params = new LinkedHashMap<>();
         params.put("client_id", CLIENT_ID);
@@ -370,7 +377,29 @@ public class MicrosoftOAuthClient {
         params.put("scope", "XboxLive.signin offline_access");
         params.put("prompt", "select_account");
         params.put("state", state);
+        params.put("code_challenge", codeChallenge(codeVerifier));
+        params.put("code_challenge_method", "S256");
         return endpoints.msAuthorizeUrl + "?" + OAuthHttpSupport.encodeForm(params);
+    }
+
+    private static String generateCodeVerifier() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(bytes);
+    }
+
+    private static String codeChallenge(String codeVerifier) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                .digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
+            return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable for PKCE", e);
+        }
     }
 
     /**
