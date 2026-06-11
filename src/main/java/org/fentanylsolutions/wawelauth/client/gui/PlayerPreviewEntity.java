@@ -1,7 +1,5 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.util.ResourceLocation;
 
@@ -18,10 +16,8 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class PlayerPreviewEntity extends EntityOtherPlayerMP implements ISkinModelOverride {
 
-    private static final AtomicLong REQUEST_COUNTER = new AtomicLong(0);
     private boolean capeVisible = true;
     private SkinModel forcedSkinModel;
-    private long currentRequestId;
 
     public PlayerPreviewEntity(GameProfile profile) {
         super(DummyWorld.INSTANCE, profile);
@@ -56,16 +52,6 @@ public class PlayerPreviewEntity extends EntityOtherPlayerMP implements ISkinMod
         this.forcedSkinModel = null;
         forcedSkin = WawelTextureResolver.getDefaultSkin();
         forcedCape = WawelTextureResolver.getDefaultCape();
-    }
-
-    public long newRequestId() {
-        long id = REQUEST_COUNTER.incrementAndGet();
-        this.currentRequestId = id;
-        return id;
-    }
-
-    public boolean isRequestStale(long requestId) {
-        return requestId != this.currentRequestId;
     }
 
     public void setCapeVisible(boolean capeVisible) {

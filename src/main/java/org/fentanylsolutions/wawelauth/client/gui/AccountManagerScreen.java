@@ -1,11 +1,7 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
@@ -35,7 +31,6 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderType;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ClientConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
-import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 import org.lwjgl.opengl.GL11;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
@@ -55,10 +50,6 @@ import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Column;
 import com.cleanroommc.modularui.widgets.layout.Row;
 import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 
 import cpw.mods.fml.relauncher.Side;
@@ -939,143 +930,28 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private void loadSkinForAccount(ClientAccount account) {
         if (account.getProfileUuid() == null || previewFrontEntity == null || previewBackEntity == null) return;
 
-        long frontRequestId = previewFrontEntity.newRequestId();
-        long backRequestId = previewBackEntity.newRequestId();
-
         WawelClient client = WawelClient.instance();
         if (client == null) return;
 
-        UUID uuid = account.getProfileUuid();
-        String name = account.getProfileName() != null ? account.getProfileName() : "?";
-        ClientProvider provider = resolveProvider(
-            client.getProviderRegistry()
-                .getProvider(account.getProviderName()));
         if (ProviderDisplayName.isOfflineProvider(account.getProviderName())) {
             loadOfflinePreviewModel(account);
             applyCapePreviewMode();
             return;
         }
-        WawelAuth.debug("Preview fetch profile via fillProfileFromProvider: " + UuidUtil.toUnsigned(uuid));
 
-        CompletableFuture.supplyAsync(() -> {
-            try {
-                GameProfile probe = new GameProfile(uuid, name);
-                GameProfile filled = client.getSessionBridge()
-                    .fillProfileFromProvider(provider, probe, true);
-                if (filled == null || filled.getProperties()
-                    .isEmpty()) {
-                    return null;
-                }
-                return gameProfileToJson(filled);
-            } catch (Exception e) {
-                WawelAuth.debug("Failed to fetch profile for skin: " + e.getMessage());
-                return null;
-            }
-        })
-            .whenComplete((response, err) -> {
-                if (err != null) {
-                    Throwable cause = err.getCause() != null ? err.getCause() : err;
-                    WawelAuth.debug("Profile request failed: " + cause.getMessage());
-                }
-                if (response == null || previewFrontEntity == null
-                    || previewBackEntity == null
-                    || previewFrontEntity.isRequestStale(frontRequestId)
-                    || previewBackEntity.isRequestStale(backRequestId)) return;
-                Minecraft.getMinecraft()
-                    .func_152344_a(() -> {
-                        if (previewFrontEntity == null || previewBackEntity == null
-                            || previewFrontEntity.isRequestStale(frontRequestId)
-                            || previewBackEntity.isRequestStale(backRequestId)) return;
-                        applyTexturesFromProfile(response, uuid);
-                    });
-            });
-    }
-
-    private static JsonObject gameProfileToJson(GameProfile profile) {
-        JsonObject obj = new JsonObject();
-        obj.addProperty("id", UuidUtil.toUnsigned(profile.getId()));
-        obj.addProperty("name", profile.getName());
-        JsonArray props = new JsonArray();
-        for (Map.Entry<String, java.util.Collection<com.mojang.authlib.properties.Property>> entry : profile
-            .getProperties()
-            .asMap()
-            .entrySet()) {
-            for (com.mojang.authlib.properties.Property prop : entry.getValue()) {
-                JsonObject propObj = new JsonObject();
-                propObj.addProperty("name", prop.getName());
-                propObj.addProperty("value", prop.getValue());
-                if (prop.getSignature() != null) {
-                    propObj.addProperty("signature", prop.getSignature());
-                }
-                props.add(propObj);
-            }
+        ClientProvider provider = resolveProvider(
+            client.getProviderRegistry()
+                .getProvider(account.getProviderName()));
+        if (provider != null) {
+            // Warm the resolver cache; the render path reads texture and skin model from it.
+            client.getTextureResolver()
+                .getSkin(
+                    account.getProfileUuid(),
+                    account.getProfileName() != null ? account.getProfileName() : "?",
+                    provider,
+                    false);
         }
-        obj.add("properties", props);
-        return obj;
-    }
-
-    private void applyTexturesFromProfile(JsonObject profileResponse, UUID uuid) {
-        if (profileResponse == null || !profileResponse.has("properties")) return;
-
-        try {
-            JsonArray properties = profileResponse.getAsJsonArray("properties");
-            boolean foundTextures = false;
-            boolean foundSkin = false;
-            for (JsonElement elem : properties) {
-                JsonObject prop = elem.getAsJsonObject();
-                if (!prop.has("name") || !"textures".equals(
-                    prop.get("name")
-                        .getAsString())) {
-                    continue;
-                }
-                foundTextures = true;
-
-                String base64Value = prop.get("value")
-                    .getAsString();
-                String decoded = new String(
-                    Base64.getDecoder()
-                        .decode(base64Value),
-                    StandardCharsets.UTF_8);
-                JsonObject texturesWrapper = new JsonParser().parse(decoded)
-                    .getAsJsonObject();
-                if (!texturesWrapper.has("textures") || !texturesWrapper.get("textures")
-                    .isJsonObject()) {
-                    continue;
-                }
-                JsonObject textures = texturesWrapper.getAsJsonObject("textures");
-
-                if (textures.has("SKIN")) {
-                    JsonObject skinObj = textures.getAsJsonObject("SKIN");
-                    String skinUrl = skinObj.get("url")
-                        .getAsString();
-                    SkinModel model = SkinModel.CLASSIC;
-                    if (skinObj.has("metadata") && skinObj.get("metadata")
-                        .isJsonObject()) {
-                        JsonObject metadata = skinObj.getAsJsonObject("metadata");
-                        if (metadata.has("model") && metadata.get("model")
-                            .isJsonPrimitive()) {
-                            model = SkinModel.fromYggdrasil(
-                                metadata.get("model")
-                                    .getAsString());
-                        }
-                    }
-                    WawelAuth.debug("Preview skin model: " + model.name() + " for " + UuidUtil.toUnsigned(uuid));
-                    WawelAuth.debug("Preview skin URL: " + skinUrl);
-                    previewFrontEntity.setForcedSkinModel(model);
-                    previewBackEntity.setForcedSkinModel(model);
-                    foundSkin = true;
-                }
-                applyCapePreviewMode();
-                break;
-            }
-            if (!foundTextures) {
-                WawelAuth.debug("Profile response has no textures property for preview.");
-            } else if (!foundSkin) {
-                WawelAuth.debug("Textures property has no SKIN entry for preview.");
-            }
-        } catch (Exception e) {
-            WawelAuth.debug("Failed to parse textures from profile: " + e.getMessage());
-        }
+        applyCapePreviewMode();
     }
 
     private void loadOfflinePreviewModel(ClientAccount account) {

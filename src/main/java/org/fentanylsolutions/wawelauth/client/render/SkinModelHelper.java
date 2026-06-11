@@ -1,6 +1,5 @@
 package org.fentanylsolutions.wawelauth.client.render;
 
-import java.util.Collection;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -9,17 +8,14 @@ import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.resources.SkinManager;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.api.YggdrasilTexturePayload;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
-import com.mojang.authlib.properties.Property;
 
 /**
  * Resolves slim/classic arm model for rendered players.
@@ -123,45 +119,7 @@ public final class SkinModelHelper {
     }
 
     private static SkinModel resolveFromProfileProperty(AbstractClientPlayer player) {
-        try {
-            Collection<Property> textures = player.getGameProfile()
-                .getProperties()
-                .get("textures");
-            if (textures == null || textures.isEmpty()) return null;
-
-            for (Property property : textures) {
-                if (property == null) continue;
-                String value = property.getValue();
-                if (value == null || value.isEmpty()) continue;
-                return parseModelFromTexturesValue(value);
-            }
-        } catch (Exception ignored) {
-            // fall through
-        }
-        return null;
-    }
-
-    private static SkinModel parseModelFromTexturesValue(String valueBase64) {
-        try {
-            String json = new String(org.apache.commons.codec.binary.Base64.decodeBase64(valueBase64), "UTF-8");
-            JsonObject root = new JsonParser().parse(json)
-                .getAsJsonObject();
-            JsonObject textures = root.getAsJsonObject("textures");
-            if (textures == null) return SkinModel.CLASSIC;
-
-            JsonObject skin = textures.getAsJsonObject("SKIN");
-            if (skin == null) return SkinModel.CLASSIC;
-
-            JsonObject metadata = skin.getAsJsonObject("metadata");
-            if (metadata == null) return SkinModel.CLASSIC;
-
-            JsonElement model = metadata.get("model");
-            if (model == null || !model.isJsonPrimitive()) return SkinModel.CLASSIC;
-
-            return SkinModel.fromYggdrasil(model.getAsString());
-        } catch (Exception ignored) {
-            return SkinModel.CLASSIC;
-        }
+        return YggdrasilTexturePayload.extractSkinModel(player.getGameProfile());
     }
 
     private static void debugResolution(AbstractClientPlayer player, SkinModel model, String source) {

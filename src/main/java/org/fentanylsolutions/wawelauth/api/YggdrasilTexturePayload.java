@@ -10,11 +10,17 @@ import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 
-final class YggdrasilTexturePayload {
+/**
+ * Single parser for the Yggdrasil "textures" property payload.
+ * Returns null when the model cannot be determined (no textures property,
+ * no SKIN entry, or parse failure) and CLASSIC when a SKIN entry exists
+ * without slim metadata.
+ */
+public final class YggdrasilTexturePayload {
 
     private YggdrasilTexturePayload() {}
 
-    static SkinModel extractSkinModel(GameProfile profile) {
+    public static SkinModel extractSkinModel(GameProfile profile) {
         try {
             Collection<Property> textures = profile.getProperties()
                 .get("textures");
@@ -24,21 +30,29 @@ final class YggdrasilTexturePayload {
                 if (property == null) continue;
                 String value = property.getValue();
                 if (value == null || value.isEmpty()) continue;
-
-                String json = new String(org.apache.commons.codec.binary.Base64.decodeBase64(value), "UTF-8");
-                JsonObject root = new JsonParser().parse(json)
-                    .getAsJsonObject();
-                JsonObject tex = root.getAsJsonObject("textures");
-                if (tex == null) continue;
-                JsonObject skin = tex.getAsJsonObject("SKIN");
-                if (skin == null) continue;
-                JsonObject metadata = skin.getAsJsonObject("metadata");
-                if (metadata == null) return SkinModel.CLASSIC;
-                JsonElement model = metadata.get("model");
-                if (model == null || !model.isJsonPrimitive()) return SkinModel.CLASSIC;
-                return SkinModel.fromYggdrasil(model.getAsString());
+                SkinModel model = extractSkinModel(value);
+                if (model != null) return model;
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    public static SkinModel extractSkinModel(String base64TexturesValue) {
+        try {
+            String json = new String(org.apache.commons.codec.binary.Base64.decodeBase64(base64TexturesValue), "UTF-8");
+            JsonObject root = new JsonParser().parse(json)
+                .getAsJsonObject();
+            JsonObject tex = root.getAsJsonObject("textures");
+            if (tex == null) return null;
+            JsonObject skin = tex.getAsJsonObject("SKIN");
+            if (skin == null) return null;
+            JsonObject metadata = skin.getAsJsonObject("metadata");
+            if (metadata == null) return SkinModel.CLASSIC;
+            JsonElement model = metadata.get("model");
+            if (model == null || !model.isJsonPrimitive()) return SkinModel.CLASSIC;
+            return SkinModel.fromYggdrasil(model.getAsString());
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }
