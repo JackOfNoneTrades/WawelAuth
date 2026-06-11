@@ -146,7 +146,11 @@ public class WawelTextureResolver {
                     return result;
                 }
             } catch (RuntimeException e) {
-                WawelAuth.debug("Provider texture lookup failed for " + profile.getId() + ": " + e.getMessage());
+                WawelAuth.LOG.warn(
+                    "Provider '{}' texture lookup failed for {}: {}",
+                    provider != null ? provider.getName() : "unknown",
+                    profile.getId(),
+                    e.getMessage());
             }
         }
 
@@ -252,6 +256,16 @@ public class WawelTextureResolver {
         return hasUsableRegisteredTexture(entry.texLocation);
     }
 
+    // Retried failures stay at debug; the attempt that exhausts the retry
+    // budget warns so a permanently missing skin is visible at default level.
+    private static void logFetchFailure(boolean gaveUp, String message) {
+        if (gaveUp) {
+            WawelAuth.LOG.warn("{} (giving up after repeated attempts)", message);
+        } else {
+            WawelAuth.debug(message);
+        }
+    }
+
     private static ResourceLocation staleOrFallback(TextureEntry entry, ResourceLocation fallback) {
         ResourceLocation stale = entry.texLocation;
         if (stale != null && hasUsableRegisteredTexture(stale)) {
@@ -292,8 +306,15 @@ public class WawelTextureResolver {
                     }
                     doFetch(entry, profileId, displayName, provider, requireSecure);
                 } catch (Exception e) {
-                    WawelAuth.debug("Failed to fetch " + type + " for " + profileId + ": " + e.getMessage());
-                    cache.handleFetchFailureIfCurrent(entry);
+                    logFetchFailure(
+                        cache.handleFetchFailureIfCurrent(entry),
+                        "Failed to fetch " + type
+                            + " for "
+                            + profileId
+                            + " from provider '"
+                            + provider.getName()
+                            + "': "
+                            + e.getMessage());
                 } finally {
                     entry.fetchInFlight.set(false);
                 }
@@ -325,9 +346,12 @@ public class WawelTextureResolver {
                 filled,
                 textures == null || textures.isEmpty() ? Collections.emptyMap() : new HashMap<>(textures));
         } catch (InsecureTextureException e) {
-            WawelAuth.debug(
-                "Insecure texture for " + profile
-                    .getId() + " with requireSecure=" + requireSecure + ": " + e.getMessage());
+            WawelAuth.LOG.warn(
+                "Rejected insecure texture for {} from provider '{}' (requireSecure={}): {}",
+                profile.getId(),
+                provider.getName(),
+                requireSecure,
+                e.getMessage());
             return ProfileTextureResult.resolved(provider, filled, Collections.emptyMap());
         } finally {
             sessionBridge.clearActiveProviderContext();
@@ -368,7 +392,10 @@ public class WawelTextureResolver {
 
         if (profile == null || profile.getProperties()
             .isEmpty()) {
-            cache.handleFetchFailureIfCurrent(entry);
+            logFetchFailure(
+                cache.handleFetchFailureIfCurrent(entry),
+                "Provider '" + provider
+                    .getName() + "' returned no profile data for " + profileId + " (" + displayName + ")");
             return;
         }
 
@@ -406,8 +433,9 @@ public class WawelTextureResolver {
                         WawelAuth.debug("Texture registered but still loading for " + profileId);
                     }
                 } catch (Exception e) {
-                    WawelAuth.debug("Failed to register texture for " + profileId + ": " + e.getMessage());
-                    cache.handleFetchFailureIfCurrent(entry);
+                    logFetchFailure(
+                        cache.handleFetchFailureIfCurrent(entry),
+                        "Failed to register texture for " + profileId + ": " + e.getMessage());
                 }
             });
     }
@@ -423,8 +451,9 @@ public class WawelTextureResolver {
                 texImage = LocalTextureLoader.readImage(new File(offlineLocalSkin.getCapePath()));
             }
         } catch (Exception e) {
-            WawelAuth.debug("Failed to load local offline texture for " + profileId + ": " + e.getMessage());
-            cache.handleFetchFailureIfCurrent(entry);
+            logFetchFailure(
+                cache.handleFetchFailureIfCurrent(entry),
+                "Failed to load local offline texture for " + profileId + ": " + e.getMessage());
             return;
         }
         if (!cache.isCurrent(entry)) {
@@ -445,9 +474,9 @@ public class WawelTextureResolver {
                         WawelAuth.debug("Local offline texture registration was not usable yet for " + profileId);
                     }
                 } catch (Exception e) {
-                    WawelAuth
-                        .debug("Failed to register local offline texture for " + profileId + ": " + e.getMessage());
-                    cache.handleFetchFailureIfCurrent(entry);
+                    logFetchFailure(
+                        cache.handleFetchFailureIfCurrent(entry),
+                        "Failed to register local offline texture for " + profileId + ": " + e.getMessage());
                 }
             });
     }

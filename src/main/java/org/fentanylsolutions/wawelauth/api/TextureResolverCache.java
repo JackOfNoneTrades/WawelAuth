@@ -118,11 +118,9 @@ final class TextureResolverCache {
         }
     }
 
-    void handleFetchFailureIfCurrent(TextureEntry entry) {
+    boolean handleFetchFailureIfCurrent(TextureEntry entry) {
         synchronized (completionLock) {
-            if (isCurrent(entry)) {
-                entry.markFailure();
-            }
+            return isCurrent(entry) && entry.markFailure();
         }
     }
 

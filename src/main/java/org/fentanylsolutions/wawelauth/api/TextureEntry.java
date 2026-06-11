@@ -79,9 +79,11 @@ final class TextureEntry {
         this.lastAttemptMs = System.currentTimeMillis();
     }
 
-    void markFailure() {
+    /** @return true exactly once, on the attempt that exhausts the retry budget. */
+    boolean markFailure() {
         retryCount++;
         lastAttemptMs = System.currentTimeMillis();
         state = retryCount >= MAX_RETRIES ? TextureFetchState.FAILED : TextureFetchState.PLACEHOLDER;
+        return retryCount == MAX_RETRIES;
     }
 }
