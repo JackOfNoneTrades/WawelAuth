@@ -1,6 +1,5 @@
 package org.fentanylsolutions.wawelauth.wawelclient.oauth;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -11,7 +10,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -81,10 +79,7 @@ public class MicrosoftOAuthClient {
     private static final int LOOPBACK_PORT = resolvePort(REDIRECT_URI_PARSED);
     private static final String REDIRECT_PATH = normalizePath(REDIRECT_URI_PARSED.getPath());
 
-    private static final int CONNECT_TIMEOUT_MS = 15_000;
-    private static final int READ_TIMEOUT_MS = 15_000;
     private static final int CALLBACK_TIMEOUT_SECONDS = 300;
-    private static final int MAX_RESPONSE_BYTES = 1024 * 1024;
     private static final String CALLBACK_LOGO_DATA_URL = loadCallbackLogoDataUrl();
     private static final Object LOOPBACK_LOCK = new Object();
     private static ActiveLoopback activeLoopback;
@@ -214,7 +209,7 @@ public class MicrosoftOAuthClient {
         }
 
         try {
-            openBrowser(authorizeUrl);
+            OAuthHttpSupport.openBrowser(authorizeUrl);
 
             boolean completed;
             try {
@@ -298,7 +293,7 @@ public class MicrosoftOAuthClient {
         body.addProperty("TokenType", "JWT");
 
         JsonObject response = postJson(endpoints.xblAuthUrl, body, null, proxySettings, provider);
-        String token = requireString(response, "Token");
+        String token = OAuthHttpSupport.requireString(response, "Token");
 
         JsonObject claims = response.getAsJsonObject("DisplayClaims");
         if (claims == null || !claims.has("xui")
@@ -313,7 +308,7 @@ public class MicrosoftOAuthClient {
             throw new IOException("Missing Xbox user hash in DisplayClaims.xui[0]");
         }
 
-        String uhs = requireString(
+        String uhs = OAuthHttpSupport.requireString(
             xui.get(0)
                 .getAsJsonObject(),
             "uhs");
@@ -339,7 +334,7 @@ public class MicrosoftOAuthClient {
                 .getAsLong();
             throw new IOException("XSTS rejected account (XErr=" + xerr + ")");
         }
-        return requireString(response, "Token");
+        return OAuthHttpSupport.requireString(response, "Token");
     }
 
     private String getMinecraftAccessToken(String uhs, String xstsToken, ClientProvider provider) throws IOException {
@@ -348,36 +343,22 @@ public class MicrosoftOAuthClient {
         JsonObject body = new JsonObject();
         body.addProperty("identityToken", "XBL3.0 x=" + uhs + ";" + xstsToken);
         JsonObject response = postJson(endpoints.minecraftAuthUrl, body, null, proxySettings, provider);
-        return requireString(response, "access_token");
+        return OAuthHttpSupport.requireString(response, "access_token");
     }
 
     private MinecraftProfile parseMinecraftProfile(JsonObject obj) throws IOException {
         if (obj == null) {
             throw new IOException("Empty Minecraft profile response");
         }
-        String name = requireString(obj, "name");
-        String id = requireString(obj, "id");
+        String name = OAuthHttpSupport.requireString(obj, "name");
+        String id = OAuthHttpSupport.requireString(obj, "id");
         return new MinecraftProfile(name, UuidUtil.fromUnsigned(id));
     }
 
     private MsToken parseMsToken(JsonObject obj) throws IOException {
-        String accessToken = requireString(obj, "access_token");
-        String refreshToken = requireString(obj, "refresh_token");
+        String accessToken = OAuthHttpSupport.requireString(obj, "access_token");
+        String refreshToken = OAuthHttpSupport.requireString(obj, "refresh_token");
         return new MsToken(accessToken, refreshToken);
-    }
-
-    private static String requireString(JsonObject obj, String field) throws IOException {
-        if (obj == null || !obj.has(field)
-            || obj.get(field)
-                .isJsonNull()) {
-            throw new IOException("Missing field: " + field);
-        }
-        String value = obj.get(field)
-            .getAsString();
-        if (value == null || value.isEmpty()) {
-            throw new IOException("Field is empty: " + field);
-        }
-        return value;
     }
 
     private String buildAuthorizeUrl(String state, ClientProvider provider) {
@@ -389,23 +370,7 @@ public class MicrosoftOAuthClient {
         params.put("scope", "XboxLive.signin offline_access");
         params.put("prompt", "select_account");
         params.put("state", state);
-        return endpoints.msAuthorizeUrl + "?" + encodeForm(params);
-    }
-
-    private static void openBrowser(String url) throws IOException {
-        URI uri;
-        try {
-            uri = URI.create(url);
-        } catch (Exception e) {
-            throw new IOException("Invalid browser URL: " + url, e);
-        }
-
-        if (openWithAwtDesktop(uri)) return;
-        if (openWithLwjgl3ifyDesktop(uri)) return;
-        if (openWithSys("org.lwjglx.Sys", uri.toString())) return;
-        if (openWithSys("org.lwjgl.Sys", uri.toString())) return;
-
-        throw new IOException("Failed to open browser URL: " + uri);
+        return endpoints.msAuthorizeUrl + "?" + OAuthHttpSupport.encodeForm(params);
     }
 
     /**
@@ -415,45 +380,6 @@ public class MicrosoftOAuthClient {
      * 3) org.lwjglx.Sys.openURL
      * 4) org.lwjgl.Sys.openURL
      */
-    private static boolean openWithAwtDesktop(URI uri) {
-        try {
-            Class<?> desktopCls = Class.forName("java.awt.Desktop");
-            Object desktop = desktopCls.getMethod("getDesktop")
-                .invoke(null);
-            desktopCls.getMethod("browse", URI.class)
-                .invoke(desktop, uri);
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static boolean openWithLwjgl3ifyDesktop(URI uri) {
-        try {
-            Class<?> desktopCls = Class.forName("me.eigenraven.lwjgl3ify.redirects.Desktop");
-            Object desktop = desktopCls.getMethod("getDesktop")
-                .invoke(null);
-            desktopCls.getMethod("browse", URI.class)
-                .invoke(desktop, uri);
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static boolean openWithSys(String className, String url) {
-        try {
-            Class<?> sysCls = Class.forName(className);
-            Object result = sysCls.getMethod("openURL", String.class)
-                .invoke(null, url);
-            if (result instanceof Boolean) {
-                return (Boolean) result;
-            }
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
 
     private static String buildCallbackPageHtml(boolean hasCode, boolean hasError, boolean stateMatches, String error,
         String errorDescription, String code, String state) {
@@ -631,7 +557,7 @@ public class MicrosoftOAuthClient {
             if (in == null) {
                 return null;
             }
-            byte[] bytes = readBytes(in);
+            byte[] bytes = OAuthHttpSupport.readBytes(in);
             if (bytes.length == 0) {
                 return null;
             }
@@ -644,10 +570,11 @@ public class MicrosoftOAuthClient {
 
     private JsonObject postForm(String url, Map<String, String> params, ProviderProxySettings proxySettings,
         ClientProvider provider) throws IOException {
-        byte[] payload = encodeForm(params).getBytes(StandardCharsets.UTF_8);
+        byte[] payload = OAuthHttpSupport.encodeForm(params)
+            .getBytes(StandardCharsets.UTF_8);
         debugProxyRequest("POST form", url, proxySettings, provider);
         try (ProviderProxySupport.AuthContext ignored = ProviderProxySupport.enterAuthContext(proxySettings)) {
-            HttpURLConnection conn = openConnection(url, proxySettings);
+            HttpURLConnection conn = OAuthHttpSupport.openConnection(url, proxySettings);
             try {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
@@ -669,7 +596,7 @@ public class MicrosoftOAuthClient {
             .getBytes(StandardCharsets.UTF_8);
         debugProxyRequest("POST json", url, proxySettings, provider);
         try (ProviderProxySupport.AuthContext ignored = ProviderProxySupport.enterAuthContext(proxySettings)) {
-            HttpURLConnection conn = openConnection(url, proxySettings);
+            HttpURLConnection conn = OAuthHttpSupport.openConnection(url, proxySettings);
             try {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
@@ -692,7 +619,7 @@ public class MicrosoftOAuthClient {
         ClientProvider provider) throws IOException {
         debugProxyRequest("GET", url, proxySettings, provider);
         try (ProviderProxySupport.AuthContext ignored = ProviderProxySupport.enterAuthContext(proxySettings)) {
-            HttpURLConnection conn = openConnection(url, proxySettings);
+            HttpURLConnection conn = OAuthHttpSupport.openConnection(url, proxySettings);
             try {
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("Accept", "application/json");
@@ -704,11 +631,6 @@ public class MicrosoftOAuthClient {
                 conn.disconnect();
             }
         }
-    }
-
-    private HttpURLConnection openConnection(String url, ProviderProxySettings proxySettings) throws IOException {
-        return ProviderProxySupport
-            .openConnection(url, proxySettings, CONNECT_TIMEOUT_MS, READ_TIMEOUT_MS, "WawelAuth");
     }
 
     private static void debugProxyRequest(String method, String url, ProviderProxySettings proxySettings,
@@ -729,31 +651,18 @@ public class MicrosoftOAuthClient {
         String servicesBase = provider != null ? stripTrailingSlash(StringUtil.trimToNull(provider.getServicesUrl()))
             : null;
         return new MicrosoftEndpoints(
-            firstNonBlank(provider != null ? provider.getMsAuthorizeUrl() : null, MS_AUTHORIZE_URL),
-            firstNonBlank(provider != null ? provider.getMsTokenUrl() : null, MS_TOKEN_URL),
-            firstNonBlank(provider != null ? provider.getXblAuthUrl() : null, XBL_AUTH_URL),
-            firstNonBlank(provider != null ? provider.getXstsAuthUrl() : null, XSTS_AUTH_URL),
-            firstNonBlank(
+            OAuthHttpSupport.firstNonBlank(provider != null ? provider.getMsAuthorizeUrl() : null, MS_AUTHORIZE_URL),
+            OAuthHttpSupport.firstNonBlank(provider != null ? provider.getMsTokenUrl() : null, MS_TOKEN_URL),
+            OAuthHttpSupport.firstNonBlank(provider != null ? provider.getXblAuthUrl() : null, XBL_AUTH_URL),
+            OAuthHttpSupport.firstNonBlank(provider != null ? provider.getXstsAuthUrl() : null, XSTS_AUTH_URL),
+            OAuthHttpSupport.firstNonBlank(
                 provider != null ? provider.getMinecraftAuthUrl() : null,
                 servicesBase != null ? servicesBase + "/authentication/login_with_xbox" : null,
                 MINECRAFT_AUTH_URL),
-            firstNonBlank(
+            OAuthHttpSupport.firstNonBlank(
                 provider != null ? provider.getMinecraftProfileUrl() : null,
                 servicesBase != null ? servicesBase + "/minecraft/profile" : null,
                 MINECRAFT_PROFILE_URL));
-    }
-
-    private static String firstNonBlank(String... values) {
-        if (values == null) {
-            return null;
-        }
-        for (String value : values) {
-            String normalized = StringUtil.trimToNull(value);
-            if (normalized != null) {
-                return normalized;
-            }
-        }
-        return null;
     }
 
     private static String stripTrailingSlash(String value) {
@@ -766,7 +675,7 @@ public class MicrosoftOAuthClient {
     private JsonObject readJsonResponse(HttpURLConnection conn) throws IOException {
         int status = conn.getResponseCode();
         InputStream in = status >= 200 && status < 300 ? conn.getInputStream() : conn.getErrorStream();
-        String body = in != null ? readStream(in) : "";
+        String body = in != null ? OAuthHttpSupport.readStream(in) : "";
 
         if (status < 200 || status >= 300) {
             throw new HttpStatusException(status, body);
@@ -778,50 +687,6 @@ public class MicrosoftOAuthClient {
         }
         return new JsonParser().parse(body)
             .getAsJsonObject();
-    }
-
-    private static String readStream(InputStream stream) throws IOException {
-        return new String(readBytes(stream), StandardCharsets.UTF_8);
-    }
-
-    private static byte[] readBytes(InputStream stream) throws IOException {
-        try (InputStream is = stream) {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] buf = new byte[4096];
-            int total = 0;
-            int n;
-            while ((n = is.read(buf)) != -1) {
-                total += n;
-                if (total > MAX_RESPONSE_BYTES) {
-                    throw new IOException("Response too large");
-                }
-                out.write(buf, 0, n);
-            }
-            return out.toByteArray();
-        }
-    }
-
-    private static String encodeForm(Map<String, String> params) {
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (Map.Entry<String, String> entry : params.entrySet()) {
-            if (!first) {
-                sb.append('&');
-            }
-            first = false;
-            sb.append(urlEncode(entry.getKey()))
-                .append('=')
-                .append(urlEncode(entry.getValue()));
-        }
-        return sb.toString();
-    }
-
-    private static String urlEncode(String s) {
-        try {
-            return URLEncoder.encode(s, "UTF-8");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static Map<String, String> parseQuery(String rawQuery) {

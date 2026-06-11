@@ -1,12 +1,9 @@
 package org.fentanylsolutions.wawelauth.wawelclient.oauth;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -28,10 +25,6 @@ import com.google.gson.JsonParser;
 
 public abstract class ProviderOAuthClient {
 
-    private static final int CONNECT_TIMEOUT_MS = 15_000;
-    private static final int READ_TIMEOUT_MS = 15_000;
-    private static final int MAX_RESPONSE_BYTES = 1024 * 1024;
-
     public abstract boolean supports(String providerName);
 
     public final boolean supports(ClientProvider provider) {
@@ -49,7 +42,7 @@ public abstract class ProviderOAuthClient {
         DeviceCodeResponse deviceCode = requestDeviceCode(provider);
         deviceCodeStatus.accept(deviceCode.getUserCode());
         status.accept(tr("wawelauth.gui.login.status.oauth_open_browser"));
-        openBrowser(deviceCode.getOpenBrowserUrl());
+        OAuthHttpSupport.openBrowser(deviceCode.getOpenBrowserUrl());
         status.accept(
             deviceCode.getUserCode() != null
                 ? tr("wawelauth.gui.login.status.oauth_waiting_code", deviceCode.getUserCode())
@@ -112,7 +105,7 @@ public abstract class ProviderOAuthClient {
             .getBytes(StandardCharsets.UTF_8);
         debugProxyRequest("POST json", url, proxySettings, provider);
         try (ProviderProxySupport.AuthContext ignored = ProviderProxySupport.enterAuthContext(proxySettings)) {
-            HttpURLConnection conn = openConnection(url, proxySettings);
+            HttpURLConnection conn = OAuthHttpSupport.openConnection(url, proxySettings);
             try {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
@@ -135,7 +128,7 @@ public abstract class ProviderOAuthClient {
         ProviderProxySettings proxySettings = provider != null ? provider.getProxySettings() : null;
         debugProxyRequest("GET", url, proxySettings, provider);
         try (ProviderProxySupport.AuthContext ignored = ProviderProxySupport.enterAuthContext(proxySettings)) {
-            HttpURLConnection conn = openConnection(url, proxySettings);
+            HttpURLConnection conn = OAuthHttpSupport.openConnection(url, proxySettings);
             try {
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("Accept", "application/json");
@@ -166,20 +159,6 @@ public abstract class ProviderOAuthClient {
         } catch (Exception e) {
             throw new IOException("Failed to decode JWT payload", e);
         }
-    }
-
-    protected static String requireString(JsonObject obj, String field) throws IOException {
-        if (obj == null || !obj.has(field)
-            || obj.get(field)
-                .isJsonNull()) {
-            throw new IOException("Missing field: " + field);
-        }
-        String value = obj.get(field)
-            .getAsString();
-        if (StringUtil.trimToNull(value) == null) {
-            throw new IOException("Field is empty: " + field);
-        }
-        return value;
     }
 
     protected static String providerLabel(ClientProvider provider) {
@@ -220,13 +199,13 @@ public abstract class ProviderOAuthClient {
             params.put("scope", getScopes());
         }
         JsonObject json = postForm(getDeviceCodeUrl(), params, provider);
-        String deviceCode = requireString(json, "device_code");
+        String deviceCode = OAuthHttpSupport.requireString(json, "device_code");
         String userCode = json.has("user_code") && !json.get("user_code")
             .isJsonNull() ? StringUtil.trimToNull(
                 json.get("user_code")
                     .getAsString())
                 : null;
-        String verificationUri = requireString(json, "verification_uri");
+        String verificationUri = OAuthHttpSupport.requireString(json, "verification_uri");
         String verificationUriComplete = json.has("verification_uri_complete") && !json.get("verification_uri_complete")
             .isJsonNull() ? StringUtil.trimToNull(
                 json.get("verification_uri_complete")
@@ -294,10 +273,11 @@ public abstract class ProviderOAuthClient {
 
     private JsonObject postForm(String url, Map<String, String> params, ClientProvider provider) throws IOException {
         ProviderProxySettings proxySettings = provider != null ? provider.getProxySettings() : null;
-        byte[] payload = encodeForm(params).getBytes(StandardCharsets.UTF_8);
+        byte[] payload = OAuthHttpSupport.encodeForm(params)
+            .getBytes(StandardCharsets.UTF_8);
         debugProxyRequest("POST form", url, proxySettings, provider);
         try (ProviderProxySupport.AuthContext ignored = ProviderProxySupport.enterAuthContext(proxySettings)) {
-            HttpURLConnection conn = openConnection(url, proxySettings);
+            HttpURLConnection conn = OAuthHttpSupport.openConnection(url, proxySettings);
             try {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
@@ -313,15 +293,10 @@ public abstract class ProviderOAuthClient {
         }
     }
 
-    private HttpURLConnection openConnection(String url, ProviderProxySettings proxySettings) throws IOException {
-        return ProviderProxySupport
-            .openConnection(url, proxySettings, CONNECT_TIMEOUT_MS, READ_TIMEOUT_MS, "WawelAuth");
-    }
-
     private JsonObject readJsonResponse(HttpURLConnection conn) throws IOException {
         int status = conn.getResponseCode();
         InputStream in = status >= 200 && status < 300 ? conn.getInputStream() : conn.getErrorStream();
-        String body = in != null ? readStream(in) : "";
+        String body = in != null ? OAuthHttpSupport.readStream(in) : "";
         if (status < 200 || status >= 300) {
             throw new HttpStatusException(status, body);
         }
@@ -337,7 +312,7 @@ public abstract class ProviderOAuthClient {
     }
 
     private static OAuthTokens parseOAuthTokens(JsonObject json, String fallbackRefreshToken) throws IOException {
-        String accessToken = requireString(json, "access_token");
+        String accessToken = OAuthHttpSupport.requireString(json, "access_token");
         String refreshToken = json != null && json.has("refresh_token")
             && !json.get("refresh_token")
                 .isJsonNull() ? StringUtil.trimToNull(
@@ -350,7 +325,10 @@ public abstract class ProviderOAuthClient {
                     json.get("id_token")
                         .getAsString())
                     : null;
-        return new OAuthTokens(accessToken, firstNonBlank(refreshToken, fallbackRefreshToken), idToken);
+        return new OAuthTokens(
+            accessToken,
+            OAuthHttpSupport.firstNonBlank(refreshToken, fallbackRefreshToken),
+            idToken);
     }
 
     private static JsonObject tryParseJsonObject(String body) {
@@ -375,60 +353,6 @@ public abstract class ProviderOAuthClient {
         }
     }
 
-    private static void openBrowser(String url) throws IOException {
-        URI uri;
-        try {
-            uri = URI.create(url);
-        } catch (Exception e) {
-            throw new IOException("Invalid browser URL: " + url, e);
-        }
-        if (openWithAwtDesktop(uri)) return;
-        if (openWithLwjgl3ifyDesktop(uri)) return;
-        if (openWithSys("org.lwjglx.Sys", uri.toString())) return;
-        if (openWithSys("org.lwjgl.Sys", uri.toString())) return;
-        throw new IOException("Failed to open browser URL: " + uri);
-    }
-
-    private static boolean openWithAwtDesktop(URI uri) {
-        try {
-            Class<?> desktopCls = Class.forName("java.awt.Desktop");
-            Object desktop = desktopCls.getMethod("getDesktop")
-                .invoke(null);
-            desktopCls.getMethod("browse", URI.class)
-                .invoke(desktop, uri);
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static boolean openWithLwjgl3ifyDesktop(URI uri) {
-        try {
-            Class<?> desktopCls = Class.forName("me.eigenraven.lwjgl3ify.redirects.Desktop");
-            Object desktop = desktopCls.getMethod("getDesktop")
-                .invoke(null);
-            desktopCls.getMethod("browse", URI.class)
-                .invoke(desktop, uri);
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static boolean openWithSys(String className, String url) {
-        try {
-            Class<?> sysCls = Class.forName(className);
-            Object result = sysCls.getMethod("openURL", String.class)
-                .invoke(null, url);
-            if (result instanceof Boolean) {
-                return (Boolean) result;
-            }
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
     private static void debugProxyRequest(String method, String url, ProviderProxySettings proxySettings,
         ClientProvider provider) {
         WawelAuth.debug(
@@ -442,68 +366,6 @@ public abstract class ProviderOAuthClient {
                 + ", client="
                 + ProviderProxySupport.describeProxySettings(proxySettings)
                 + "]");
-    }
-
-    private static String readStream(InputStream stream) throws IOException {
-        return new String(readBytes(stream), StandardCharsets.UTF_8);
-    }
-
-    private static byte[] readBytes(InputStream stream) throws IOException {
-        try (InputStream in = stream) {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] buf = new byte[4096];
-            int total = 0;
-            int read;
-            while ((read = in.read(buf)) != -1) {
-                total += read;
-                if (total > MAX_RESPONSE_BYTES) {
-                    throw new IOException("Response too large");
-                }
-                out.write(buf, 0, read);
-            }
-            return out.toByteArray();
-        }
-    }
-
-    private static String encodeForm(Map<String, String> params) {
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (Map.Entry<String, String> entry : params.entrySet()) {
-            String key = StringUtil.trimToNull(entry.getKey());
-            String value = StringUtil.trimToNull(entry.getValue());
-            if (key == null || value == null) {
-                continue;
-            }
-            if (!first) {
-                sb.append('&');
-            }
-            first = false;
-            sb.append(urlEncode(key))
-                .append('=')
-                .append(urlEncode(value));
-        }
-        return sb.toString();
-    }
-
-    private static String urlEncode(String value) {
-        try {
-            return URLEncoder.encode(value, "UTF-8");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    protected static String firstNonBlank(String... values) {
-        if (values == null) {
-            return null;
-        }
-        for (String value : values) {
-            String normalized = StringUtil.trimToNull(value);
-            if (normalized != null) {
-                return normalized;
-            }
-        }
-        return null;
     }
 
     private static boolean isPlaceholder(String value) {
@@ -629,7 +491,7 @@ public abstract class ProviderOAuthClient {
         }
 
         private String getOpenBrowserUrl() {
-            return firstNonBlank(verificationUriComplete, verificationUri);
+            return OAuthHttpSupport.firstNonBlank(verificationUriComplete, verificationUri);
         }
     }
 

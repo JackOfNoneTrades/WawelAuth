@@ -30,8 +30,8 @@ public class ElyByOAuthClient extends ProviderOAuthClient {
     @Override
     public MinecraftProfile fetchProfile(String accessToken, ClientProvider provider) throws IOException {
         JsonObject profile = getJson(ACCOUNT_INFO_URL, "Bearer " + accessToken, provider);
-        String username = requireString(profile, "username");
-        String uuidText = requireString(profile, "uuid");
+        String username = OAuthHttpSupport.requireString(profile, "username");
+        String uuidText = OAuthHttpSupport.requireString(profile, "uuid");
         return new MinecraftProfile(username, UUID.fromString(uuidText));
     }
 

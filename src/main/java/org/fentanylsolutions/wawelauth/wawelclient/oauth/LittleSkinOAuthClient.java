@@ -62,7 +62,7 @@ public class LittleSkinOAuthClient extends ProviderOAuthClient {
         request.addProperty("uuid", UuidUtil.toUnsigned(selectedUuid));
         JsonObject response = postJson(MINECRAFT_TOKEN_URL, request, "Bearer " + tokens.getAccessToken(), provider);
 
-        String accessToken = requireString(response, "accessToken");
+        String accessToken = OAuthHttpSupport.requireString(response, "accessToken");
         String clientToken = response.has("clientToken") && !response.get("clientToken")
             .isJsonNull() ? StringUtil.trimToNull(
                 response.get("clientToken")
@@ -72,8 +72,8 @@ public class LittleSkinOAuthClient extends ProviderOAuthClient {
         if (response.has("selectedProfile") && response.get("selectedProfile")
             .isJsonObject()) {
             JsonObject selectedProfile = response.getAsJsonObject("selectedProfile");
-            selectedUuid = UuidUtil.fromUnsigned(requireString(selectedProfile, "id"));
-            selectedName = requireString(selectedProfile, "name");
+            selectedUuid = UuidUtil.fromUnsigned(OAuthHttpSupport.requireString(selectedProfile, "id"));
+            selectedName = OAuthHttpSupport.requireString(selectedProfile, "name");
         } else if (response.has("availableProfiles") && response.get("availableProfiles")
             .isJsonArray()) {
                 JsonArray profiles = response.getAsJsonArray("availableProfiles");
@@ -82,7 +82,7 @@ public class LittleSkinOAuthClient extends ProviderOAuthClient {
                     JsonObject first = profiles.get(0)
                         .getAsJsonObject();
                     if (selectedName == null) {
-                        selectedName = requireString(first, "name");
+                        selectedName = OAuthHttpSupport.requireString(first, "name");
                     }
                 }
             }
