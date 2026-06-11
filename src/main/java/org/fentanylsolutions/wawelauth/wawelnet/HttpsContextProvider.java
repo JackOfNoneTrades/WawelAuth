@@ -4,23 +4,30 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.InetAddress;
 import java.net.URI;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.StandardCopyOption;
+import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
+import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -46,6 +53,9 @@ import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.util.HexUtil;
+import org.fentanylsolutions.wawelauth.wawelcore.util.OwnerOnlyFileIO;
+
+import cpw.mods.fml.common.StartupQuery;
 
 /**
  * Provides the SSL context used by same-port HTTPS.
@@ -67,7 +77,19 @@ public final class HttpsContextProvider {
 
     private HttpsContextProvider() {}
 
+    public static synchronized void prepareForStartup() {
+        ensureInitialized();
+    }
+
     static synchronized SSLEngine newServerEngine() {
+        ensureInitialized();
+        SSLEngine engine = cachedContext.createSSLEngine();
+        engine.setUseClientMode(false);
+        engine.setEnabledProtocols(filterSupportedProtocols(engine.getSupportedProtocols()));
+        return engine;
+    }
+
+    private static void ensureInitialized() {
         try {
             if (cachedContext == null) {
                 File stateDir = new File(Config.getConfigDir(), "data");
@@ -78,11 +100,8 @@ public final class HttpsContextProvider {
                     "Same-port HTTPS enabled with self-signed certificate fingerprint SHA-256 {}",
                     cachedFingerprint);
             }
-
-            SSLEngine engine = cachedContext.createSSLEngine();
-            engine.setUseClientMode(false);
-            engine.setEnabledProtocols(filterSupportedProtocols(engine.getSupportedProtocols()));
-            return engine;
+        } catch (StartupQuery.AbortedException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize same-port HTTPS", e);
         }
@@ -114,7 +133,18 @@ public final class HttpsContextProvider {
             }
             PrivateKey privateKey = loadPrivateKey(keyFile);
             X509Certificate certificate = loadCertificate(certFile);
-            restrictToOwner(keyFile);
+            OwnerOnlyFileIO.restrictToOwner(keyFile);
+            List<SubjectAltName> requiredNames = collectSubjectAltNames();
+            List<SubjectAltName> missingNames = missingSubjectAltNames(certificate, requiredNames);
+            if (!missingNames.isEmpty()) {
+                confirmCertificateRegeneration(stateDir, keyFile, certFile, certificate, requiredNames, missingNames);
+                File backupDir = backupExistingCertificateFiles(stateDir, keyFile, certFile);
+                certificate = createSelfSignedCertificate(privateKey, certificate.getPublicKey(), requiredNames);
+                writeCertificateAtomically(certFile, certificate.getEncoded());
+                WawelAuth.LOG.warn(
+                    "Regenerated same-port HTTPS certificate with updated SANs. Previous certificate backup: {}",
+                    backupDir.getAbsolutePath());
+            }
             return new LoadedCertificate(privateKey, certificate);
         }
 
@@ -123,12 +153,11 @@ public final class HttpsContextProvider {
         KeyPair pair = generator.generateKeyPair();
         X509Certificate certificate = createSelfSignedCertificate(pair, collectSubjectAltNames());
 
-        Files.write(
-            keyFile.toPath(),
+        OwnerOnlyFileIO.writeNewOwnerOnly(
+            keyFile,
             pair.getPrivate()
                 .getEncoded());
-        restrictToOwner(keyFile);
-        Files.write(certFile.toPath(), certificate.getEncoded());
+        writeCertificateAtomically(certFile, certificate.getEncoded());
         WawelAuth.LOG.info("Generated same-port HTTPS certificate in {}", stateDir.getAbsolutePath());
         return new LoadedCertificate(pair.getPrivate(), certificate);
     }
@@ -159,8 +188,13 @@ public final class HttpsContextProvider {
         }
     }
 
-    private static X509Certificate createSelfSignedCertificate(KeyPair keyPair, List<GeneralName> names)
+    private static X509Certificate createSelfSignedCertificate(KeyPair keyPair, List<SubjectAltName> names)
         throws Exception {
+        return createSelfSignedCertificate(keyPair.getPrivate(), keyPair.getPublic(), names);
+    }
+
+    private static X509Certificate createSelfSignedCertificate(PrivateKey privateKey, PublicKey publicKey,
+        List<SubjectAltName> names) throws Exception {
         long now = System.currentTimeMillis();
         Date notBefore = new Date(now - 5L * 60L * 1000L);
         Date notAfter = new Date(now + CERT_VALIDITY_MS);
@@ -173,25 +207,27 @@ public final class HttpsContextProvider {
             notBefore,
             notAfter,
             name,
-            keyPair.getPublic());
+            publicKey);
         builder.addExtension(
             Extension.keyUsage,
             false,
             new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
         builder.addExtension(Extension.extendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
         if (!names.isEmpty()) {
-            builder.addExtension(
-                Extension.subjectAlternativeName,
-                false,
-                new GeneralNames(names.toArray(new GeneralName[names.size()])));
+            GeneralName[] generalNames = new GeneralName[names.size()];
+            for (int i = 0; i < names.size(); i++) {
+                generalNames[i] = names.get(i)
+                    .toGeneralName();
+            }
+            builder.addExtension(Extension.subjectAlternativeName, false, new GeneralNames(generalNames));
         }
 
-        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(keyPair.getPrivate());
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(privateKey);
         X509CertificateHolder holder = builder.build(signer);
         return new JcaX509CertificateConverter().getCertificate(holder);
     }
 
-    private static List<GeneralName> collectSubjectAltNames() {
+    private static List<SubjectAltName> collectSubjectAltNames() {
         Set<String> hosts = new LinkedHashSet<>();
         hosts.add("localhost");
         hosts.add("127.0.0.1");
@@ -202,9 +238,9 @@ public final class HttpsContextProvider {
         addHost(hosts, config.getEffectiveApiRoot());
         addHost(hosts, config.getServerAddress());
 
-        List<GeneralName> names = new ArrayList<>();
+        List<SubjectAltName> names = new ArrayList<>();
         for (String host : hosts) {
-            GeneralName name = generalName(host);
+            SubjectAltName name = subjectAltName(host);
             if (name != null) {
                 names.add(name);
             }
@@ -212,11 +248,11 @@ public final class HttpsContextProvider {
         return names;
     }
 
-    private static GeneralName generalName(String host) {
+    private static SubjectAltName subjectAltName(String host) {
         if (host == null) return null;
         String trimmed = host.trim();
         if (trimmed.isEmpty()) return null;
-        return new GeneralName(isIpLiteral(trimmed) ? GeneralName.iPAddress : GeneralName.dNSName, trimmed);
+        return new SubjectAltName(isIpLiteral(trimmed) ? GeneralName.iPAddress : GeneralName.dNSName, trimmed);
     }
 
     private static boolean isIpLiteral(String value) {
@@ -267,7 +303,7 @@ public final class HttpsContextProvider {
         return selected.isEmpty() ? supported : selected.toArray(new String[selected.size()]);
     }
 
-    private static String sha256Fingerprint(byte[] data) throws Exception {
+    private static String sha256Fingerprint(byte[] data) throws GeneralSecurityException {
         byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
             .digest(data);
         String hex = HexUtil.bytesToHex(digest)
@@ -282,18 +318,189 @@ public final class HttpsContextProvider {
         return out.toString();
     }
 
-    private static void restrictToOwner(File file) {
+    private static List<SubjectAltName> missingSubjectAltNames(X509Certificate certificate,
+        List<SubjectAltName> requiredNames) throws CertificateParsingException {
+        List<SubjectAltName> missing = new ArrayList<>();
+        Collection<List<?>> existingNames = certificate.getSubjectAlternativeNames();
+        for (SubjectAltName required : requiredNames) {
+            if (!containsSubjectAltName(existingNames, required)) {
+                missing.add(required);
+            }
+        }
+        return missing;
+    }
+
+    private static boolean containsSubjectAltName(Collection<List<?>> existingNames, SubjectAltName required) {
+        if (existingNames == null) {
+            return false;
+        }
+        for (List<?> entry : existingNames) {
+            if (entry == null || entry.size() < 2 || !(entry.get(0) instanceof Integer)) {
+                continue;
+            }
+            int type = ((Integer) entry.get(0)).intValue();
+            Object value = entry.get(1);
+            if (value != null && required.matches(type, String.valueOf(value))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void confirmCertificateRegeneration(File stateDir, File keyFile, File certFile,
+        X509Certificate certificate, List<SubjectAltName> requiredNames, List<SubjectAltName> missingNames)
+        throws GeneralSecurityException {
+        String fingerprint = sha256Fingerprint(certificate.getEncoded());
+        String message = "WawelAuth same-port HTTPS certificate does not cover the current configured hostnames.\n\n"
+            + "Certificate: "
+            + certFile.getAbsolutePath()
+            + "\n"
+            + "Private key: "
+            + keyFile.getAbsolutePath()
+            + "\n"
+            + "Current certificate fingerprint SHA-256: "
+            + fingerprint
+            + "\n"
+            + "Missing SAN entries: "
+            + formatSubjectAltNames(missingNames)
+            + "\n"
+            + "Required SAN entries: "
+            + formatSubjectAltNames(requiredNames)
+            + "\n\n"
+            + "Confirm to back up the existing HTTPS certificate files under:\n"
+            + new File(stateDir, "https-certificate-backups").getAbsolutePath()
+            + "\n"
+            + "and regenerate the self-signed certificate using the existing HTTPS private key.\n"
+            + "Cancel to abort server startup.";
+
+        WawelAuth.LOG.error("============================================================");
+        WawelAuth.LOG.error("WawelAuth same-port HTTPS certificate SANs are stale.");
+        WawelAuth.LOG.error("Certificate: {}", certFile.getAbsolutePath());
+        WawelAuth.LOG.error("Current certificate fingerprint SHA-256: {}", fingerprint);
+        WawelAuth.LOG.error("Missing SAN entries: {}", formatSubjectAltNames(missingNames));
+        WawelAuth.LOG.error("Required SAN entries: {}", formatSubjectAltNames(requiredNames));
+        WawelAuth.LOG.error("Confirm the FML prompt to regenerate, or cancel to abort startup.");
+        WawelAuth.LOG.error("============================================================");
+
+        if (!confirmStartupQuery(message)) {
+            WawelAuth.LOG.error("WawelAuth HTTPS certificate regeneration was cancelled; aborting server startup.");
+            StartupQuery.abort();
+        }
+    }
+
+    private static boolean confirmStartupQuery(String message) {
+        String queryResult = System.getProperty("fml.queryResult");
+        if (queryResult != null) {
+            WawelAuth.LOG.info(
+                "Using fml.queryResult={} to answer WawelAuth HTTPS certificate regeneration prompt.",
+                queryResult);
+            if ("confirm".equalsIgnoreCase(queryResult)) {
+                return true;
+            }
+            if ("cancel".equalsIgnoreCase(queryResult)) {
+                return false;
+            }
+            WawelAuth.LOG.warn("Invalid fml.queryResult value '{}'; expected confirm or cancel.", queryResult);
+        }
+        return StartupQuery.confirm(message);
+    }
+
+    private static File backupExistingCertificateFiles(File stateDir, File keyFile, File certFile) throws IOException {
+        File backupRoot = new File(stateDir, "https-certificate-backups");
+        Files.createDirectories(backupRoot.toPath());
+
+        String timestamp = new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date());
+        File backupDir = createUniqueBackupDir(backupRoot, timestamp);
+
+        OwnerOnlyFileIO.writeNewOwnerOnly(new File(backupDir, PRIVATE_KEY_FILE), Files.readAllBytes(keyFile.toPath()));
+        Files.write(new File(backupDir, CERTIFICATE_FILE).toPath(), Files.readAllBytes(certFile.toPath()));
+        return backupDir;
+    }
+
+    private static File createUniqueBackupDir(File backupRoot, String timestamp) throws IOException {
+        for (int i = 1; i <= 1000; i++) {
+            String name = i == 1 ? timestamp : timestamp + "-" + i;
+            File backupDir = new File(backupRoot, name);
+            try {
+                Files.createDirectory(backupDir.toPath());
+                return backupDir;
+            } catch (FileAlreadyExistsException e) {
+                continue;
+            }
+        }
+        throw new IOException("Failed to allocate unique HTTPS certificate backup directory under " + backupRoot);
+    }
+
+    private static void writeCertificateAtomically(File certFile, byte[] encoded) throws IOException {
+        File parent = certFile.getParentFile();
+        File tmpFile = File.createTempFile(certFile.getName(), ".tmp", parent);
+        Files.write(tmpFile.toPath(), encoded);
         try {
-            Files.setPosixFilePermissions(
-                file.toPath(),
-                EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
-        } catch (UnsupportedOperationException e) {
-            file.setReadable(false, false);
-            file.setWritable(false, false);
-            file.setReadable(true, true);
-            file.setWritable(true, true);
-        } catch (IOException e) {
-            WawelAuth.LOG.warn("Failed to restrict permissions on {}", file.getAbsolutePath(), e);
+            Files.move(
+                tmpFile.toPath(),
+                certFile.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(tmpFile.toPath(), certFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(tmpFile.toPath());
+        }
+    }
+
+    private static String formatSubjectAltNames(List<SubjectAltName> names) {
+        if (names == null || names.isEmpty()) {
+            return "<none>";
+        }
+        StringBuilder out = new StringBuilder();
+        for (SubjectAltName name : names) {
+            if (out.length() > 0) {
+                out.append(", ");
+            }
+            out.append(name.display());
+        }
+        return out.toString();
+    }
+
+    private static String normalizeSubjectAltNameValue(int type, String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (type == GeneralName.iPAddress) {
+            try {
+                return InetAddress.getByName(trimmed)
+                    .getHostAddress()
+                    .toLowerCase(Locale.ROOT);
+            } catch (Exception ignored) {
+                return trimmed.toLowerCase(Locale.ROOT);
+            }
+        }
+        return trimmed.toLowerCase(Locale.ROOT);
+    }
+
+    private static final class SubjectAltName {
+
+        final int type;
+        final String value;
+        final String normalizedValue;
+
+        SubjectAltName(int type, String value) {
+            this.type = type;
+            this.value = value;
+            this.normalizedValue = normalizeSubjectAltNameValue(type, value);
+        }
+
+        GeneralName toGeneralName() {
+            return new GeneralName(type, value);
+        }
+
+        boolean matches(int otherType, String otherValue) {
+            return type == otherType && normalizedValue.equals(normalizeSubjectAltNameValue(otherType, otherValue));
+        }
+
+        String display() {
+            return (type == GeneralName.iPAddress ? "IP:" : "DNS:") + value;
         }
     }
 

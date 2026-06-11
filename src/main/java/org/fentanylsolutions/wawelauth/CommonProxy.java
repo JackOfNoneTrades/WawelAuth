@@ -9,6 +9,7 @@ import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersConfig
 import org.fentanylsolutions.wawelauth.packet.PacketHandler;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ClientConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
+import org.fentanylsolutions.wawelauth.wawelnet.HttpsContextProvider;
 import org.fentanylsolutions.wawelauth.wawelserver.CommandWawelAuth;
 import org.fentanylsolutions.wawelauth.wawelserver.WawelPingServerHooks;
 import org.fentanylsolutions.wawelauth.wawelserver.WawelServer;
@@ -72,6 +73,12 @@ public class CommonProxy {
 
         if (!server.isServerInOnlineMode()) {
             failOfflineModeStartup();
+            return;
+        }
+
+        if (config.getHttp()
+            .isHttpsEnabled()) {
+            HttpsContextProvider.prepareForStartup();
         }
     }
 

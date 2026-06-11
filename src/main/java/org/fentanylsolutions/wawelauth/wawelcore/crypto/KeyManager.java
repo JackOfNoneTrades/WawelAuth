@@ -3,7 +3,6 @@ package org.fentanylsolutions.wawelauth.wawelcore.crypto;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.attribute.PosixFilePermission;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -14,9 +13,9 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
-import java.util.EnumSet;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.wawelcore.util.OwnerOnlyFileIO;
 
 /**
  * Manages the server's RSA keypair for signing profile properties.
@@ -58,7 +57,7 @@ public class KeyManager {
                 PrivateKey priv = loadPrivateKey(privFile);
                 PublicKey pub = loadPublicKey(pubFile);
                 keyPair = new KeyPair(pub, priv);
-                restrictToOwner(privFile);
+                OwnerOnlyFileIO.restrictToOwner(privFile);
                 WawelAuth.LOG.info("Loaded RSA keypair from {}", stateDir.getAbsolutePath());
             } catch (Exception e) {
                 throw new RuntimeException(
@@ -141,28 +140,10 @@ public class KeyManager {
     }
 
     private static void saveKey(File file, byte[] encoded, boolean restrictPermissions) throws IOException {
-        Files.write(file.toPath(), encoded);
         if (restrictPermissions) {
-            restrictToOwner(file);
+            OwnerOnlyFileIO.writeNewOwnerOnly(file, encoded);
+            return;
         }
-    }
-
-    /**
-     * Set file permissions to owner-only read/write (0600). No-op on non-POSIX systems.
-     */
-    private static void restrictToOwner(File file) {
-        try {
-            Files.setPosixFilePermissions(
-                file.toPath(),
-                EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
-        } catch (UnsupportedOperationException e) {
-            // Non-POSIX filesystem (Windows): best effort via File API
-            file.setReadable(false, false);
-            file.setWritable(false, false);
-            file.setReadable(true, true);
-            file.setWritable(true, true);
-        } catch (IOException e) {
-            WawelAuth.LOG.warn("Failed to restrict permissions on {}", file.getAbsolutePath(), e);
-        }
+        Files.write(file.toPath(), encoded);
     }
 }
