@@ -33,7 +33,7 @@ public final class ServerUtilitiesForgePlayerResolver {
     }
 
     public static ForgePlayer resolveCommandPlayer(Universe universe, CharSequence rawInput) {
-        String input = trimToNull(rawInput == null ? null : rawInput.toString());
+        String input = StringUtil.trimToNull(rawInput == null ? null : rawInput.toString());
         if (universe == null || input == null) {
             return null;
         }
@@ -59,7 +59,7 @@ public final class ServerUtilitiesForgePlayerResolver {
     }
 
     public static ForgePlayer resolveStoredPlayer(Universe universe, CharSequence rawInput) {
-        String input = trimToNull(rawInput == null ? null : rawInput.toString());
+        String input = StringUtil.trimToNull(rawInput == null ? null : rawInput.toString());
         if (universe == null || input == null) {
             return null;
         }
@@ -128,9 +128,5 @@ public final class ServerUtilitiesForgePlayerResolver {
 
         String providerKey = ProviderAwareUserListManager.resolveOnlineProviderKey(player.getId());
         ProviderAwareUserListManager.storeProviderBinding(LIST_TYPE, player.getProfile(), providerKey);
-    }
-
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
     }
 }

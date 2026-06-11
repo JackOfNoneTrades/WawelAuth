@@ -128,7 +128,7 @@ public final class LocalSessionVerifier {
             args.put("serverId", serverId);
             URL url = HttpAuthenticationService.concatenateURL(checkUrl, HttpAuthenticationService.buildQuery(args));
 
-            String displayName = trimToNull(fallback.getName());
+            String displayName = StringUtil.trimToNull(fallback.getName());
             if (displayName == null) {
                 displayName = rawSessionUrl;
             }
@@ -140,7 +140,7 @@ public final class LocalSessionVerifier {
                     WawelAuth.debug("Fallback hasJoined hit: " + displayName);
                     if (profile.getId() != null && rawSessionUrl != null) {
                         playerProviderSessionUrls.put(profile.getId(), rawSessionUrl);
-                        String providerName = trimToNull(fallback.getName());
+                        String providerName = StringUtil.trimToNull(fallback.getName());
                         if (providerName != null) {
                             playerProviderNames.put(profile.getId(), providerName);
                         }
@@ -156,13 +156,13 @@ public final class LocalSessionVerifier {
     }
 
     public static String consumeDisconnectReason(String defaultReason) {
-        String reason = trimToNull(DISCONNECT_REASON.get());
+        String reason = StringUtil.trimToNull(DISCONNECT_REASON.get());
         DISCONNECT_REASON.remove();
         return reason == null ? defaultReason : reason;
     }
 
     private static void setDisconnectReason(String reason) {
-        String normalized = trimToNull(reason);
+        String normalized = StringUtil.trimToNull(reason);
         if (normalized == null) {
             DISCONNECT_REASON.remove();
         } else {
@@ -175,7 +175,7 @@ public final class LocalSessionVerifier {
     }
 
     private static boolean isUsernameAlreadyOnline(String username) {
-        String normalizedTarget = trimToNull(username);
+        String normalizedTarget = StringUtil.trimToNull(username);
         if (normalizedTarget == null) return false;
 
         MinecraftServer server = MinecraftServer.getServer();
@@ -190,8 +190,8 @@ public final class LocalSessionVerifier {
             }
             EntityPlayerMP player = (EntityPlayerMP) rawPlayer;
             GameProfile profile = player.getGameProfile();
-            String onlineName = profile == null ? trimToNull(player.getCommandSenderName())
-                : trimToNull(profile.getName());
+            String onlineName = profile == null ? StringUtil.trimToNull(player.getCommandSenderName())
+                : StringUtil.trimToNull(profile.getName());
             if (onlineName != null && onlineName.equalsIgnoreCase(normalizedTarget)) {
                 return true;
             }
@@ -241,9 +241,9 @@ public final class LocalSessionVerifier {
             }
 
             String name = getString(root, "name");
-            String safeName = trimToNull(name);
+            String safeName = StringUtil.trimToNull(name);
             if (safeName == null) {
-                safeName = trimToNull(fallbackName);
+                safeName = StringUtil.trimToNull(fallbackName);
             }
             if (safeName == null) {
                 safeName = "UnknownPlayer";
@@ -262,7 +262,7 @@ public final class LocalSessionVerifier {
 
                     // 1.7.10 S0CPacketSpawnPlayer needs signature as a mandatory string.
                     // Null signature would crash packet encoding, so skip unsigned.
-                    String signature = trimToNull(getString(property, "signature"));
+                    String signature = StringUtil.trimToNull(getString(property, "signature"));
                     if (signature == null) {
                         continue;
                     }
@@ -299,9 +299,9 @@ public final class LocalSessionVerifier {
             return null;
         }
 
-        String safeName = trimToNull(stringValue(root.get("name")));
+        String safeName = StringUtil.trimToNull(stringValue(root.get("name")));
         if (safeName == null) {
-            safeName = trimToNull(fallbackName);
+            safeName = StringUtil.trimToNull(fallbackName);
         }
         if (safeName == null) {
             safeName = "UnknownPlayer";
@@ -323,7 +323,7 @@ public final class LocalSessionVerifier {
 
                 // 1.7.10 S0CPacketSpawnPlayer needs signature as a mandatory string.
                 // Null signature would crash packet encoding, so skip unsigned.
-                String signature = trimToNull(stringValue(property.get("signature")));
+                String signature = StringUtil.trimToNull(stringValue(property.get("signature")));
                 if (signature == null) {
                     continue;
                 }
@@ -356,11 +356,6 @@ public final class LocalSessionVerifier {
     private static String normalizeUrl(String raw) {
         return NetUtil.normalizeHttpUrl(raw);
     }
-
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
-    }
-
     // =========================================================================
     // Per-player provider tracking
     // =========================================================================

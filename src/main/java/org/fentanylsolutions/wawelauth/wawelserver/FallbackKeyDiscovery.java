@@ -7,6 +7,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
@@ -34,7 +35,7 @@ public final class FallbackKeyDiscovery {
         for (FallbackServer fallback : config.getFallbackServers()) {
             if (fallback == null) continue;
 
-            String existing = trimToNull(fallback.getSignaturePublicKeyBase64());
+            String existing = StringUtil.trimToNull(fallback.getSignaturePublicKeyBase64());
             if (existing != null) {
                 WawelAuth.LOG.info(
                     "[KeyDiscovery] Fallback '{}' already has signaturePublicKeyBase64, skipping",
@@ -203,11 +204,5 @@ public final class FallbackKeyDiscovery {
             }
             return new String(out.toByteArray(), StandardCharsets.UTF_8);
         }
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) return null;
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 }

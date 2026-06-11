@@ -24,6 +24,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ServerConfigurationManager;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.WawelFaceRendererServer;
@@ -261,14 +262,14 @@ public final class PublicPageService {
         RegistrationPolicy registrationPolicy = serverConfig.getRegistration()
             .getPolicy();
         return new StaticPublicInfo(
-            trimToNull(serverConfig.getServerName()),
-            trimToNull(
+            StringUtil.trimToNull(serverConfig.getServerName()),
+            StringUtil.trimToNull(
                 serverConfig.getMeta()
                     .getImplementationName()),
-            trimToNull(
+            StringUtil.trimToNull(
                 serverConfig.getMeta()
                     .getImplementationVersion()),
-            trimToNull(
+            StringUtil.trimToNull(
                 serverConfig.getMeta()
                     .getPublicDescription()),
             resolveMotd(),
@@ -277,13 +278,13 @@ public final class PublicPageService {
             formatRegistrationPolicy(registrationPolicy),
             registrationDescription(registrationPolicy),
             Collections.unmodifiableList(new ArrayList<>(resolveFallbacks())),
-            trimToNull(serverConfig.getServerAddress()),
+            StringUtil.trimToNull(serverConfig.getServerAddress()),
             resolveAdvertisedServerAddressWarning(),
-            trimToNull(serverConfig.getEffectiveApiRoot()),
-            trimToNull(
+            StringUtil.trimToNull(serverConfig.getEffectiveApiRoot()),
+            StringUtil.trimToNull(
                 serverConfig.getMeta()
                     .getServerHomepage()),
-            trimToNull(
+            StringUtil.trimToNull(
                 serverConfig.getMeta()
                     .getServerRegister()),
             serverConfig.getAdmin()
@@ -550,7 +551,7 @@ public final class PublicPageService {
     }
 
     private static String resolveMotd() {
-        String live = trimToNull(invokeString(MinecraftServer.getServer(), "getMOTD", "getServerMOTD"));
+        String live = StringUtil.trimToNull(invokeString(MinecraftServer.getServer(), "getMOTD", "getServerMOTD"));
         if (live != null) {
             return stripFormattingCodes(live);
         }
@@ -567,7 +568,7 @@ public final class PublicPageService {
         if (live != null && live.intValue() > 0) {
             return live;
         }
-        String property = trimToNull(readServerProperty("max-players", null));
+        String property = StringUtil.trimToNull(readServerProperty("max-players", null));
         if (property == null) {
             return null;
         }
@@ -580,7 +581,7 @@ public final class PublicPageService {
     }
 
     private String resolveAdvertisedServerAddressWarning() {
-        return trimToNull(serverConfig.getServerAddress()) == null
+        return StringUtil.trimToNull(serverConfig.getServerAddress()) == null
             ? "Admin: set server-address in Wawel Auth server.json to advertise a join address on this page."
             : null;
     }
@@ -608,7 +609,7 @@ public final class PublicPageService {
                 "uuid",
                 profile.getId()
                     .toString());
-            row.put("name", trimToNull(profile.getName()));
+            row.put("name", StringUtil.trimToNull(profile.getName()));
             row.put(
                 "avatarUrl",
                 joinRoute(publicPath, PLAYER_AVATAR_NAME) + "?uuid=" + UuidUtil.toUnsigned(profile.getId()));
@@ -664,10 +665,10 @@ public final class PublicPageService {
         }
         WawelProfile profile = server.getProfileDAO()
             .findByUuid(uuid);
-        if (profile == null || trimToNull(profile.getSkinHash()) == null) {
+        if (profile == null || StringUtil.trimToNull(profile.getSkinHash()) == null) {
             return null;
         }
-        String apiRoot = trimToNull(
+        String apiRoot = StringUtil.trimToNull(
             server.getServerConfig()
                 .getEffectiveApiRoot());
         return apiRoot == null ? null : apiRoot + "/textures/" + profile.getSkinHash();
@@ -685,7 +686,7 @@ public final class PublicPageService {
             WawelAuth.LOG.warn("Failed to read server.properties for public page: {}", e.getMessage());
             return fallback;
         }
-        String value = trimToNull(properties.getProperty(key));
+        String value = StringUtil.trimToNull(properties.getProperty(key));
         return value != null ? value : fallback;
     }
 
@@ -694,7 +695,7 @@ public final class PublicPageService {
         LinkedHashSet<String> seen = new LinkedHashSet<>();
         for (FallbackServer fallback : serverConfig.getFallbackServers()) {
             if (fallback == null) continue;
-            String label = trimToNull(fallback.getName());
+            String label = StringUtil.trimToNull(fallback.getName());
             if (label == null) {
                 label = extractHost(fallback.getSessionServerUrl());
             }
@@ -710,9 +711,9 @@ public final class PublicPageService {
             if (seen.add(label)) {
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("name", label);
-                row.put("accountUrl", trimToNull(fallback.getAccountUrl()));
-                row.put("sessionServerUrl", trimToNull(fallback.getSessionServerUrl()));
-                row.put("servicesUrl", trimToNull(fallback.getServicesUrl()));
+                row.put("accountUrl", StringUtil.trimToNull(fallback.getAccountUrl()));
+                row.put("sessionServerUrl", StringUtil.trimToNull(fallback.getSessionServerUrl()));
+                row.put("servicesUrl", StringUtil.trimToNull(fallback.getServicesUrl()));
                 rows.add(row);
             }
         }
@@ -732,13 +733,13 @@ public final class PublicPageService {
                 continue;
             }
 
-            String name = trimToNull(mod.getName());
-            String version = trimToNull(mod.getVersion());
+            String name = StringUtil.trimToNull(mod.getName());
+            String version = StringUtil.trimToNull(mod.getVersion());
             File source = mod.getSource();
-            String filename = source == null ? null : trimToNull(source.getName());
+            String filename = source == null ? null : StringUtil.trimToNull(source.getName());
 
             if (name == null) {
-                name = trimToNull(mod.getModId());
+                name = StringUtil.trimToNull(mod.getModId());
             }
             if (name == null) {
                 continue;
@@ -758,12 +759,12 @@ public final class PublicPageService {
     }
 
     private static String extractHost(String rawUrl) {
-        String value = trimToNull(rawUrl);
+        String value = StringUtil.trimToNull(rawUrl);
         if (value == null) {
             return null;
         }
         try {
-            return trimToNull(new java.net.URI(value).getHost());
+            return StringUtil.trimToNull(new java.net.URI(value).getHost());
         } catch (Exception ignored) {
             return null;
         }
@@ -818,14 +819,6 @@ public final class PublicPageService {
         return dir;
     }
 
-    private static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
     private static String stripFormattingCodes(String value) {
         if (value == null) {
             return "";
@@ -865,7 +858,7 @@ public final class PublicPageService {
     }
 
     private static UUID parseUuidFlexible(String raw) {
-        String value = trimToNull(raw);
+        String value = StringUtil.trimToNull(raw);
         if (value == null) {
             return null;
         }

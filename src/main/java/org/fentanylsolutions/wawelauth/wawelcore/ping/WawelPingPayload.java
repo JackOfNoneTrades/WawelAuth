@@ -70,7 +70,7 @@ public final class WawelPingPayload {
             payload.addProperty(KEY_API_ROOT, apiRoot);
         }
 
-        String normalizedLocalKey = trimToNull(localPublicKeyBase64);
+        String normalizedLocalKey = StringUtil.trimToNull(localPublicKeyBase64);
         String localFingerprint = computeKeyFingerprint(normalizedLocalKey);
         boolean localAuthSupported = yggdrasilEnabled && apiRoot != null && localFingerprint != null;
         payload.addProperty(KEY_LOCAL_AUTH_SUPPORTED, localAuthSupported);
@@ -122,7 +122,7 @@ public final class WawelPingPayload {
 
         for (JsonElement element : payload.getAsJsonArray(key)) {
             if (element == null || !element.isJsonPrimitive()) continue;
-            String value = trimToNull(element.getAsString());
+            String value = StringUtil.trimToNull(element.getAsString());
             if (value != null) {
                 values.add(value);
             }
@@ -205,7 +205,7 @@ public final class WawelPingPayload {
         }
 
         JsonObject descriptor = new JsonObject();
-        String name = trimToNull(fallback.getName());
+        String name = StringUtil.trimToNull(fallback.getName());
         if (name != null) {
             descriptor.addProperty(KEY_PROVIDER_NAME, name);
         }
@@ -221,7 +221,7 @@ public final class WawelPingPayload {
         if (servicesUrl != null) {
             descriptor.addProperty(KEY_PROVIDER_SERVICES_URL, servicesUrl);
         }
-        String publicKey = trimToNull(fallback.getSignaturePublicKeyBase64());
+        String publicKey = StringUtil.trimToNull(fallback.getSignaturePublicKeyBase64());
         if (publicKey != null) {
             descriptor.addProperty(KEY_PROVIDER_SIGNATURE_PUBLIC_KEY, publicKey);
         }
@@ -234,7 +234,7 @@ public final class WawelPingPayload {
         LinkedHashSet<String> domains = new LinkedHashSet<>();
         if (fallback != null) {
             for (String domain : fallback.getSkinDomains()) {
-                String normalized = trimToNull(domain);
+                String normalized = StringUtil.trimToNull(domain);
                 if (normalized != null) {
                     domains.add(normalized);
                 }
@@ -298,9 +298,5 @@ public final class WawelPingPayload {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
     }
 }

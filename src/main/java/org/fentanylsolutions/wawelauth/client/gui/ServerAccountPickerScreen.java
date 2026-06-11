@@ -12,6 +12,7 @@ import net.minecraft.client.multiplayer.ServerAddress;
 import net.minecraft.client.multiplayer.ServerData;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
 import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
 import org.fentanylsolutions.wawelauth.wawelclient.ProviderRegistry;
@@ -651,15 +652,15 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         settings.setType(proxyType);
 
         ParsedProxyEndpoint endpoint = parseProxyEndpoint(
-            trimToNull(hostField.getText()),
-            trimToNull(portField.getText()));
+            StringUtil.trimToNull(hostField.getText()),
+            StringUtil.trimToNull(portField.getText()));
         settings.setHost(endpoint.host);
         if (endpoint.port != null) {
             settings.setPort(endpoint.port);
         }
 
-        String username = trimToNull(usernameField.getText());
-        String password = trimToNull(passwordField.getText());
+        String username = StringUtil.trimToNull(usernameField.getText());
+        String password = StringUtil.trimToNull(passwordField.getText());
         settings.setUsername(username);
         settings.setPassword(password);
         settings.setEnabled(
@@ -740,8 +741,8 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         int firstColon = rawHost.indexOf(':');
         int lastColon = rawHost.lastIndexOf(':');
         if (firstColon > 0 && firstColon == lastColon) {
-            String hostPart = trimToNull(rawHost.substring(0, lastColon));
-            String portPart = trimToNull(rawHost.substring(lastColon + 1));
+            String hostPart = StringUtil.trimToNull(rawHost.substring(0, lastColon));
+            String portPart = StringUtil.trimToNull(rawHost.substring(lastColon + 1));
             if (hostPart != null && portPart != null) {
                 result.host = hostPart;
                 result.port = parseProxyPort(portPart);
@@ -764,14 +765,6 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(GuiText.tr("wawelauth.gui.account_manager.proxy_port_invalid"));
         }
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static int probeOutcomeColor(ProviderRegistry.ProbeOutcome outcome) {

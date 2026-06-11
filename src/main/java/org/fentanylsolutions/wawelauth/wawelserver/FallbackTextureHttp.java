@@ -136,7 +136,7 @@ final class FallbackTextureHttp {
     }
 
     private static boolean hostMatchesPattern(String host, String patternRaw) {
-        String pattern = trimToNull(patternRaw);
+        String pattern = StringUtil.trimToNull(patternRaw);
         if (pattern == null) return false;
 
         String lower = pattern.toLowerCase();
@@ -148,10 +148,6 @@ final class FallbackTextureHttp {
 
     private static String normalizeUrl(String raw) {
         return NetUtil.normalizeHttpUrl(raw);
-    }
-
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
     }
 
     private static boolean isRedirectStatus(int status) {

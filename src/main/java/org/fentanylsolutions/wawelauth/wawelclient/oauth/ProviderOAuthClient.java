@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 
 import net.minecraft.util.StatCollector;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxySettings;
@@ -84,13 +85,13 @@ public abstract class ProviderOAuthClient {
     public final LoginResult refreshFromToken(String refreshToken, ClientProvider provider, UUID profileUuid,
         String profileName, String currentAccessToken, Consumer<String> statusSink) throws IOException {
         ensureConfigured(provider);
-        if (trimToNull(refreshToken) == null) {
+        if (StringUtil.trimToNull(refreshToken) == null) {
             throw new IOException(tr("wawelauth.gui.login.error.oauth_missing_refresh_token"));
         }
         Consumer<String> status = statusSink != null ? statusSink : s -> {};
         status.accept(tr("wawelauth.gui.login.status.oauth_refreshing"));
         OAuthTokens refreshed = refreshTokens(refreshToken, provider);
-        if (trimToNull(refreshed.refreshToken) == null) {
+        if (StringUtil.trimToNull(refreshed.refreshToken) == null) {
             refreshed = refreshed.withRefreshToken(refreshToken);
         }
         return completeLogin(refreshed, provider, status, profileUuid, profileName, currentAccessToken);
@@ -132,11 +133,11 @@ public abstract class ProviderOAuthClient {
     }
 
     protected boolean usesDeviceCodeFlow() {
-        return trimToNull(getDeviceCodeUrl()) != null;
+        return StringUtil.trimToNull(getDeviceCodeUrl()) != null;
     }
 
     protected void customizeAuthorizeParams(Map<String, String> params, String loginHint) {
-        if (trimToNull(loginHint) != null) {
+        if (StringUtil.trimToNull(loginHint) != null) {
             params.put("login_hint", loginHint.trim());
         }
     }
@@ -153,7 +154,7 @@ public abstract class ProviderOAuthClient {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
                 conn.setRequestProperty("Accept", "application/json");
-                if (trimToNull(authorization) != null) {
+                if (StringUtil.trimToNull(authorization) != null) {
                     conn.setRequestProperty("Authorization", authorization);
                 }
                 conn.setDoOutput(true);
@@ -175,7 +176,7 @@ public abstract class ProviderOAuthClient {
             try {
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("Accept", "application/json");
-                if (trimToNull(authorization) != null) {
+                if (StringUtil.trimToNull(authorization) != null) {
                     conn.setRequestProperty("Authorization", authorization);
                 }
                 return readJsonResponse(conn);
@@ -186,7 +187,7 @@ public abstract class ProviderOAuthClient {
     }
 
     protected final JsonObject parseJwtPayload(String jwt) throws IOException {
-        String normalized = trimToNull(jwt);
+        String normalized = StringUtil.trimToNull(jwt);
         if (normalized == null) {
             throw new IOException("Missing JWT");
         }
@@ -212,36 +213,28 @@ public abstract class ProviderOAuthClient {
         }
         String value = obj.get(field)
             .getAsString();
-        if (trimToNull(value) == null) {
+        if (StringUtil.trimToNull(value) == null) {
             throw new IOException("Field is empty: " + field);
         }
         return value;
     }
 
-    protected static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
     protected static String providerLabel(ClientProvider provider) {
-        if (provider == null || trimToNull(provider.getName()) == null) {
+        if (provider == null || StringUtil.trimToNull(provider.getName()) == null) {
             return "provider";
         }
         return provider.getName();
     }
 
     private void ensureConfigured(ClientProvider provider) throws IOException {
-        String clientId = trimToNull(getClientId());
+        String clientId = StringUtil.trimToNull(getClientId());
         if (clientId == null || isPlaceholder(clientId)) {
             throw new IOException(tr("wawelauth.gui.login.error.oauth_unconfigured", providerLabel(provider)));
         }
         if (!usesDeviceCodeFlow()) {
-            String clientSecret = trimToNull(getClientSecret());
-            String redirectUri = trimToNull(getRedirectUri());
-            String authorizeUrl = trimToNull(getAuthorizeUrl());
+            String clientSecret = StringUtil.trimToNull(getClientSecret());
+            String redirectUri = StringUtil.trimToNull(getRedirectUri());
+            String authorizeUrl = StringUtil.trimToNull(getAuthorizeUrl());
             if (authorizeUrl == null || redirectUri == null || clientSecret == null || isPlaceholder(clientSecret)) {
                 throw new IOException(tr("wawelauth.gui.login.error.oauth_unconfigured", providerLabel(provider)));
             }
@@ -254,7 +247,7 @@ public abstract class ProviderOAuthClient {
         params.put("client_id", getClientId());
         params.put("response_type", "code");
         params.put("redirect_uri", getRedirectUri());
-        if (trimToNull(getScopes()) != null) {
+        if (StringUtil.trimToNull(getScopes()) != null) {
             params.put("scope", getScopes());
         }
         params.put("state", state);
@@ -265,7 +258,7 @@ public abstract class ProviderOAuthClient {
     private OAuthTokens exchangeAuthorizationCode(String code, ClientProvider provider) throws IOException {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("client_id", getClientId());
-        if (trimToNull(getClientSecret()) != null) {
+        if (StringUtil.trimToNull(getClientSecret()) != null) {
             params.put("client_secret", getClientSecret());
         }
         params.put("grant_type", "authorization_code");
@@ -277,15 +270,15 @@ public abstract class ProviderOAuthClient {
     private OAuthTokens refreshTokens(String refreshToken, ClientProvider provider) throws IOException {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("client_id", getClientId());
-        if (trimToNull(getClientSecret()) != null) {
+        if (StringUtil.trimToNull(getClientSecret()) != null) {
             params.put("client_secret", getClientSecret());
         }
         params.put("grant_type", "refresh_token");
         params.put("refresh_token", refreshToken);
-        if (trimToNull(getRedirectUri()) != null) {
+        if (StringUtil.trimToNull(getRedirectUri()) != null) {
             params.put("redirect_uri", getRedirectUri());
         }
-        if (includeScopesInRefreshRequest() && trimToNull(getScopes()) != null) {
+        if (includeScopesInRefreshRequest() && StringUtil.trimToNull(getScopes()) != null) {
             params.put("scope", getScopes());
         }
         return parseOAuthTokens(postForm(getTokenUrl(), params, provider), refreshToken);
@@ -294,19 +287,19 @@ public abstract class ProviderOAuthClient {
     private DeviceCodeResponse requestDeviceCode(ClientProvider provider) throws IOException {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("client_id", getClientId());
-        if (trimToNull(getScopes()) != null) {
+        if (StringUtil.trimToNull(getScopes()) != null) {
             params.put("scope", getScopes());
         }
         JsonObject json = postForm(getDeviceCodeUrl(), params, provider);
         String deviceCode = requireString(json, "device_code");
         String userCode = json.has("user_code") && !json.get("user_code")
-            .isJsonNull() ? trimToNull(
+            .isJsonNull() ? StringUtil.trimToNull(
                 json.get("user_code")
                     .getAsString())
                 : null;
         String verificationUri = requireString(json, "verification_uri");
         String verificationUriComplete = json.has("verification_uri_complete") && !json.get("verification_uri_complete")
-            .isJsonNull() ? trimToNull(
+            .isJsonNull() ? StringUtil.trimToNull(
                 json.get("verification_uri_complete")
                     .getAsString())
                 : null;
@@ -339,7 +332,7 @@ public abstract class ProviderOAuthClient {
             params.put("grant_type", "urn:ietf:params:oauth:grant-type:device_code");
             params.put("device_code", deviceCode.deviceCode);
             params.put("client_id", getClientId());
-            if (trimToNull(getClientSecret()) != null) {
+            if (StringUtil.trimToNull(getClientSecret()) != null) {
                 params.put("client_secret", getClientSecret());
             }
             try {
@@ -348,7 +341,7 @@ public abstract class ProviderOAuthClient {
                 JsonObject error = tryParseJsonObject(e.getResponseBody());
                 String errorCode = error != null && error.has("error")
                     && !error.get("error")
-                        .isJsonNull() ? trimToNull(
+                        .isJsonNull() ? StringUtil.trimToNull(
                             error.get("error")
                                 .getAsString())
                             : null;
@@ -400,8 +393,8 @@ public abstract class ProviderOAuthClient {
                     errorRef.set(firstNonBlank(query.get("error"), query.get("error_code")));
                     errorDescriptionRef.set(firstNonBlank(query.get("error_description"), query.get("error_message")));
 
-                    boolean hasCode = trimToNull(codeRef.get()) != null;
-                    boolean hasError = trimToNull(errorRef.get()) != null;
+                    boolean hasCode = StringUtil.trimToNull(codeRef.get()) != null;
+                    boolean hasError = StringUtil.trimToNull(errorRef.get()) != null;
                     boolean stateMatches = expectedState != null && expectedState.equals(stateRef.get());
                     String response = buildCallbackPageHtml(
                         hasCode,
@@ -450,10 +443,10 @@ public abstract class ProviderOAuthClient {
         if (cancelMessageRef.get() != null) {
             throw new IOException(cancelMessageRef.get());
         }
-        if (trimToNull(errorRef.get()) != null) {
+        if (StringUtil.trimToNull(errorRef.get()) != null) {
             throw new IOException(tr("wawelauth.gui.login.error.oauth_failed", errorRef.get()));
         }
-        if (trimToNull(codeRef.get()) == null) {
+        if (StringUtil.trimToNull(codeRef.get()) == null) {
             throw new IOException(tr("wawelauth.gui.login.error.oauth_missing_code"));
         }
         if (expectedState != null && !expectedState.equals(stateRef.get())) {
@@ -495,7 +488,7 @@ public abstract class ProviderOAuthClient {
         if (status < 200 || status >= 300) {
             throw new HttpStatusException(status, body);
         }
-        if (trimToNull(body) == null) {
+        if (StringUtil.trimToNull(body) == null) {
             return new JsonObject();
         }
         try {
@@ -510,13 +503,13 @@ public abstract class ProviderOAuthClient {
         String accessToken = requireString(json, "access_token");
         String refreshToken = json != null && json.has("refresh_token")
             && !json.get("refresh_token")
-                .isJsonNull() ? trimToNull(
+                .isJsonNull() ? StringUtil.trimToNull(
                     json.get("refresh_token")
                         .getAsString())
                     : null;
         String idToken = json != null && json.has("id_token")
             && !json.get("id_token")
-                .isJsonNull() ? trimToNull(
+                .isJsonNull() ? StringUtil.trimToNull(
                     json.get("id_token")
                         .getAsString())
                     : null;
@@ -524,7 +517,7 @@ public abstract class ProviderOAuthClient {
     }
 
     private static JsonObject tryParseJsonObject(String body) {
-        if (trimToNull(body) == null) {
+        if (StringUtil.trimToNull(body) == null) {
             return null;
         }
         try {
@@ -568,7 +561,7 @@ public abstract class ProviderOAuthClient {
             message = tr("wawelauth.oauth.callback.message_complete");
         }
 
-        String errorSummary = trimToNull(firstNonBlank(errorDescription, error));
+        String errorSummary = StringUtil.trimToNull(firstNonBlank(errorDescription, error));
         if (errorSummary != null && hasError) {
             message = message + " " + errorSummary;
         }
@@ -671,7 +664,7 @@ public abstract class ProviderOAuthClient {
     private static URI parseLoopbackRedirectUri(String rawUri) throws IOException {
         try {
             URI uri = new URI(rawUri);
-            String host = trimToNull(uri.getHost());
+            String host = StringUtil.trimToNull(uri.getHost());
             if (host == null
                 || (!"localhost".equalsIgnoreCase(host) && !"127.0.0.1".equals(host) && !"::1".equals(host))) {
                 throw new IOException("OAuth redirect URI must use localhost or loopback");
@@ -697,7 +690,7 @@ public abstract class ProviderOAuthClient {
     }
 
     private static String normalizePath(String path) {
-        String normalized = trimToNull(path);
+        String normalized = StringUtil.trimToNull(path);
         if (normalized == null) {
             return "/oauth/callback";
         }
@@ -810,8 +803,8 @@ public abstract class ProviderOAuthClient {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
         for (Map.Entry<String, String> entry : params.entrySet()) {
-            String key = trimToNull(entry.getKey());
-            String value = trimToNull(entry.getValue());
+            String key = StringUtil.trimToNull(entry.getKey());
+            String value = StringUtil.trimToNull(entry.getValue());
             if (key == null || value == null) {
                 continue;
             }
@@ -836,7 +829,7 @@ public abstract class ProviderOAuthClient {
 
     private static Map<String, String> parseQuery(String rawQuery) {
         Map<String, String> result = new LinkedHashMap<>();
-        if (trimToNull(rawQuery) == null) {
+        if (StringUtil.trimToNull(rawQuery) == null) {
             return result;
         }
         String[] parts = rawQuery.split("&");
@@ -863,7 +856,7 @@ public abstract class ProviderOAuthClient {
             return null;
         }
         for (String value : values) {
-            String normalized = trimToNull(value);
+            String normalized = StringUtil.trimToNull(value);
             if (normalized != null) {
                 return normalized;
             }
@@ -872,7 +865,7 @@ public abstract class ProviderOAuthClient {
     }
 
     private static boolean isPlaceholder(String value) {
-        String normalized = trimToNull(value);
+        String normalized = StringUtil.trimToNull(value);
         return normalized != null && normalized.startsWith("__") && normalized.endsWith("__");
     }
 
@@ -1017,7 +1010,7 @@ public abstract class ProviderOAuthClient {
         private final String responseBody;
 
         public HttpStatusException(int statusCode, String responseBody) {
-            super("HTTP " + statusCode + (trimToNull(responseBody) != null ? ": " + responseBody : ""));
+            super("HTTP " + statusCode + (StringUtil.trimToNull(responseBody) != null ? ": " + responseBody : ""));
             this.statusCode = statusCode;
             this.responseBody = responseBody;
         }

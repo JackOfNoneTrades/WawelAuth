@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.wawelclient.BuiltinProviders;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
@@ -28,7 +29,7 @@ public class LittleSkinOAuthClient extends ProviderOAuthClient {
     protected LoginResult completeLogin(OAuthTokens tokens, ClientProvider provider, Consumer<String> status,
         UUID profileUuidHint, String profileNameHint, String currentAccessToken) throws IOException {
         UUID selectedUuid = profileUuidHint;
-        String selectedName = trimToNull(profileNameHint);
+        String selectedName = StringUtil.trimToNull(profileNameHint);
 
         if (selectedUuid == null || selectedName == null) {
             JsonObject idTokenPayload = parseJwtPayload(tokens.getIdToken());
@@ -45,7 +46,7 @@ public class LittleSkinOAuthClient extends ProviderOAuthClient {
                 if (selectedName == null && selectedProfile.has("name")
                     && !selectedProfile.get("name")
                         .isJsonNull()) {
-                    selectedName = trimToNull(
+                    selectedName = StringUtil.trimToNull(
                         selectedProfile.get("name")
                             .getAsString());
                 }
@@ -63,7 +64,7 @@ public class LittleSkinOAuthClient extends ProviderOAuthClient {
 
         String accessToken = requireString(response, "accessToken");
         String clientToken = response.has("clientToken") && !response.get("clientToken")
-            .isJsonNull() ? trimToNull(
+            .isJsonNull() ? StringUtil.trimToNull(
                 response.get("clientToken")
                     .getAsString())
                 : null;

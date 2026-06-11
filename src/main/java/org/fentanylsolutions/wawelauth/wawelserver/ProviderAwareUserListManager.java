@@ -43,7 +43,8 @@ public final class ProviderAwareUserListManager {
             return null;
         }
 
-        String storedProviderKey = trimToNull(providerBindings == null ? null : providerBindings.get(profile.getId()));
+        String storedProviderKey = StringUtil
+            .trimToNull(providerBindings == null ? null : providerBindings.get(profile.getId()));
         if (storedProviderKey != null) {
             return storedProviderKey;
         }
@@ -70,7 +71,7 @@ public final class ProviderAwareUserListManager {
         }
 
         for (ProviderAwareUserListType listType : ProviderAwareUserListType.values()) {
-            providerKey = trimToNull(getProviderBindings(listType).get(profileUuid));
+            providerKey = StringUtil.trimToNull(getProviderBindings(listType).get(profileUuid));
             if (providerKey != null) {
                 return providerKey;
             }
@@ -84,7 +85,7 @@ public final class ProviderAwareUserListManager {
             return null;
         }
 
-        String providerName = trimToNull(LocalSessionVerifier.getPlayerProviderName(profileUuid));
+        String providerName = StringUtil.trimToNull(LocalSessionVerifier.getPlayerProviderName(profileUuid));
         if (providerName != null) {
             return providerName;
         }
@@ -94,7 +95,7 @@ public final class ProviderAwareUserListManager {
 
     public static void storeProviderBinding(ProviderAwareUserListType listType, GameProfile profile,
         String providerKey) {
-        String key = trimToNull(providerKey);
+        String key = StringUtil.trimToNull(providerKey);
         if (listType == null || profile == null || profile.getId() == null || key == null) {
             return;
         }
@@ -202,10 +203,10 @@ public final class ProviderAwareUserListManager {
 
     public static GameProfile findProfileByQualifiedBinding(String rawInput, UserList list,
         ProviderAwareUserListType listType) {
-        String username = trimToNull(FallbackWhitelistLookup.getQualifiedUsername(rawInput));
-        String providerKey = trimToNull(FallbackWhitelistLookup.resolveQualifiedProviderKey(rawInput));
+        String username = StringUtil.trimToNull(FallbackWhitelistLookup.getQualifiedUsername(rawInput));
+        String providerKey = StringUtil.trimToNull(FallbackWhitelistLookup.resolveQualifiedProviderKey(rawInput));
         if (providerKey == null) {
-            providerKey = trimToNull(FallbackWhitelistLookup.getQualifiedProviderName(rawInput));
+            providerKey = StringUtil.trimToNull(FallbackWhitelistLookup.getQualifiedProviderName(rawInput));
         }
         if (username == null || providerKey == null) {
             return null;
@@ -275,7 +276,7 @@ public final class ProviderAwareUserListManager {
     }
 
     private static void addProviderKey(LinkedHashSet<String> providers, String providerKey) {
-        String key = trimToNull(providerKey);
+        String key = StringUtil.trimToNull(providerKey);
         if (key != null) {
             providers.add(key);
         }
@@ -318,7 +319,7 @@ public final class ProviderAwareUserListManager {
             }
 
             String fallbackSessionUrl = NetUtil.normalizeHttpUrl(fallback.getSessionServerUrl());
-            String fallbackName = trimToNull(fallback.getName());
+            String fallbackName = StringUtil.trimToNull(fallback.getName());
             if (fallbackSessionUrl != null && fallbackName != null
                 && fallbackSessionUrl.equalsIgnoreCase(normalizedSessionUrl)) {
                 return fallbackName;
@@ -343,8 +344,8 @@ public final class ProviderAwareUserListManager {
     }
 
     private static String qualifiedName(GameProfile profile, String providerKey) {
-        String name = trimToNull(profile == null ? null : profile.getName());
-        String provider = trimToNull(providerKey);
+        String name = StringUtil.trimToNull(profile == null ? null : profile.getName());
+        String provider = StringUtil.trimToNull(providerKey);
         if (name == null || provider == null) {
             return null;
         }
@@ -355,9 +356,5 @@ public final class ProviderAwareUserListManager {
         if (candidate != null && CommandBase.doesStringStartWith(prefix, candidate)) {
             candidates.add(candidate);
         }
-    }
-
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
     }
 }

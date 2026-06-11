@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
 import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
@@ -262,30 +263,22 @@ public class WawelClient {
     }
 
     private static String providerCandidateKey(ClientProvider provider) {
-        String name = trimToNull(provider.getName());
+        String name = StringUtil.trimToNull(provider.getName());
         if (name != null) {
             return "name:" + name.toLowerCase();
         }
 
-        String sessionUrl = trimToNull(provider.getSessionServerUrl());
+        String sessionUrl = StringUtil.trimToNull(provider.getSessionServerUrl());
         if (sessionUrl != null) {
             return "session:" + sessionUrl.toLowerCase();
         }
 
-        String apiRoot = trimToNull(provider.getApiRoot());
+        String apiRoot = StringUtil.trimToNull(provider.getApiRoot());
         if (apiRoot != null) {
             return "api:" + apiRoot.toLowerCase();
         }
 
         return "identity:" + System.identityHashCode(provider);
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /** Resolve provider by name, or null. */

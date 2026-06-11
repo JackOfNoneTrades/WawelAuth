@@ -102,7 +102,7 @@ public final class FallbackWhitelistLookup {
             return "local";
         }
         FallbackServer fallback = findFallbackByName(qualified.providerName);
-        return fallback == null ? null : trimToNull(fallback.getName());
+        return fallback == null ? null : StringUtil.trimToNull(fallback.getName());
     }
 
     public static String getQualifiedUsername(String rawInput) {
@@ -260,7 +260,7 @@ public final class FallbackWhitelistLookup {
             return null;
         }
 
-        String name = trimToNull(getString(profile, "name"));
+        String name = StringUtil.trimToNull(getString(profile, "name"));
         if (name == null) {
             name = requestedUsername;
         }
@@ -315,12 +315,12 @@ public final class FallbackWhitelistLookup {
         ServerConfig config = Config.server();
         if (config == null) return null;
 
-        String wanted = trimToNull(providerName);
+        String wanted = StringUtil.trimToNull(providerName);
         if (wanted == null) return null;
 
         for (FallbackServer fallback : config.getFallbackServers()) {
             if (fallback == null) continue;
-            String currentName = trimToNull(fallback.getName());
+            String currentName = StringUtil.trimToNull(fallback.getName());
             if (currentName != null && currentName.equalsIgnoreCase(wanted)) {
                 return fallback;
             }
@@ -329,7 +329,7 @@ public final class FallbackWhitelistLookup {
     }
 
     private static QualifiedName parseQualifiedName(String rawInput) {
-        String value = trimToNull(rawInput);
+        String value = StringUtil.trimToNull(rawInput);
         if (value == null) return null;
 
         int at = value.lastIndexOf('@');
@@ -337,8 +337,8 @@ public final class FallbackWhitelistLookup {
             return null;
         }
 
-        String username = trimToNull(value.substring(0, at));
-        String provider = trimToNull(value.substring(at + 1));
+        String username = StringUtil.trimToNull(value.substring(0, at));
+        String provider = StringUtil.trimToNull(value.substring(at + 1));
         if (username == null || provider == null) {
             return null;
         }
@@ -376,12 +376,8 @@ public final class FallbackWhitelistLookup {
         return NetUtil.normalizeHttpUrl(raw);
     }
 
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
-    }
-
     private static boolean isLocalProviderAlias(String providerName) {
-        String normalized = trimToNull(providerName);
+        String normalized = StringUtil.trimToNull(providerName);
         if (normalized == null) return false;
         return "local".equalsIgnoreCase(normalized) || "localauth".equalsIgnoreCase(normalized)
             || "wawelauth".equalsIgnoreCase(normalized)

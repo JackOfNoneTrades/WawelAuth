@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.data.AccountStatus;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
@@ -809,8 +810,8 @@ public class AccountManager {
             throw new IllegalArgumentException("Account is required.");
         }
 
-        String current = trimToNull(currentPassword);
-        String next = trimToNull(newPassword);
+        String current = StringUtil.trimToNull(currentPassword);
+        String next = StringUtil.trimToNull(newPassword);
         if (current == null) {
             throw new IllegalArgumentException("Current password is required.");
         }
@@ -858,7 +859,7 @@ public class AccountManager {
             throw new IllegalArgumentException("Account is required.");
         }
 
-        String current = trimToNull(currentPassword);
+        String current = StringUtil.trimToNull(currentPassword);
         if (current == null) {
             throw new IllegalArgumentException("Current password is required.");
         }
@@ -889,7 +890,7 @@ public class AccountManager {
         httpClient.postJson(provider, baseUrl + "/api/wawelauth/delete-account", body);
 
         String targetProvider = account.getProviderName();
-        String targetUserUuid = trimToNull(account.getUserUuid());
+        String targetUserUuid = StringUtil.trimToNull(account.getUserUuid());
         List<ClientAccount> providerAccounts = accountDAO.findByProvider(targetProvider);
         int removed = 0;
         for (ClientAccount candidate : providerAccounts) {
@@ -1582,7 +1583,7 @@ public class AccountManager {
         }
 
         if (anchorUserUuid != null) {
-            String candidateUserUuid = trimToNull(candidate.getUserUuid());
+            String candidateUserUuid = StringUtil.trimToNull(candidate.getUserUuid());
             return anchorUserUuid.equalsIgnoreCase(candidateUserUuid);
         }
 
@@ -1592,14 +1593,6 @@ public class AccountManager {
         }
 
         return candidate.getId() == anchor.getId();
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static void ensureReadablePngFile(File file, String label) {
@@ -1668,7 +1661,7 @@ public class AccountManager {
     }
 
     private static String normalizeOfflineAccountName(String username) {
-        String clean = trimToNull(username);
+        String clean = StringUtil.trimToNull(username);
         if (clean == null) {
             throw new IllegalArgumentException("Username is required.");
         }

@@ -452,7 +452,7 @@ public class AdminWebService {
         requireSession(ctx);
         WawelUser user = requireUserByPathParam(ctx, "uuid");
 
-        String newPassword = trimToNull(ctx.optJsonString("newPassword"));
+        String newPassword = StringUtil.trimToNull(ctx.optJsonString("newPassword"));
         if (newPassword == null) {
             throw NetException.illegalArgument("newPassword is required.");
         }
@@ -504,7 +504,7 @@ public class AdminWebService {
     private Object setProfileUuid(RequestContext ctx) {
         requireSession(ctx);
         WawelProfile profile = requireProfileByPathParam(ctx, "uuid");
-        String newUuidRaw = trimToNull(ctx.optJsonString("newUuid"));
+        String newUuidRaw = StringUtil.trimToNull(ctx.optJsonString("newUuid"));
         if (newUuidRaw == null) {
             throw NetException.illegalArgument("newUuid is required.");
         }
@@ -514,7 +514,7 @@ public class AdminWebService {
     private Object useOfflineProfileUuid(RequestContext ctx) {
         requireSession(ctx);
         WawelProfile profile = requireProfileByPathParam(ctx, "uuid");
-        String name = trimToNull(profile.getName());
+        String name = StringUtil.trimToNull(profile.getName());
         if (name == null) {
             throw NetException.illegalArgument("Profile name is missing.");
         }
@@ -526,7 +526,7 @@ public class AdminWebService {
         if (oldUuid == null) {
             throw NetException.illegalArgument("Profile UUID is missing.");
         }
-        String profileName = trimToNull(profile.getName());
+        String profileName = StringUtil.trimToNull(profile.getName());
         if (profileName == null) {
             throw NetException.illegalArgument("Profile name is missing.");
         }
@@ -560,7 +560,7 @@ public class AdminWebService {
             if (ownedProfile.getUuid() != null) {
                 kickUuids.add(ownedProfile.getUuid());
             }
-            String ownedName = trimToNull(ownedProfile.getName());
+            String ownedName = StringUtil.trimToNull(ownedProfile.getName());
             if (ownedName != null) {
                 kickNames.add(ownedName);
             }
@@ -613,8 +613,8 @@ public class AdminWebService {
 
     private Object resolveProfileForProvider(RequestContext ctx) {
         requireSession(ctx);
-        String username = trimToNull(ctx.optJsonString("username"));
-        String providerKey = trimToNull(ctx.optJsonString("provider"));
+        String username = StringUtil.trimToNull(ctx.optJsonString("username"));
+        String providerKey = StringUtil.trimToNull(ctx.optJsonString("provider"));
         if (username == null) {
             throw NetException.illegalArgument("username is required.");
         }
@@ -632,8 +632,8 @@ public class AdminWebService {
 
     private Object avatar(RequestContext ctx) {
         requireSession(ctx);
-        String providerKey = trimToNull(ctx.getQueryParam("provider"));
-        String uuidRaw = trimToNull(ctx.getQueryParam("uuid"));
+        String providerKey = StringUtil.trimToNull(ctx.getQueryParam("provider"));
+        String uuidRaw = StringUtil.trimToNull(ctx.getQueryParam("uuid"));
         if (providerKey == null || uuidRaw == null) {
             throw NetException.illegalArgument("provider and uuid query params are required.");
         }
@@ -705,8 +705,8 @@ public class AdminWebService {
 
     private Object whitelistAdd(RequestContext ctx) {
         requireSession(ctx);
-        String username = trimToNull(ctx.optJsonString("username"));
-        String providerKey = trimToNull(ctx.optJsonString("provider"));
+        String username = StringUtil.trimToNull(ctx.optJsonString("username"));
+        String providerKey = StringUtil.trimToNull(ctx.optJsonString("provider"));
         if (username == null) {
             throw NetException.illegalArgument("username is required.");
         }
@@ -774,8 +774,8 @@ public class AdminWebService {
 
     private Object opsAdd(RequestContext ctx) {
         requireSession(ctx);
-        String username = trimToNull(ctx.optJsonString("username"));
-        String providerKey = trimToNull(ctx.optJsonString("provider"));
+        String username = StringUtil.trimToNull(ctx.optJsonString("username"));
+        String providerKey = StringUtil.trimToNull(ctx.optJsonString("provider"));
         if (username == null) {
             throw NetException.illegalArgument("username is required.");
         }
@@ -839,7 +839,7 @@ public class AdminWebService {
     private Object createInvite(RequestContext ctx) {
         requireSession(ctx);
         JsonObject body = ctx.getJsonBody();
-        String requestedCode = trimToNull(ctx.optJsonString("code"));
+        String requestedCode = StringUtil.trimToNull(ctx.optJsonString("code"));
 
         int uses = serverConfig.getInvites()
             .getDefaultUses();
@@ -877,7 +877,7 @@ public class AdminWebService {
 
     private Object deleteInvite(RequestContext ctx) {
         requireSession(ctx);
-        String code = trimToNull(ctx.getPathParam("code"));
+        String code = StringUtil.trimToNull(ctx.getPathParam("code"));
         if (code == null) {
             throw NetException.illegalArgument("Invite code is required.");
         }
@@ -1259,7 +1259,7 @@ public class AdminWebService {
             }
 
             JsonObject object = element.getAsJsonObject();
-            String key = trimToNull(readOptionalString(object, "key"));
+            String key = StringUtil.trimToNull(readOptionalString(object, "key"));
             if (key == null) {
                 throw NetException.illegalArgument("server.properties key cannot be empty.");
             }
@@ -1391,9 +1391,9 @@ public class AdminWebService {
     }
 
     private static String extractSessionToken(RequestContext ctx) {
-        String bearer = trimToNull(ctx.getBearerToken());
+        String bearer = StringUtil.trimToNull(ctx.getBearerToken());
         if (bearer != null) return bearer;
-        String headerToken = trimToNull(
+        String headerToken = StringUtil.trimToNull(
             ctx.getRequest()
                 .headers()
                 .get(ADMIN_HEADER));
@@ -1415,9 +1415,9 @@ public class AdminWebService {
             return null;
         }
 
-        String base = trimToNull(serverConfig.getPublicBaseUrl());
+        String base = StringUtil.trimToNull(serverConfig.getPublicBaseUrl());
         if (base == null) {
-            base = trimToNull(serverConfig.getServerAddress());
+            base = StringUtil.trimToNull(serverConfig.getServerAddress());
         }
         if (base == null) {
             return null;
@@ -1443,7 +1443,7 @@ public class AdminWebService {
             return false;
         }
 
-        String forwarded = trimToNull(
+        String forwarded = StringUtil.trimToNull(
             ctx.getRequest()
                 .headers()
                 .get("X-Forwarded-Proto"));
@@ -1451,7 +1451,7 @@ public class AdminWebService {
             return true;
         }
 
-        String frontEndHttps = trimToNull(
+        String frontEndHttps = StringUtil.trimToNull(
             ctx.getRequest()
                 .headers()
                 .get("Front-End-Https"));
@@ -1459,7 +1459,7 @@ public class AdminWebService {
             return true;
         }
 
-        String forwardedSsl = trimToNull(
+        String forwardedSsl = StringUtil.trimToNull(
             ctx.getRequest()
                 .headers()
                 .get("X-Forwarded-Ssl"));
@@ -1467,7 +1467,7 @@ public class AdminWebService {
     }
 
     private static boolean isExactForwardedHttpsProto(String value) {
-        String trimmed = trimToNull(value);
+        String trimmed = StringUtil.trimToNull(value);
         if (trimmed == null) {
             return false;
         }
@@ -1475,7 +1475,7 @@ public class AdminWebService {
         String proto = null;
         int nonEmptyParts = 0;
         for (int i = parts.length - 1; i >= 0; i--) {
-            String part = trimToNull(parts[i]);
+            String part = StringUtil.trimToNull(parts[i]);
             if (part != null) {
                 proto = part;
                 nonEmptyParts++;
@@ -1527,7 +1527,7 @@ public class AdminWebService {
     }
 
     private WawelUser requireUserByPathParam(RequestContext ctx, String field) {
-        String raw = trimToNull(ctx.getPathParam(field));
+        String raw = StringUtil.trimToNull(ctx.getPathParam(field));
         if (raw == null) {
             throw NetException.illegalArgument("Missing user identifier.");
         }
@@ -1536,7 +1536,7 @@ public class AdminWebService {
     }
 
     private WawelProfile requireProfileByPathParam(RequestContext ctx, String field) {
-        String raw = trimToNull(ctx.getPathParam(field));
+        String raw = StringUtil.trimToNull(ctx.getPathParam(field));
         if (raw == null) {
             throw NetException.illegalArgument("Missing profile identifier.");
         }
@@ -1839,7 +1839,7 @@ public class AdminWebService {
         out.put("avatarUrl", buildAvatarUrl("local", profile.getUuid()));
         UUID offlineUuid = profile.getOfflineUuid();
         if (offlineUuid == null) {
-            String name = trimToNull(profile.getName());
+            String name = StringUtil.trimToNull(profile.getName());
             if (name != null) {
                 offlineUuid = WawelProfile.computeOfflineUuid(name);
             }
@@ -1878,7 +1878,7 @@ public class AdminWebService {
 
         LinkedHashSet<String> normalizedNames = new LinkedHashSet<>();
         for (String profileName : profileNames) {
-            String normalized = trimToNull(profileName);
+            String normalized = StringUtil.trimToNull(profileName);
             if (normalized != null) {
                 normalizedNames.add(normalized.toLowerCase(Locale.ROOT));
             }
@@ -1893,8 +1893,8 @@ public class AdminWebService {
             EntityPlayerMP player = (EntityPlayerMP) rawPlayer;
             GameProfile gameProfile = player.getGameProfile();
             UUID onlineUuid = gameProfile == null ? null : gameProfile.getId();
-            String onlineName = gameProfile == null ? trimToNull(player.getCommandSenderName())
-                : trimToNull(gameProfile.getName());
+            String onlineName = gameProfile == null ? StringUtil.trimToNull(player.getCommandSenderName())
+                : StringUtil.trimToNull(gameProfile.getName());
             boolean uuidMatch = onlineUuid != null && profileUuids.contains(onlineUuid);
             boolean nameMatch = onlineName != null && normalizedNames.contains(onlineName.toLowerCase(Locale.ROOT));
             if (uuidMatch || nameMatch) {
@@ -1924,7 +1924,7 @@ public class AdminWebService {
 
         for (FallbackServer fallback : serverConfig.getFallbackServers()) {
             if (fallback == null) continue;
-            String name = trimToNull(fallback.getName());
+            String name = StringUtil.trimToNull(fallback.getName());
             if (name == null) continue;
             String key = name.toLowerCase(Locale.ROOT);
             if (seen.add(key)) {
@@ -1943,7 +1943,7 @@ public class AdminWebService {
     }
 
     private ProviderChoice findProviderChoice(String providerKey) {
-        String wanted = trimToNull(providerKey);
+        String wanted = StringUtil.trimToNull(providerKey);
         if (wanted == null) {
             return null;
         }
@@ -1991,7 +1991,7 @@ public class AdminWebService {
             return out;
         }
 
-        String rawStoredProviderKey = trimToNull(storedProviderKey);
+        String rawStoredProviderKey = StringUtil.trimToNull(storedProviderKey);
         if (rawStoredProviderKey != null) {
             out.put("provider", rawStoredProviderKey);
             out.put("providerLabel", rawStoredProviderKey);
@@ -2030,7 +2030,7 @@ public class AdminWebService {
         UserListWhitelist whitelist = scm.func_152599_k() /* getWhiteListedPlayers */;
         List<GameProfile> profiles = ProviderAwareUserListManager.getSavedProfiles(whitelist);
 
-        String uuidRaw = trimToNull(ctx.optJsonString("uuid"));
+        String uuidRaw = StringUtil.trimToNull(ctx.optJsonString("uuid"));
         if (uuidRaw != null) {
             UUID uuid = parseUuidFlexible(uuidRaw);
             for (GameProfile profile : profiles) {
@@ -2040,7 +2040,7 @@ public class AdminWebService {
             }
         }
 
-        String name = trimToNull(ctx.optJsonString("name"));
+        String name = StringUtil.trimToNull(ctx.optJsonString("name"));
         if (name != null) {
             for (GameProfile profile : profiles) {
                 if (profile != null && name.equalsIgnoreCase(profile.getName())) {
@@ -2057,7 +2057,7 @@ public class AdminWebService {
         UserListOps ops = scm.func_152603_m() /* getOppedPlayers */;
         List<GameProfile> profiles = ProviderAwareUserListManager.getSavedProfiles(ops);
 
-        String uuidRaw = trimToNull(ctx.optJsonString("uuid"));
+        String uuidRaw = StringUtil.trimToNull(ctx.optJsonString("uuid"));
         if (uuidRaw != null) {
             UUID uuid = parseUuidFlexible(uuidRaw);
             for (GameProfile profile : profiles) {
@@ -2067,7 +2067,7 @@ public class AdminWebService {
             }
         }
 
-        String name = trimToNull(ctx.optJsonString("name"));
+        String name = StringUtil.trimToNull(ctx.optJsonString("name"));
         if (name != null) {
             for (GameProfile profile : profiles) {
                 if (profile != null && name.equalsIgnoreCase(profile.getName())) {
@@ -2083,7 +2083,7 @@ public class AdminWebService {
         if ("local".equals(provider.type)) {
             WawelProfile profile = profileDAO.findByUuid(uuid);
             if (profile == null) return null;
-            String hash = trimToNull(profile.getSkinHash());
+            String hash = StringUtil.trimToNull(profile.getSkinHash());
             if (hash == null) return null;
             byte[] data = textureFileStore.read(hash);
             if (data == null || data.length > MAX_HTTP_BYTES) {
@@ -2401,10 +2401,6 @@ public class AdminWebService {
             }
         }
         return out.toString();
-    }
-
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
     }
 
     private static byte[] loadResourceBytes(String path) {

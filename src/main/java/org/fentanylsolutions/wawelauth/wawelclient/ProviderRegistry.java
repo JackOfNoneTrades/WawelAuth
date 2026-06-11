@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
@@ -452,23 +453,23 @@ public class ProviderRegistry {
     }
 
     private static ClientProvider toDefaultProvider(DefaultProviderDefinition definition) {
-        String name = trimToNull(definition.name);
+        String name = StringUtil.trimToNull(definition.name);
         if (name == null) {
             throw new IllegalArgumentException("Missing provider name");
         }
 
-        String apiRoot = trimToNull(definition.apiRoot);
-        String accountUrl = trimToNull(definition.accountUrl);
-        String explicitAuthServerUrl = trimToNull(definition.authServerUrl);
+        String apiRoot = StringUtil.trimToNull(definition.apiRoot);
+        String accountUrl = StringUtil.trimToNull(definition.accountUrl);
+        String explicitAuthServerUrl = StringUtil.trimToNull(definition.authServerUrl);
         String authServerUrl = null;
-        String sessionServerUrl = trimToNull(definition.sessionServerUrl);
-        String servicesUrl = trimToNull(definition.servicesUrl);
-        String msAuthorizeUrl = trimToNull(definition.msAuthorizeUrl);
-        String msTokenUrl = trimToNull(definition.msTokenUrl);
-        String xblAuthUrl = trimToNull(definition.xblAuthUrl);
-        String xstsAuthUrl = trimToNull(definition.xstsAuthUrl);
-        String minecraftAuthUrl = trimToNull(definition.minecraftAuthUrl);
-        String minecraftProfileUrl = trimToNull(definition.minecraftProfileUrl);
+        String sessionServerUrl = StringUtil.trimToNull(definition.sessionServerUrl);
+        String servicesUrl = StringUtil.trimToNull(definition.servicesUrl);
+        String msAuthorizeUrl = StringUtil.trimToNull(definition.msAuthorizeUrl);
+        String msTokenUrl = StringUtil.trimToNull(definition.msTokenUrl);
+        String xblAuthUrl = StringUtil.trimToNull(definition.xblAuthUrl);
+        String xstsAuthUrl = StringUtil.trimToNull(definition.xstsAuthUrl);
+        String minecraftAuthUrl = StringUtil.trimToNull(definition.minecraftAuthUrl);
+        String minecraftProfileUrl = StringUtil.trimToNull(definition.minecraftProfileUrl);
 
         if (apiRoot == null) {
             apiRoot = deriveApiRoot(explicitAuthServerUrl, accountUrl, sessionServerUrl, servicesUrl);
@@ -505,7 +506,7 @@ public class ProviderRegistry {
 
         String publicKeyBase64 = extractKeyBase64(
             firstNonBlank(definition.publicKeyBase64, definition.signaturePublickey, definition.publicKey));
-        String fingerprint = trimToNull(definition.publicKeyFingerprint);
+        String fingerprint = StringUtil.trimToNull(definition.publicKeyFingerprint);
         if (fingerprint == null && publicKeyBase64 != null) {
             fingerprint = computeKeyFingerprint(publicKeyBase64);
         }
@@ -537,7 +538,7 @@ public class ProviderRegistry {
         }
         JsonArray array = new JsonArray();
         for (String domain : skinDomains) {
-            String normalized = trimToNull(domain);
+            String normalized = StringUtil.trimToNull(domain);
             if (normalized != null) {
                 array.add(new com.google.gson.JsonPrimitive(normalized));
             }
@@ -546,7 +547,7 @@ public class ProviderRegistry {
     }
 
     private static String deriveApiRoot(String authUrl, String accountUrl, String sessionUrl, String servicesUrl) {
-        String normalizedServices = stripTrailingSlash(trimToNull(servicesUrl));
+        String normalizedServices = stripTrailingSlash(StringUtil.trimToNull(servicesUrl));
         if (normalizedServices != null) {
             if (normalizedServices.endsWith("/minecraftservices")) {
                 return normalizedServices.substring(0, normalizedServices.length() - "/minecraftservices".length());
@@ -554,17 +555,17 @@ public class ProviderRegistry {
             return normalizedServices;
         }
 
-        String normalizedAuth = stripTrailingSlash(trimToNull(authUrl));
+        String normalizedAuth = stripTrailingSlash(StringUtil.trimToNull(authUrl));
         if (normalizedAuth != null && normalizedAuth.endsWith("/authserver")) {
             return normalizedAuth.substring(0, normalizedAuth.length() - "/authserver".length());
         }
 
-        String normalizedAccount = stripTrailingSlash(trimToNull(accountUrl));
+        String normalizedAccount = stripTrailingSlash(StringUtil.trimToNull(accountUrl));
         if (normalizedAccount != null && normalizedAccount.endsWith("/authserver")) {
             return normalizedAccount.substring(0, normalizedAccount.length() - "/authserver".length());
         }
 
-        String normalizedSession = stripTrailingSlash(trimToNull(sessionUrl));
+        String normalizedSession = stripTrailingSlash(StringUtil.trimToNull(sessionUrl));
         if (normalizedSession != null && normalizedSession.endsWith("/sessionserver")) {
             return normalizedSession.substring(0, normalizedSession.length() - "/sessionserver".length());
         }
@@ -573,10 +574,10 @@ public class ProviderRegistry {
     }
 
     private static String deriveAuthServerUrl(String authUrl, String accountUrl, String sessionUrl, String apiRoot) {
-        String normalizedAuth = stripTrailingSlash(trimToNull(authUrl));
-        String normalizedAccount = stripTrailingSlash(trimToNull(accountUrl));
-        String normalizedSession = stripTrailingSlash(trimToNull(sessionUrl));
-        String normalizedApiRoot = stripTrailingSlash(trimToNull(apiRoot));
+        String normalizedAuth = stripTrailingSlash(StringUtil.trimToNull(authUrl));
+        String normalizedAccount = stripTrailingSlash(StringUtil.trimToNull(accountUrl));
+        String normalizedSession = stripTrailingSlash(StringUtil.trimToNull(sessionUrl));
+        String normalizedApiRoot = stripTrailingSlash(StringUtil.trimToNull(apiRoot));
 
         if (normalizedAuth != null) {
             return normalizedAuth;
@@ -730,10 +731,10 @@ public class ProviderRegistry {
 
         normalized.setEnabled(settings.isEnabled());
         normalized.setType(settings.getType());
-        normalized.setHost(trimToNull(settings.getHost()));
+        normalized.setHost(StringUtil.trimToNull(settings.getHost()));
         normalized.setPort(settings.getPort());
-        normalized.setUsername(trimToNull(settings.getUsername()));
-        normalized.setPassword(trimToNull(settings.getPassword()));
+        normalized.setUsername(StringUtil.trimToNull(settings.getUsername()));
+        normalized.setPassword(StringUtil.trimToNull(settings.getPassword()));
         return normalized;
     }
 
@@ -741,46 +742,41 @@ public class ProviderRegistry {
         if (settings == null || !settings.isEnabled()) {
             return;
         }
-        if (trimToNull(settings.getHost()) == null) {
+        if (StringUtil.trimToNull(settings.getHost()) == null) {
             throw new IllegalArgumentException("Proxy address is required.");
         }
         Integer port = settings.getPort();
         if (port == null || port.intValue() < 1 || port.intValue() > 65535) {
             throw new IllegalArgumentException("Proxy port must be between 1 and 65535.");
         }
-        if (trimToNull(settings.getPassword()) != null && trimToNull(settings.getUsername()) == null) {
+        if (StringUtil.trimToNull(settings.getPassword()) != null
+            && StringUtil.trimToNull(settings.getUsername()) == null) {
             throw new IllegalArgumentException("Proxy username is required when a proxy password is set.");
         }
     }
 
     private static String probeUrlFor(ClientProvider provider) {
-        String apiRoot = trimToNull(provider.getApiRoot());
+        String apiRoot = StringUtil.trimToNull(provider.getApiRoot());
         if (apiRoot != null && (apiRoot.startsWith("http://") || apiRoot.startsWith("https://"))) {
             return apiRoot;
         }
 
-        String authUrl = trimToNull(provider.getAuthServerUrl());
+        String authUrl = StringUtil.trimToNull(provider.getAuthServerUrl());
         if (authUrl != null && (authUrl.startsWith("http://") || authUrl.startsWith("https://"))) {
             return authUrl;
         }
 
-        String sessionUrl = trimToNull(provider.getSessionServerUrl());
+        String sessionUrl = StringUtil.trimToNull(provider.getSessionServerUrl());
         if (sessionUrl != null && (sessionUrl.startsWith("http://") || sessionUrl.startsWith("https://"))) {
             return sessionUrl;
         }
 
-        String servicesUrl = trimToNull(provider.getServicesUrl());
+        String servicesUrl = StringUtil.trimToNull(provider.getServicesUrl());
         if (servicesUrl != null && (servicesUrl.startsWith("http://") || servicesUrl.startsWith("https://"))) {
             return servicesUrl;
         }
 
         throw new IllegalArgumentException("Provider has no reachable HTTP endpoint.");
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) return null;
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static String stripTrailingSlash(String value) {
@@ -795,7 +791,7 @@ public class ProviderRegistry {
             return null;
         }
         for (String value : values) {
-            String normalized = trimToNull(value);
+            String normalized = StringUtil.trimToNull(value);
             if (normalized != null) {
                 return normalized;
             }
@@ -843,7 +839,7 @@ public class ProviderRegistry {
             return "Could not resolve proxy host: " + target;
         }
         if (root instanceof ConnectException) {
-            String detail = trimToNull(root.getMessage());
+            String detail = StringUtil.trimToNull(root.getMessage());
             return "Could not connect to proxy " + target + (detail != null ? " (" + detail + ")" : "");
         }
         if (root instanceof SocketTimeoutException) {
@@ -853,7 +849,7 @@ public class ProviderRegistry {
             return "No route to proxy " + target;
         }
 
-        String detail = trimToNull(root.getMessage());
+        String detail = StringUtil.trimToNull(root.getMessage());
         if (detail != null && !detail.equals(settings.getHost())) {
             return "Proxy test failed via " + target + ": " + detail;
         }
@@ -875,7 +871,7 @@ public class ProviderRegistry {
                 : "Could not resolve provider host for " + providerTarget;
         }
         if (root instanceof ConnectException) {
-            String detail = trimToNull(root.getMessage());
+            String detail = StringUtil.trimToNull(root.getMessage());
             return proxyTarget != null
                 ? "Could not reach provider API through proxy " + proxyTarget
                     + (detail != null ? " (" + detail + ")" : "")
@@ -890,7 +886,7 @@ public class ProviderRegistry {
                 : "No route to provider " + providerTarget;
         }
 
-        String detail = trimToNull(root.getMessage());
+        String detail = StringUtil.trimToNull(root.getMessage());
         if (detail != null && (detail.startsWith("Proxy requires authentication")
             || detail.startsWith("Proxy authentication failed"))) {
             return detail;
@@ -1028,7 +1024,7 @@ public class ProviderRegistry {
                 JsonArray array = json.getAsJsonArray(field);
                 List<String> values = new ArrayList<>();
                 for (int i = 0; i < array.size(); i++) {
-                    String value = trimToNull(
+                    String value = StringUtil.trimToNull(
                         array.get(i)
                             .getAsString());
                     if (value != null) {

@@ -18,6 +18,7 @@ import net.minecraft.util.MessageDeserializer2;
 import net.minecraft.util.MessageSerializer;
 import net.minecraft.util.MessageSerializer2;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxySettings;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxyType;
@@ -60,10 +61,10 @@ public final class ServerConnectionProxySupport {
 
         normalized.setEnabled(settings.isEnabled());
         normalized.setType(settings.getType() != null ? settings.getType() : ProviderProxyType.SOCKS);
-        normalized.setHost(trimToNull(settings.getHost()));
+        normalized.setHost(StringUtil.trimToNull(settings.getHost()));
         normalized.setPort(settings.getPort());
-        normalized.setUsername(trimToNull(settings.getUsername()));
-        normalized.setPassword(trimToNull(settings.getPassword()));
+        normalized.setUsername(StringUtil.trimToNull(settings.getUsername()));
+        normalized.setPassword(StringUtil.trimToNull(settings.getPassword()));
         return normalized;
     }
 
@@ -183,14 +184,6 @@ public final class ServerConnectionProxySupport {
             return new Socket(proxy);
         }
         return new Socket();
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static void connectSocketThroughGameplayProxy(Socket socket, SocketAddress remoteAddress,

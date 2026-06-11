@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Session;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.mixins.early.minecraft.AccessorMinecraft;
 import org.fentanylsolutions.wawelauth.wawelclient.data.AccountStatus;
@@ -936,8 +937,8 @@ public class SessionBridge {
             return null;
         }
 
-        String skinPath = trimToNull(account.getLocalSkinPath());
-        String capePath = trimToNull(account.getLocalCapePath());
+        String skinPath = StringUtil.trimToNull(account.getLocalSkinPath());
+        String capePath = StringUtil.trimToNull(account.getLocalCapePath());
         if (skinPath == null && capePath == null) {
             return null;
         }
@@ -947,14 +948,6 @@ public class SessionBridge {
             account.getLocalSkinModel() != null ? account.getLocalSkinModel()
                 : org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel.CLASSIC,
             capePath);
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static boolean isUsableProfileProvider(ClientProvider provider) {

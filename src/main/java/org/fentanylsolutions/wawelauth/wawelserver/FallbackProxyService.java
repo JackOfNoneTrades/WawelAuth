@@ -315,7 +315,7 @@ public class FallbackProxyService {
             String sessionBase = resolveSessionBase(fallback);
             if (sessionBase == null) continue;
 
-            String displayName = trimToNull(fallback.getName());
+            String displayName = StringUtil.trimToNull(fallback.getName());
             if (displayName == null) {
                 displayName = "fallback-" + i;
             }
@@ -366,10 +366,6 @@ public class FallbackProxyService {
 
     private static String normalizeUrl(String raw) {
         return NetUtil.normalizeHttpUrl(raw);
-    }
-
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
     }
 
     private static String urlEncode(String value) {

@@ -28,7 +28,7 @@ public final class BetterQuestingCommandResolver {
     private BetterQuestingCommandResolver() {}
 
     public static UUID resolvePlayerId(ICommandSender sender, String rawInput) {
-        String input = trimToNull(rawInput);
+        String input = StringUtil.trimToNull(rawInput);
         if (input == null) {
             throw new CommandException("wawelauth.commands.name_requires_online", "");
         }
@@ -69,7 +69,7 @@ public final class BetterQuestingCommandResolver {
     }
 
     public static EntityPlayerMP resolveOnlinePartyActionPlayer(String rawInput) {
-        String input = trimToNull(rawInput);
+        String input = StringUtil.trimToNull(rawInput);
         if (input == null) {
             return null;
         }
@@ -82,7 +82,7 @@ public final class BetterQuestingCommandResolver {
     }
 
     public static UUID resolvePartyActionPlayerId(String rawInput) {
-        String input = trimToNull(rawInput);
+        String input = StringUtil.trimToNull(rawInput);
         if (input == null) {
             return null;
         }
@@ -109,7 +109,7 @@ public final class BetterQuestingCommandResolver {
     }
 
     public static UUID resolvePartyMemberActionPlayerId(String rawInput) {
-        String input = trimToNull(rawInput);
+        String input = StringUtil.trimToNull(rawInput);
         if (input == null) {
             return null;
         }
@@ -161,7 +161,7 @@ public final class BetterQuestingCommandResolver {
         }
 
         ProviderAwareUserListManager
-            .storeProviderBinding(LIST_TYPE, new GameProfile(playerId, trimToNull(playerName)), providerKey);
+            .storeProviderBinding(LIST_TYPE, new GameProfile(playerId, StringUtil.trimToNull(playerName)), providerKey);
     }
 
     private static UUID resolveSelector(ICommandSender sender, String input) {
@@ -220,7 +220,7 @@ public final class BetterQuestingCommandResolver {
 
     private static void addCachedNameCandidates(LinkedHashSet<String> candidates, String prefix) {
         for (String name : NameCache.INSTANCE.getAllNames()) {
-            String playerName = trimToNull(name);
+            String playerName = StringUtil.trimToNull(name);
             if (playerName == null) {
                 continue;
             }
@@ -248,7 +248,7 @@ public final class BetterQuestingCommandResolver {
             return;
         }
 
-        String username = trimToNull(prefix.substring(0, at));
+        String username = StringUtil.trimToNull(prefix.substring(0, at));
         if (username == null) {
             return;
         }
@@ -267,8 +267,8 @@ public final class BetterQuestingCommandResolver {
     }
 
     private static String qualifiedName(GameProfile profile, String providerKey) {
-        String name = trimToNull(profile == null ? null : profile.getName());
-        String provider = trimToNull(providerKey);
+        String name = StringUtil.trimToNull(profile == null ? null : profile.getName());
+        String provider = StringUtil.trimToNull(providerKey);
         if (name == null || provider == null) {
             return null;
         }
@@ -287,9 +287,5 @@ public final class BetterQuestingCommandResolver {
         } catch (Exception ignored) {
             return null;
         }
-    }
-
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
     }
 }

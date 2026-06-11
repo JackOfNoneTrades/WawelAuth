@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.BuiltinProviders;
 import org.fentanylsolutions.wawelauth.wawelclient.ProviderRegistry;
@@ -507,15 +508,15 @@ final class AccountManagerProviderDialogs {
         settings.setType(proxyType);
 
         ParsedProxyEndpoint endpoint = parseProxyEndpoint(
-            trimToNull(hostField.getText()),
-            trimToNull(portField.getText()));
+            StringUtil.trimToNull(hostField.getText()),
+            StringUtil.trimToNull(portField.getText()));
         settings.setHost(endpoint.host);
         if (endpoint.port != null) {
             settings.setPort(endpoint.port);
         }
 
-        String username = trimToNull(usernameField.getText());
-        String password = trimToNull(passwordField.getText());
+        String username = StringUtil.trimToNull(usernameField.getText());
+        String password = StringUtil.trimToNull(passwordField.getText());
         settings.setUsername(username);
         settings.setPassword(password);
         settings.setEnabled(
@@ -565,8 +566,8 @@ final class AccountManagerProviderDialogs {
         int firstColon = rawHost.indexOf(':');
         int lastColon = rawHost.lastIndexOf(':');
         if (firstColon > 0 && firstColon == lastColon) {
-            String hostPart = trimToNull(rawHost.substring(0, lastColon));
-            String portPart = trimToNull(rawHost.substring(lastColon + 1));
+            String hostPart = StringUtil.trimToNull(rawHost.substring(0, lastColon));
+            String portPart = StringUtil.trimToNull(rawHost.substring(lastColon + 1));
             if (hostPart != null && portPart != null) {
                 result.host = hostPart;
                 result.port = parseProxyPort(portPart);
@@ -590,7 +591,7 @@ final class AccountManagerProviderDialogs {
         String fallback = null;
         Throwable current = throwable;
         while (current != null) {
-            String message = trimToNull(current.getMessage());
+            String message = StringUtil.trimToNull(current.getMessage());
             boolean wrapper = current instanceof java.util.concurrent.CompletionException
                 || current instanceof java.util.concurrent.ExecutionException
                 || current.getClass() == RuntimeException.class;
@@ -625,16 +626,11 @@ final class AccountManagerProviderDialogs {
         if (proxyType != ProviderProxyType.HTTP || ProviderProxySupport.isModernHttpProxyAuthAvailable()) {
             return "";
         }
-        if (trimToNull(usernameField.getText()) == null && trimToNull(passwordField.getText()) == null) {
+        if (StringUtil.trimToNull(usernameField.getText()) == null
+            && StringUtil.trimToNull(passwordField.getText()) == null) {
             return "";
         }
         return GuiText.tr("wawelauth.gui.account_manager.proxy_java8_basic_auth_unsupported");
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) return null;
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static final class ParsedProxyEndpoint {

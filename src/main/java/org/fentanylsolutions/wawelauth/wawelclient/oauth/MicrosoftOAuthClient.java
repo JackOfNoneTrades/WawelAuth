@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 
 import net.minecraft.util.StatCollector;
 
+import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxySettings;
@@ -564,11 +565,11 @@ public class MicrosoftOAuthClient {
     }
 
     private static String getConfiguredValue(String propertyName, String envName, String fallback) {
-        String fromProperty = trimToNull(System.getProperty(propertyName));
+        String fromProperty = StringUtil.trimToNull(System.getProperty(propertyName));
         if (fromProperty != null) {
             return fromProperty;
         }
-        String fromEnv = trimToNull(System.getenv(envName));
+        String fromEnv = StringUtil.trimToNull(System.getenv(envName));
         if (fromEnv != null) {
             return fromEnv;
         }
@@ -578,10 +579,10 @@ public class MicrosoftOAuthClient {
     private static URI parseRedirectUri(String rawUri) {
         try {
             URI uri = new URI(rawUri);
-            if (trimToNull(uri.getHost()) == null) {
+            if (StringUtil.trimToNull(uri.getHost()) == null) {
                 return URI.create(DEFAULT_REDIRECT_URI);
             }
-            if (trimToNull(uri.getPath()) == null) {
+            if (StringUtil.trimToNull(uri.getPath()) == null) {
                 return URI.create(DEFAULT_REDIRECT_URI);
             }
             return uri;
@@ -605,17 +606,11 @@ public class MicrosoftOAuthClient {
     }
 
     private static String normalizePath(String path) {
-        String p = trimToNull(path);
+        String p = StringUtil.trimToNull(path);
         if (p == null) {
             return "/relogin";
         }
         return p.startsWith("/") ? p : ("/" + p);
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) return null;
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static void cancelActiveLoopbackLocked(String reason) {
@@ -731,7 +726,8 @@ public class MicrosoftOAuthClient {
     }
 
     private static MicrosoftEndpoints resolveEndpoints(ClientProvider provider) {
-        String servicesBase = provider != null ? stripTrailingSlash(trimToNull(provider.getServicesUrl())) : null;
+        String servicesBase = provider != null ? stripTrailingSlash(StringUtil.trimToNull(provider.getServicesUrl()))
+            : null;
         return new MicrosoftEndpoints(
             firstNonBlank(provider != null ? provider.getMsAuthorizeUrl() : null, MS_AUTHORIZE_URL),
             firstNonBlank(provider != null ? provider.getMsTokenUrl() : null, MS_TOKEN_URL),
@@ -752,7 +748,7 @@ public class MicrosoftOAuthClient {
             return null;
         }
         for (String value : values) {
-            String normalized = trimToNull(value);
+            String normalized = StringUtil.trimToNull(value);
             if (normalized != null) {
                 return normalized;
             }

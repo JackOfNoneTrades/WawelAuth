@@ -60,7 +60,7 @@ public final class ProviderAwareCommandResolver {
     }
 
     private static ResolvedTarget resolveCommandTarget(String rawInput) {
-        String input = trimToNull(rawInput);
+        String input = StringUtil.trimToNull(rawInput);
         if (input == null) {
             throw new CommandException("wawelauth.commands.name_requires_online", "");
         }
@@ -91,7 +91,7 @@ public final class ProviderAwareCommandResolver {
 
     private static GameProfile resolveExistingListTarget(String rawInput, UserList list,
         ProviderAwareUserListType listType, String listName) {
-        String input = trimToNull(rawInput);
+        String input = StringUtil.trimToNull(rawInput);
         if (input == null) {
             throw new CommandException("wawelauth.commands.list_entry_missing", listName, "");
         }
@@ -174,7 +174,7 @@ public final class ProviderAwareCommandResolver {
             return;
         }
 
-        String username = trimToNull(prefix.substring(0, at));
+        String username = StringUtil.trimToNull(prefix.substring(0, at));
         if (username == null) {
             return;
         }
@@ -198,8 +198,8 @@ public final class ProviderAwareCommandResolver {
     }
 
     private static String qualifiedName(GameProfile profile, String providerKey) {
-        String name = trimToNull(profile == null ? null : profile.getName());
-        String provider = trimToNull(providerKey);
+        String name = StringUtil.trimToNull(profile == null ? null : profile.getName());
+        String provider = StringUtil.trimToNull(providerKey);
         if (name == null || provider == null) {
             return null;
         }
@@ -223,10 +223,6 @@ public final class ProviderAwareCommandResolver {
         } catch (Exception ignored) {
             return null;
         }
-    }
-
-    private static String trimToNull(String value) {
-        return StringUtil.trimToNull(value);
     }
 
     private static final class ResolvedTarget {
