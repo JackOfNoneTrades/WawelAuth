@@ -66,6 +66,7 @@ public class SessionBridge {
     private volatile ClientAccount activeAccount;
     private volatile ClientProvider activeProvider;
     private volatile String lastActivationError;
+    private volatile LauncherImportCandidate pendingImport;
     private volatile List<ClientProvider> trustedProviders = Collections.emptyList();
     private volatile List<PublicKey> trustedKeys = Collections.emptyList();
     private final ConcurrentHashMap<String, GameProfile> profileCache = new ConcurrentHashMap<>();
@@ -555,13 +556,73 @@ public class SessionBridge {
                 return;
             }
 
+            if (LauncherImportSuppression.isSuppressed(provider.getName(), profileUuid)) {
+                WawelAuth.debug("Launcher import for '" + username + "' is suppressed, skipping");
+                return;
+            }
+
+            this.pendingImport = new LauncherImportCandidate(provider.getName(), profileUuid, username, token);
+            WawelAuth.debug("Launcher session detected for '" + username + "', awaiting user approval");
+
+        } catch (Exception e) {
+            WawelAuth.LOG.warn("Failed to inspect launcher session: {}", e.getMessage());
+        }
+    }
+
+    /** The launcher account awaiting first-time import approval, or null. */
+    public LauncherImportCandidate getPendingLauncherImport() {
+        return pendingImport;
+    }
+
+    /** Approve the pending launcher import, persisting it as a new account. */
+    public void confirmLauncherImport() {
+        LauncherImportCandidate candidate = this.pendingImport;
+        this.pendingImport = null;
+        if (candidate == null) {
+            return;
+        }
+        profileFetchExecutor.submit(() -> createImportedAccount(candidate));
+    }
+
+    /** Decline the pending import; it will be re-detected on the next launch. */
+    public void declineLauncherImport() {
+        this.pendingImport = null;
+    }
+
+    /** Decline and remember not to prompt for this account again. */
+    public void suppressLauncherImport() {
+        LauncherImportCandidate candidate = this.pendingImport;
+        this.pendingImport = null;
+        if (candidate == null) {
+            return;
+        }
+        LauncherImportSuppression.suppress(candidate.getProviderName(), candidate.getProfileUuid());
+    }
+
+    private void createImportedAccount(LauncherImportCandidate candidate) {
+        try {
+            ClientProvider provider = providerDAO.findByName(candidate.getProviderName());
+            if (provider == null) {
+                WawelAuth.LOG.warn(
+                    "Cannot import launcher session: provider '{}' no longer exists",
+                    candidate.getProviderName());
+                return;
+            }
+
+            ClientAccount existing = accountDAO
+                .findByProviderAndProfile(provider.getName(), candidate.getProfileUuid());
+            if (existing != null) {
+                resyncImportedAccount(existing, candidate.getToken(), candidate.getUsername());
+                return;
+            }
+
             long now = System.currentTimeMillis();
             ClientAccount account = new ClientAccount();
             account.setProviderName(provider.getName());
-            account.setUserUuid(UuidUtil.toUnsigned(profileUuid));
-            account.setProfileUuid(profileUuid);
-            account.setProfileName(username);
-            account.setAccessToken(token);
+            account.setUserUuid(UuidUtil.toUnsigned(candidate.getProfileUuid()));
+            account.setProfileUuid(candidate.getProfileUuid());
+            account.setProfileName(candidate.getUsername());
+            account.setAccessToken(candidate.getToken());
             account.setClientToken(null);
             account.setStatus(AccountStatus.VALID);
             account.setConsecutiveFailures(0);
@@ -573,10 +634,10 @@ public class SessionBridge {
             account.setId(id);
             accountManager.cacheStatus(id, AccountStatus.VALID);
 
-            WawelAuth.LOG.info("Auto-imported launcher session as {} account: {}", provider.getName(), username);
-
+            WawelAuth.LOG
+                .info("Imported launcher session as {} account: {}", provider.getName(), candidate.getUsername());
         } catch (Exception e) {
-            WawelAuth.LOG.warn("Failed to auto-import launcher session: {}", e.getMessage());
+            WawelAuth.LOG.warn("Failed to import launcher session: {}", e.getMessage());
         }
     }
 
@@ -1135,6 +1196,38 @@ public class SessionBridge {
     private static boolean hasProperties(GameProfile profile) {
         return profile != null && !profile.getProperties()
             .isEmpty();
+    }
+
+    /** A launcher session detected at startup, pending first-time import approval. */
+    public static final class LauncherImportCandidate {
+
+        private final String providerName;
+        private final UUID profileUuid;
+        private final String username;
+        private final String token;
+
+        LauncherImportCandidate(String providerName, UUID profileUuid, String username, String token) {
+            this.providerName = providerName;
+            this.profileUuid = profileUuid;
+            this.username = username;
+            this.token = token;
+        }
+
+        public String getProviderName() {
+            return providerName;
+        }
+
+        public UUID getProfileUuid() {
+            return profileUuid;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getToken() {
+            return token;
+        }
     }
 
     public static final class OfflineLocalSkin {

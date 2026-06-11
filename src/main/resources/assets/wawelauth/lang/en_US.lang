@@ -290,6 +290,13 @@ wawelauth.gui.drop.texture_title=Drop image as...
 wawelauth.gui.drop.zone_skin=Skin
 wawelauth.gui.drop.zone_cape=Cape
 
+wawelauth.gui.launcher_import.title=Launcher session detected
+wawelauth.gui.launcher_import.detail=Account '%s' detected for provider '%s'.
+wawelauth.gui.launcher_import.question=Import this account into Wawel Auth?
+wawelauth.gui.launcher_import.import=Import
+wawelauth.gui.launcher_import.not_now=Not now
+wawelauth.gui.launcher_import.dont_ask=Don't ask again
+
 wawelauth.commands.name_requires_online=Plain name '%s' only works while that exact player is online. Use name@provider for offline players.
 wawelauth.commands.qualified_not_found=Could not resolve '%s'. Check the provider name and username.
 wawelauth.commands.list_entry_missing=No %s entry matches '%s'.

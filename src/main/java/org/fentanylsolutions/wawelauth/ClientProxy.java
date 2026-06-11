@@ -7,6 +7,7 @@ import net.minecraftforge.common.MinecraftForge;
 import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
 import org.fentanylsolutions.wawelauth.client.WindowDropHandler;
 import org.fentanylsolutions.wawelauth.client.gui.GuiSkinCustomizationHandler;
+import org.fentanylsolutions.wawelauth.client.gui.LauncherImportPromptHandler;
 import org.fentanylsolutions.wawelauth.client.gui.WawelAuthKeybind;
 import org.fentanylsolutions.wawelauth.client.render.SkinResolverClientHandler;
 import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeClientHandler;
@@ -58,6 +59,11 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance()
             .bus()
             .register(keybind);
+
+        // Prompt for first-time launcher session import once the main menu shows
+        FMLCommonHandler.instance()
+            .bus()
+            .register(new LauncherImportPromptHandler());
     }
 
     @Override
