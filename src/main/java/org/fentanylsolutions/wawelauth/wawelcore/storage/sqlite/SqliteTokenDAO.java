@@ -139,7 +139,7 @@ public class SqliteTokenDAO implements TokenDAO {
     public void evictOldest(UUID userUuid, int keepCount) {
         db.executeUpdate(
             "DELETE FROM tokens WHERE user_uuid = ? AND access_token NOT IN ("
-                + "SELECT access_token FROM tokens WHERE user_uuid = ? ORDER BY issued_at DESC LIMIT ?)",
+                + "SELECT access_token FROM tokens WHERE user_uuid = ? ORDER BY issued_at DESC, rowid DESC LIMIT ?)",
             ps -> {
                 ps.setString(1, userUuid.toString());
                 ps.setString(2, userUuid.toString());

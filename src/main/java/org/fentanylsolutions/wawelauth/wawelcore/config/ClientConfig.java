@@ -19,15 +19,15 @@ public class ClientConfig {
     public static String defaultProvider = "";
 
     @Config.Comment("Regex patterns matched against provider name/API root. Skin upload is disabled for matches.")
-    @Config.DefaultStringList({ "ely\\.by" })
+    @Config.DefaultStringList({ "ely\\.by", "littleskin\\.cn" })
     public static String[] disableSkinUpload = { "ely\\.by", "littleskin\\.cn" };
 
     @Config.Comment("Regex patterns matched against provider name/API root. Cape upload is disabled for matches.")
-    @Config.DefaultStringList({ "ely\\.by", "^Mojang$" })
+    @Config.DefaultStringList({ "ely\\.by", "^Mojang$", "littleskin\\.cn" })
     public static String[] disableCapeUpload = { "ely\\.by", "^Mojang$", "littleskin\\.cn" };
 
     @Config.Comment("Regex patterns matched against provider name/API root. Texture reset is disabled for matches.")
-    @Config.DefaultStringList({ "ely\\.by" })
+    @Config.DefaultStringList({ "ely\\.by", "littleskin\\.cn" })
     public static String[] disableTextureReset = { "ely\\.by", "littleskin\\.cn" };
 
     @Config.Comment("Regex patterns matched against provider name/API root. Credential management is disabled for matches.")
