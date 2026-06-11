@@ -14,8 +14,8 @@ import com.google.common.cache.CacheBuilder;
  * Pending sessions are ephemeral (15-30 second lifetime) and don't need
  * persistence across server restarts.
  * <p>
- * Guava Cache handles automatic expiry via expireAfterWrite, so purgeExpired
- * is a no-op: expired entries are evicted lazily on access or by cache maintenance.
+ * The cache's expireAfterWrite (fixed at construction) bounds memory; the
+ * timeoutMs params reflect the live config value and are checked explicitly.
  */
 public class InMemorySessionDAO implements SessionDAO {
 
@@ -40,10 +40,16 @@ public class InMemorySessionDAO implements SessionDAO {
 
     @Override
     public PendingSession consume(String serverId, String profileName, String clientIp, long timeoutMs) {
-        // timeoutMs param is ignored here: expiry is handled by the cache's expireAfterWrite.
         ConcurrentMap<String, PendingSession> map = sessions.asMap();
         PendingSession session = map.get(serverId);
         if (session == null) return null;
+
+        // The cache's expireAfterWrite uses the boot-time timeout; the param reflects
+        // the live config value, which the admin UI can change at runtime.
+        if (session.isExpired(timeoutMs)) {
+            map.remove(serverId, session);
+            return null;
+        }
 
         // Verify profile name (case-insensitive)
         if (!session.getProfileName()
@@ -65,7 +71,9 @@ public class InMemorySessionDAO implements SessionDAO {
 
     @Override
     public void purgeExpired(long timeoutMs) {
-        // Guava Cache handles expiry automatically. Trigger maintenance cleanup.
+        sessions.asMap()
+            .values()
+            .removeIf(s -> s.isExpired(timeoutMs));
         sessions.cleanUp();
     }
 }
