@@ -64,8 +64,6 @@ public class Config {
         dataConfigDir = ensureDirectory(resolveDataConfigDir(localConfig.isUseOsConfigDir()));
 
         serverConfig = JsonConfigIO.load(new File(dataConfigDir, SERVER_CONFIG_FILE), ServerConfig.class);
-        serverConfig.validateOrThrow();
-        serverConfig.ensureApiRootInSkinDomains();
 
         // Load fallback servers from separate file. Seed from bundled default if missing.
         File fallbackFile = new File(dataConfigDir, FALLBACK_SERVERS_CONFIG_FILE);
@@ -74,6 +72,9 @@ public class Config {
         }
         fallbackServersConfig = JsonConfigIO.load(fallbackFile, FallbackServersConfig.class);
         serverConfig.setFallbackServers(fallbackServersConfig.getEnabledFallbackServers());
+
+        serverConfig.validateOrThrow();
+        serverConfig.ensureApiRootInSkinDomains();
     }
 
     public static void reload() {
