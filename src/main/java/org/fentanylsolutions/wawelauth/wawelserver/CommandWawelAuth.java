@@ -214,7 +214,7 @@ public class CommandWawelAuth extends CommandBase {
                 .create(invite);
 
             sendSuccess(sender, "Created invite: " + code + " (uses: " + formatInviteUses(uses) + ")");
-            tryCopyInviteToClipboard(sender, code);
+            sendInviteCopyPrompt(sender, code);
             return;
         }
 
@@ -325,16 +325,15 @@ public class CommandWawelAuth extends CommandBase {
         return uses == -1 ? "unlimited" : String.valueOf(uses);
     }
 
-    private static void tryCopyInviteToClipboard(ICommandSender sender, String inviteCode) {
+    private static void sendInviteCopyPrompt(ICommandSender sender, String inviteCode) {
         if (!(sender instanceof EntityPlayerMP) || inviteCode == null || inviteCode.isEmpty()) {
             return;
         }
 
         EntityPlayerMP player = (EntityPlayerMP) sender;
         try {
-            PacketHandler.sendToPlayer(
-                new ClipboardCopyPacket(inviteCode, EnumChatFormatting.YELLOW + "Invite code copied to clipboard."),
-                player);
+            PacketHandler
+                .sendToPlayer(new ClipboardCopyPacket(inviteCode, EnumChatFormatting.YELLOW + "Invite code:"), player);
         } catch (Exception e) {
             WawelAuth.debug("Failed to send clipboard packet: " + e.getMessage());
         }
