@@ -1,14 +1,13 @@
 package org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite;
 
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelUser;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.UserDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteDatabase.SqlBinder;
 
 public class SqliteUserDAO implements UserDAO {
 
@@ -33,34 +32,22 @@ public class SqliteUserDAO implements UserDAO {
 
     @Override
     public WawelUser findByUuid(UUID uuid) {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM users WHERE uuid = ?")) {
-                ps.setString(1, uuid.toString());
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? mapRow(rs) : null;
-                }
-            }
-        });
+        return db.queryOne("SELECT * FROM users WHERE uuid = ?", ps -> ps.setString(1, uuid.toString()), this::mapRow);
     }
 
     @Override
     public WawelUser findByUsername(String username) {
-        return db.query(conn -> {
-            try (
-                PreparedStatement ps = conn.prepareStatement("SELECT * FROM users WHERE username = ? COLLATE NOCASE")) {
-                ps.setString(1, username);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? mapRow(rs) : null;
-                }
-            }
-        });
+        return db.queryOne(
+            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            ps -> ps.setString(1, username),
+            this::mapRow);
     }
 
     @Override
     public void create(WawelUser user) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO users (uuid, username, password_hash, password_salt, admin, locked, preferred_language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+        db.executeUpdate(
+            "INSERT INTO users (uuid, username, password_hash, password_salt, admin, locked, preferred_language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ps -> {
                 ps.setString(
                     1,
                     user.getUuid()
@@ -72,16 +59,14 @@ public class SqliteUserDAO implements UserDAO {
                 ps.setInt(6, user.isLocked() ? 1 : 0);
                 ps.setString(7, user.getPreferredLanguage());
                 ps.setLong(8, user.getCreatedAt());
-                ps.executeUpdate();
-            }
-        });
+            });
     }
 
     @Override
     public void update(WawelUser user) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
-                "UPDATE users SET username = ?, password_hash = ?, password_salt = ?, admin = ?, locked = ?, preferred_language = ? WHERE uuid = ?")) {
+        int rows = db.executeUpdate(
+            "UPDATE users SET username = ?, password_hash = ?, password_salt = ?, admin = ?, locked = ?, preferred_language = ? WHERE uuid = ?",
+            ps -> {
                 ps.setString(1, user.getUsername());
                 ps.setString(2, user.getPasswordHash());
                 ps.setString(3, user.getPasswordSalt());
@@ -92,43 +77,22 @@ public class SqliteUserDAO implements UserDAO {
                     7,
                     user.getUuid()
                         .toString());
-                int rows = ps.executeUpdate();
-                if (rows == 0) throw new RuntimeException("User not found: " + user.getUuid());
-            }
-        });
+            });
+        if (rows == 0) throw new RuntimeException("User not found: " + user.getUuid());
     }
 
     @Override
     public void delete(UUID uuid) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM users WHERE uuid = ?")) {
-                ps.setString(1, uuid.toString());
-                ps.executeUpdate();
-            }
-        });
+        db.executeUpdate("DELETE FROM users WHERE uuid = ?", ps -> ps.setString(1, uuid.toString()));
     }
 
     @Override
     public List<WawelUser> listAll() {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM users ORDER BY created_at");
-                ResultSet rs = ps.executeQuery()) {
-                List<WawelUser> users = new ArrayList<>();
-                while (rs.next()) {
-                    users.add(mapRow(rs));
-                }
-                return users;
-            }
-        });
+        return db.queryList("SELECT * FROM users ORDER BY created_at", SqlBinder.NONE, this::mapRow);
     }
 
     @Override
     public long count() {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM users");
-                ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getLong(1) : 0;
-            }
-        });
+        return db.queryOne("SELECT COUNT(*) FROM users", SqlBinder.NONE, rs -> rs.getLong(1));
     }
 }

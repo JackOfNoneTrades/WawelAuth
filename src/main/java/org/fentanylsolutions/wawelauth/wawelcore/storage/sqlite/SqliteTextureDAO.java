@@ -1,6 +1,5 @@
 package org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite;
 
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
@@ -32,22 +31,15 @@ public class SqliteTextureDAO implements TextureDAO {
 
     @Override
     public StoredTexture findByHash(String hash) {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM stored_textures WHERE hash = ?")) {
-                ps.setString(1, hash);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? mapRow(rs) : null;
-                }
-            }
-        });
+        return db.queryOne("SELECT * FROM stored_textures WHERE hash = ?", ps -> ps.setString(1, hash), this::mapRow);
     }
 
     @Override
     public void create(StoredTexture texture) {
         // INSERT OR IGNORE: content-addressed dedup: if hash exists, skip silently.
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT OR IGNORE INTO stored_textures (hash, texture_type, uploaded_by, uploaded_at, content_length, width, height) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
+        db.executeUpdate(
+            "INSERT OR IGNORE INTO stored_textures (hash, texture_type, uploaded_by, uploaded_at, content_length, width, height) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ps -> {
                 ps.setString(1, texture.getHash());
                 ps.setString(
                     2,
@@ -61,34 +53,25 @@ public class SqliteTextureDAO implements TextureDAO {
                 ps.setLong(5, texture.getContentLength());
                 ps.setInt(6, texture.getWidth());
                 ps.setInt(7, texture.getHeight());
-                ps.executeUpdate();
-            }
-        });
+            });
     }
 
     @Override
     public void delete(String hash) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM stored_textures WHERE hash = ?")) {
-                ps.setString(1, hash);
-                ps.executeUpdate();
-            }
-        });
+        db.executeUpdate("DELETE FROM stored_textures WHERE hash = ?", ps -> ps.setString(1, hash));
     }
 
     @Override
     public boolean isReferenced(String hash) {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
+        return Boolean.TRUE.equals(
+            db.queryOne(
                 "SELECT EXISTS(" + "SELECT 1 FROM profiles WHERE skin_hash = ? OR cape_hash = ? OR elytra_hash = ?"
-                    + ")")) {
-                ps.setString(1, hash);
-                ps.setString(2, hash);
-                ps.setString(3, hash);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() && rs.getInt(1) != 0;
-                }
-            }
-        });
+                    + ")",
+                ps -> {
+                    ps.setString(1, hash);
+                    ps.setString(2, hash);
+                    ps.setString(3, hash);
+                },
+                rs -> rs.getInt(1) != 0));
     }
 }

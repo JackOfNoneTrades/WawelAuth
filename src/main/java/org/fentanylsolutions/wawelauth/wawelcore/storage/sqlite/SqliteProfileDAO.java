@@ -1,6 +1,5 @@
 package org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite;
 
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -13,6 +12,7 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.fentanylsolutions.wawelauth.wawelcore.data.TextureType;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.ProfileDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteDatabase.SqlBinder;
 
 public class SqliteProfileDAO implements ProfileDAO {
 
@@ -63,43 +63,24 @@ public class SqliteProfileDAO implements ProfileDAO {
 
     @Override
     public WawelProfile findByUuid(UUID uuid) {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM profiles WHERE uuid = ?")) {
-                ps.setString(1, uuid.toString());
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? mapRow(rs) : null;
-                }
-            }
-        });
+        return db
+            .queryOne("SELECT * FROM profiles WHERE uuid = ?", ps -> ps.setString(1, uuid.toString()), this::mapRow);
     }
 
     @Override
     public WawelProfile findByName(String name) {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM profiles WHERE name = ? COLLATE NOCASE")) {
-                ps.setString(1, name);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? mapRow(rs) : null;
-                }
-            }
-        });
+        return db.queryOne(
+            "SELECT * FROM profiles WHERE name = ? COLLATE NOCASE",
+            ps -> ps.setString(1, name),
+            this::mapRow);
     }
 
     @Override
     public List<WawelProfile> findByOwner(UUID userUuid) {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn
-                .prepareStatement("SELECT * FROM profiles WHERE owner_uuid = ? ORDER BY created_at")) {
-                ps.setString(1, userUuid.toString());
-                try (ResultSet rs = ps.executeQuery()) {
-                    List<WawelProfile> profiles = new ArrayList<>();
-                    while (rs.next()) {
-                        profiles.add(mapRow(rs));
-                    }
-                    return profiles;
-                }
-            }
-        });
+        return db.queryList(
+            "SELECT * FROM profiles WHERE owner_uuid = ? ORDER BY created_at",
+            ps -> ps.setString(1, userUuid.toString()),
+            this::mapRow);
     }
 
     @Override
@@ -112,28 +93,18 @@ public class SqliteProfileDAO implements ProfileDAO {
             sql.append('?');
         }
         sql.append(')');
-        String query = sql.toString();
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(query)) {
-                for (int i = 0; i < names.size(); i++) {
-                    ps.setString(i + 1, names.get(i));
-                }
-                try (ResultSet rs = ps.executeQuery()) {
-                    List<WawelProfile> profiles = new ArrayList<>();
-                    while (rs.next()) {
-                        profiles.add(mapRow(rs));
-                    }
-                    return profiles;
-                }
+        return db.queryList(sql.toString(), ps -> {
+            for (int i = 0; i < names.size(); i++) {
+                ps.setString(i + 1, names.get(i));
             }
-        });
+        }, this::mapRow);
     }
 
     @Override
     public void create(WawelProfile profile) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO profiles (uuid, name, owner_uuid, offline_uuid, skin_model, skin_hash, cape_hash, elytra_hash, uploadable_textures, cape_animated, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+        db.executeUpdate(
+            "INSERT INTO profiles (uuid, name, owner_uuid, offline_uuid, skin_model, skin_hash, cape_hash, elytra_hash, uploadable_textures, cape_animated, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ps -> {
                 ps.setString(
                     1,
                     profile.getUuid()
@@ -157,16 +128,14 @@ public class SqliteProfileDAO implements ProfileDAO {
                 ps.setString(9, serializeUploadable(profile.getUploadableTextures()));
                 ps.setInt(10, profile.isCapeAnimated() ? 1 : 0);
                 ps.setLong(11, profile.getCreatedAt());
-                ps.executeUpdate();
-            }
-        });
+            });
     }
 
     @Override
     public void update(WawelProfile profile) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
-                "UPDATE profiles SET name = ?, owner_uuid = ?, offline_uuid = ?, skin_model = ?, skin_hash = ?, cape_hash = ?, elytra_hash = ?, uploadable_textures = ?, cape_animated = ? WHERE uuid = ?")) {
+        int rows = db.executeUpdate(
+            "UPDATE profiles SET name = ?, owner_uuid = ?, offline_uuid = ?, skin_model = ?, skin_hash = ?, cape_hash = ?, elytra_hash = ?, uploadable_textures = ?, cape_animated = ? WHERE uuid = ?",
+            ps -> {
                 ps.setString(1, profile.getName());
                 ps.setString(
                     2,
@@ -189,45 +158,31 @@ public class SqliteProfileDAO implements ProfileDAO {
                     10,
                     profile.getUuid()
                         .toString());
-                int rows = ps.executeUpdate();
-                if (rows == 0) throw new RuntimeException("Profile not found: " + profile.getUuid());
-            }
-        });
+            });
+        if (rows == 0) throw new RuntimeException("Profile not found: " + profile.getUuid());
     }
 
     @Override
     public void delete(UUID uuid) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM profiles WHERE uuid = ?")) {
-                ps.setString(1, uuid.toString());
-                ps.executeUpdate();
-            }
-        });
+        db.executeUpdate("DELETE FROM profiles WHERE uuid = ?", ps -> ps.setString(1, uuid.toString()));
     }
 
     @Override
     public boolean isTextureHashReferenced(String hash) {
         if (hash == null) return false;
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT 1 FROM profiles WHERE skin_hash = ? OR cape_hash = ? OR elytra_hash = ? LIMIT 1")) {
-                ps.setString(1, hash);
-                ps.setString(2, hash);
-                ps.setString(3, hash);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next();
-                }
-            }
-        });
+        return Boolean.TRUE.equals(
+            db.queryOne(
+                "SELECT 1 FROM profiles WHERE skin_hash = ? OR cape_hash = ? OR elytra_hash = ? LIMIT 1",
+                ps -> {
+                    ps.setString(1, hash);
+                    ps.setString(2, hash);
+                    ps.setString(3, hash);
+                },
+                rs -> true));
     }
 
     @Override
     public long count() {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM profiles");
-                ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getLong(1) : 0;
-            }
-        });
+        return db.queryOne("SELECT COUNT(*) FROM profiles", SqlBinder.NONE, rs -> rs.getLong(1));
     }
 }

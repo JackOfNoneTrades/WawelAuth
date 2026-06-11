@@ -43,27 +43,21 @@ public class SqliteUserListProviderBindingDAO implements UserListProviderBinding
 
     @Override
     public void putProviderKey(ProviderAwareUserListType listType, UUID profileUuid, String providerKey) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT OR REPLACE INTO user_list_provider_bindings (list_type, profile_uuid, provider_key, updated_at) VALUES (?, ?, ?, ?)")) {
+        db.executeUpdate(
+            "INSERT OR REPLACE INTO user_list_provider_bindings (list_type, profile_uuid, provider_key, updated_at) VALUES (?, ?, ?, ?)",
+            ps -> {
                 ps.setString(1, listType.name());
                 ps.setString(2, profileUuid.toString());
                 ps.setString(3, providerKey);
                 ps.setLong(4, System.currentTimeMillis());
-                ps.executeUpdate();
-            }
-        });
+            });
     }
 
     @Override
     public void delete(ProviderAwareUserListType listType, UUID profileUuid) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn
-                .prepareStatement("DELETE FROM user_list_provider_bindings WHERE list_type = ? AND profile_uuid = ?")) {
-                ps.setString(1, listType.name());
-                ps.setString(2, profileUuid.toString());
-                ps.executeUpdate();
-            }
+        db.executeUpdate("DELETE FROM user_list_provider_bindings WHERE list_type = ? AND profile_uuid = ?", ps -> {
+            ps.setString(1, listType.name());
+            ps.setString(2, profileUuid.toString());
         });
     }
 }

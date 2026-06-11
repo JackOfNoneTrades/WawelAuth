@@ -3,8 +3,12 @@ package org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
 
@@ -39,6 +43,26 @@ public class SqliteDatabase {
     public interface SqlConsumer {
 
         void accept(Connection conn) throws SQLException;
+    }
+
+    /**
+     * Binds parameters on a prepared statement.
+     */
+    @FunctionalInterface
+    public interface SqlBinder {
+
+        SqlBinder NONE = ps -> {};
+
+        void bind(PreparedStatement ps) throws SQLException;
+    }
+
+    /**
+     * Maps the current row of a result set to a value.
+     */
+    @FunctionalInterface
+    public interface RowMapper<T> {
+
+        T map(ResultSet rs) throws SQLException;
     }
 
     private final String dbPath;
@@ -103,6 +127,50 @@ public class SqliteDatabase {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Runs a SELECT and maps the first row, or returns null if there is no row.
+     */
+    public <T> T queryOne(String sql, SqlBinder binder, RowMapper<T> mapper) {
+        return query(conn -> {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                binder.bind(ps);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? mapper.map(rs) : null;
+                }
+            }
+        });
+    }
+
+    /**
+     * Runs a SELECT and maps every row, in result order.
+     */
+    public <T> List<T> queryList(String sql, SqlBinder binder, RowMapper<T> mapper) {
+        return query(conn -> {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                binder.bind(ps);
+                try (ResultSet rs = ps.executeQuery()) {
+                    List<T> out = new ArrayList<>();
+                    while (rs.next()) {
+                        out.add(mapper.map(rs));
+                    }
+                    return out;
+                }
+            }
+        });
+    }
+
+    /**
+     * Runs an INSERT/UPDATE/DELETE and returns the affected row count.
+     */
+    public int executeUpdate(String sql, SqlBinder binder) {
+        return query(conn -> {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                binder.bind(ps);
+                return ps.executeUpdate();
+            }
+        });
     }
 
     /**

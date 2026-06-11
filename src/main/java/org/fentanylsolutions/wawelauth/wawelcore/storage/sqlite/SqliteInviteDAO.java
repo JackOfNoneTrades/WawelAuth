@@ -3,12 +3,12 @@ package org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelInvite;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.InviteDAO;
+import org.fentanylsolutions.wawelauth.wawelcore.storage.sqlite.SqliteDatabase.SqlBinder;
 
 public class SqliteInviteDAO implements InviteDAO {
 
@@ -30,21 +30,14 @@ public class SqliteInviteDAO implements InviteDAO {
 
     @Override
     public WawelInvite findByCode(String code) {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM invites WHERE code = ?")) {
-                ps.setString(1, code);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? mapRow(rs) : null;
-                }
-            }
-        });
+        return db.queryOne("SELECT * FROM invites WHERE code = ?", ps -> ps.setString(1, code), this::mapRow);
     }
 
     @Override
     public void create(WawelInvite invite) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO invites (code, created_at, created_by, uses_remaining) VALUES (?, ?, ?, ?)")) {
+        db.executeUpdate(
+            "INSERT INTO invites (code, created_at, created_by, uses_remaining) VALUES (?, ?, ?, ?)",
+            ps -> {
                 ps.setString(1, invite.getCode());
                 ps.setLong(2, invite.getCreatedAt());
                 ps.setString(
@@ -52,9 +45,7 @@ public class SqliteInviteDAO implements InviteDAO {
                     invite.getCreatedBy() != null ? invite.getCreatedBy()
                         .toString() : null);
                 ps.setInt(4, invite.getUsesRemaining());
-                ps.executeUpdate();
-            }
-        });
+            });
     }
 
     @Override
@@ -86,34 +77,16 @@ public class SqliteInviteDAO implements InviteDAO {
 
     @Override
     public void delete(String code) {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM invites WHERE code = ?")) {
-                ps.setString(1, code);
-                ps.executeUpdate();
-            }
-        });
+        db.executeUpdate("DELETE FROM invites WHERE code = ?", ps -> ps.setString(1, code));
     }
 
     @Override
     public List<WawelInvite> listAll() {
-        return db.query(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM invites ORDER BY created_at");
-                ResultSet rs = ps.executeQuery()) {
-                List<WawelInvite> invites = new ArrayList<>();
-                while (rs.next()) {
-                    invites.add(mapRow(rs));
-                }
-                return invites;
-            }
-        });
+        return db.queryList("SELECT * FROM invites ORDER BY created_at", SqlBinder.NONE, this::mapRow);
     }
 
     @Override
     public void purgeConsumed() {
-        db.execute(conn -> {
-            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM invites WHERE uses_remaining = 0")) {
-                ps.executeUpdate();
-            }
-        });
+        db.executeUpdate("DELETE FROM invites WHERE uses_remaining = 0", SqlBinder.NONE);
     }
 }
