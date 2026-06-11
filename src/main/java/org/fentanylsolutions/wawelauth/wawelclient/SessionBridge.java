@@ -493,9 +493,13 @@ public class SessionBridge {
 
     /** Auto-import launcher session as Mojang account if token is valid. Called once on start. */
     public void tryImportLauncherSession() {
+        Session session = Minecraft.getMinecraft()
+            .getSession();
+        profileFetchExecutor.submit(() -> importLauncherSession(session));
+    }
+
+    private void importLauncherSession(Session session) {
         try {
-            Session session = Minecraft.getMinecraft()
-                .getSession();
             String token = session.getToken();
 
             // Skip invalid/dev sessions
