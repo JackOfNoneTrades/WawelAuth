@@ -1,6 +1,7 @@
 package org.fentanylsolutions.wawelauth.wawelclient;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.security.KeyFactory;
 import java.security.PublicKey;
@@ -28,6 +29,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilHttpClient;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilRequestException;
+import org.fentanylsolutions.wawelauth.wawelclient.oauth.MicrosoftOAuthClient;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientAccountDAO;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientProviderDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
@@ -491,7 +493,7 @@ public class SessionBridge {
     // Auto-import launcher session
     // =========================================================================
 
-    /** Auto-import launcher session as Mojang account if token is valid. Called once on start. */
+    /** Auto-import launcher session for its matching provider if the token is valid. Called once on start. */
     public void tryImportLauncherSession() {
         Session session = Minecraft.getMinecraft()
             .getSession();
@@ -508,49 +510,55 @@ public class SessionBridge {
                 return;
             }
 
-            ClientProvider mojang = providerDAO.findByName(MOJANG_PROVIDER_NAME);
-            if (mojang == null) {
-                WawelAuth.debug("Mojang provider not found, skipping launcher session import");
+            ClientProvider provider = resolveLauncherSessionProvider();
+            if (provider == null) {
                 return;
             }
 
-            // Validate token against Mojang
-            JsonObject validateBody = new JsonObject();
-            validateBody.addProperty("accessToken", token);
-
-            try {
-                httpClient.postJson(mojang, mojang.authUrl("/validate"), validateBody);
-            } catch (YggdrasilRequestException e) {
-                WawelAuth.debug("Launcher session token validation failed: " + e.getMessage());
-                return;
-            } catch (IOException e) {
-                WawelAuth.debug("Could not reach Mojang for session validation: " + e.getMessage());
-                return;
-            }
-
-            // Token is valid: import as account
-            String playerIdStr = session.getPlayerID();
             UUID profileUuid;
-            try {
-                profileUuid = UUID.fromString(playerIdStr);
-            } catch (IllegalArgumentException e) {
-                // playerID might be unsigned
-                profileUuid = UuidUtil.fromUnsigned(playerIdStr);
+            String username;
+            if (BuiltinProviders.isMojangProvider(provider.getName())) {
+                MicrosoftOAuthClient.MinecraftProfile profile;
+                try {
+                    profile = new MicrosoftOAuthClient().fetchMinecraftProfile(token, provider);
+                } catch (IOException e) {
+                    WawelAuth.debug("Microsoft launcher token validation failed: " + e.getMessage());
+                    return;
+                }
+                profileUuid = profile.getUuid();
+                username = profile.getName();
+            } else {
+                JsonObject validateBody = new JsonObject();
+                validateBody.addProperty("accessToken", token);
+                try {
+                    httpClient.postJson(provider, provider.authUrl("/validate"), validateBody);
+                } catch (YggdrasilRequestException e) {
+                    WawelAuth.debug("Launcher session token validation failed: " + e.getMessage());
+                    return;
+                } catch (IOException | IllegalStateException e) {
+                    WawelAuth.debug(
+                        "Could not validate launcher session against " + provider.getName() + ": " + e.getMessage());
+                    return;
+                }
+                profileUuid = parseSessionUuid(session.getPlayerID());
+                username = session.getUsername();
             }
 
-            String username = session.getUsername();
-
-            // Check if account already exists
-            ClientAccount existing = accountDAO.findByProviderAndProfile(mojang.getName(), profileUuid);
-            if (existing != null) {
-                WawelAuth.debug("Mojang account '" + username + "' already exists, skipping import");
+            if (profileUuid == null) {
+                WawelAuth.debug("Launcher session has no usable profile UUID, skipping import");
                 return;
             }
 
-            // Create new account
+            ClientAccount existing = accountDAO.findByProviderAndProfile(provider.getName(), profileUuid);
+            if (existing != null) {
+                WawelAuth
+                    .debug("Account '" + username + "' already exists on " + provider.getName() + ", skipping import");
+                return;
+            }
+
             long now = System.currentTimeMillis();
             ClientAccount account = new ClientAccount();
-            account.setProviderName(mojang.getName());
+            account.setProviderName(provider.getName());
             account.setUserUuid(UuidUtil.toUnsigned(profileUuid));
             account.setProfileUuid(profileUuid);
             account.setProfileName(username);
@@ -566,10 +574,76 @@ public class SessionBridge {
             account.setId(id);
             accountManager.cacheStatus(id, AccountStatus.VALID);
 
-            WawelAuth.LOG.info("Auto-imported launcher session as Mojang account: {}", username);
+            WawelAuth.LOG.info("Auto-imported launcher session as {} account: {}", provider.getName(), username);
 
         } catch (Exception e) {
             WawelAuth.LOG.warn("Failed to auto-import launcher session: {}", e.getMessage());
+        }
+    }
+
+    private ClientProvider resolveLauncherSessionProvider() {
+        String backendHost = detectLauncherAuthBackendHost();
+        if (backendHost == null) {
+            return providerDAO.findByName(MOJANG_PROVIDER_NAME);
+        }
+        for (ClientProvider provider : providerDAO.listAll()) {
+            if (BuiltinProviders.isOfflineProvider(provider.getName())) {
+                continue;
+            }
+            if (backendHost.equals(extractHost(provider.getApiRoot()))
+                || backendHost.equals(extractHost(provider.getAuthServerUrl()))
+                || backendHost.equals(extractHost(provider.getSessionServerUrl()))) {
+                return provider;
+            }
+        }
+        WawelAuth.debug("Launcher auth backend '" + backendHost + "' is not a configured provider, skipping import");
+        return null;
+    }
+
+    private static String detectLauncherAuthBackendHost() {
+        try {
+            for (String arg : ManagementFactory.getRuntimeMXBean()
+                .getInputArguments()) {
+                if (arg == null) {
+                    continue;
+                }
+                String lower = arg.toLowerCase();
+                if (lower.startsWith("-javaagent:") && lower.contains("authlib-injector")) {
+                    int eq = arg.indexOf('=');
+                    if (eq >= 0 && eq + 1 < arg.length()) {
+                        String host = extractHost(
+                            arg.substring(eq + 1)
+                                .trim());
+                        if (host != null) {
+                            return host;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        for (String key : new String[] { "minecraft.api.authHost", "minecraft.api.accountsHost",
+            "minecraft.api.sessionHost", "minecraft.api.servicesHost" }) {
+            String host = extractHost(System.getProperty(key));
+            if (host != null) {
+                return host;
+            }
+        }
+        return null;
+    }
+
+    private static UUID parseSessionUuid(String playerIdStr) {
+        if (playerIdStr == null || playerIdStr.trim()
+            .isEmpty()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(playerIdStr);
+        } catch (IllegalArgumentException e) {
+            try {
+                return UuidUtil.fromUnsigned(playerIdStr);
+            } catch (Exception ex) {
+                return null;
+            }
         }
     }
 
