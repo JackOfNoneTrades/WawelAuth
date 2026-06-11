@@ -1,6 +1,8 @@
 package org.fentanylsolutions.wawelauth.client.render;
 
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
@@ -11,6 +13,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.event.world.WorldEvent;
 
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
@@ -35,6 +38,8 @@ public final class SkinResolverClientHandler {
 
     private static final SkinResolverClientHandler INSTANCE = new SkinResolverClientHandler();
     private static volatile boolean registered;
+
+    private final Set<UUID> invalidatedPlayers = ConcurrentHashMap.newKeySet();
 
     private SkinResolverClientHandler() {}
 
@@ -68,6 +73,10 @@ public final class SkinResolverClientHandler {
         UUID playerID = playerMP.getUniqueID();
         if (playerID == null) return;
 
+        // EntityJoinWorldEvent fires on every tracking-range re-entry, not just
+        // logins; only the first sighting per world should force a refetch.
+        if (!invalidatedPlayers.add(playerID)) return;
+
         client.getTextureResolver()
             .invalidate(playerID);
         Minecraft.getMinecraft()
@@ -78,10 +87,18 @@ public final class SkinResolverClientHandler {
     }
 
     @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        if (event.world.isRemote) {
+            invalidatedPlayers.clear();
+        }
+    }
+
+    @SubscribeEvent
     public void onPlayerLeaveFMLEvent(FMLNetworkEvent.ClientDisconnectionFromServerEvent event) {
         WawelClient client = WawelClient.instance();
         if (client == null) return;
 
+        invalidatedPlayers.clear();
         client.getTextureResolver()
             .invalidateAll();
         client.getConnectionProviderCache()
