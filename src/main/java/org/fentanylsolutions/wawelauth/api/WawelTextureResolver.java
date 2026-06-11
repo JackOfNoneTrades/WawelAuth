@@ -200,10 +200,15 @@ public class WawelTextureResolver {
             TextureFetchState observedState = entry.state;
             switch (observedState) {
                 case RESOLVED:
-                    if (isResolvedReady(entry)) {
-                        return entry.texLocation;
+                    if (isResolvedUsable(entry)) {
+                        if (!entry.isExpired()) {
+                            return entry.texLocation;
+                        }
+                        // TTL refresh: keep serving the stale texture while refetching.
+                        cache.retryIfCurrent(entry, observedState);
+                    } else {
+                        cache.restartIfCurrent(entry, observedState, fallback);
                     }
-                    cache.restartIfCurrent(entry, observedState, fallback);
                     break;
                 case REGISTERED_LOADING:
                     ResourceLocation registered = entry.texLocation;
@@ -216,14 +221,14 @@ public class WawelTextureResolver {
                     }
                     return fallback;
                 case FETCHING:
-                    return fallback;
+                    return staleOrFallback(entry, fallback);
                 case PLACEHOLDER:
                 case FAILED:
                     if (entry.shouldRetry()) {
                         cache.retryIfCurrent(entry, observedState);
                         break;
                     }
-                    return fallback;
+                    return staleOrFallback(entry, fallback);
                 default:
                     break;
             }
@@ -237,17 +242,22 @@ public class WawelTextureResolver {
             submitFetch(entry);
         }
 
-        return fallback;
+        return staleOrFallback(entry, fallback);
     }
 
-    private boolean isResolvedReady(TextureEntry entry) {
-        if (entry.isExpired()) {
-            return false;
-        }
+    private boolean isResolvedUsable(TextureEntry entry) {
         if (!entry.kind.isSkin() && entry.texLocation == null) {
             return true;
         }
         return hasUsableRegisteredTexture(entry.texLocation);
+    }
+
+    private static ResourceLocation staleOrFallback(TextureEntry entry, ResourceLocation fallback) {
+        ResourceLocation stale = entry.texLocation;
+        if (stale != null && hasUsableRegisteredTexture(stale)) {
+            return stale;
+        }
+        return fallback;
     }
 
     private void submitFetch(TextureEntry entry) {
