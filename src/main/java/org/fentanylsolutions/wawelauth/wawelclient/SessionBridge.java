@@ -874,39 +874,34 @@ public class SessionBridge {
             return false;
         }
         for (String accepted : acceptedHosts) {
-            if (hostsEquivalent(accepted, candidateHost)) {
+            if (hostMatchesAccepted(accepted, candidateHost)) {
                 return true;
             }
         }
         return false;
     }
 
-    private static boolean hostsEquivalent(String leftHost, String rightHost) {
-        if (leftHost == null || rightHost == null) return false;
-        String left = leftHost.toLowerCase();
-        String right = rightHost.toLowerCase();
-        if (left.equals(right)) return true;
+    private static boolean hostMatchesAccepted(String acceptedHost, String candidateHost) {
+        if (acceptedHost == null || candidateHost == null) return false;
+        String accepted = acceptedHost.toLowerCase();
+        String candidate = candidateHost.toLowerCase();
+        if (accepted.equals(candidate)) return true;
 
-        // For IP literals require exact match.
-        if (isIpLiteral(left) || isIpLiteral(right)) {
+        // IP literals must match exactly; never treat them as domains.
+        if (isIpLiteral(accepted) || isIpLiteral(candidate)) {
             return false;
         }
 
-        String leftDomain = registrableDomain(left);
-        String rightDomain = registrableDomain(right);
-        return leftDomain != null && leftDomain.equals(rightDomain);
+        // Match only when the candidate falls under the accepted host as a
+        // proper subdomain. The old registrable-domain check matched on the
+        // last two labels, so sibling subdomains (auth.example.com vs
+        // evil.example.com) and shared public suffixes (a.co.uk vs b.co.uk)
+        // wrongly compared equal.
+        return candidate.endsWith("." + accepted);
     }
 
     private static boolean isIpLiteral(String host) {
         return host.matches("^[0-9.]+$") || host.contains(":");
-    }
-
-    private static String registrableDomain(String host) {
-        String[] parts = host.split("\\.");
-        if (parts.length < 2) {
-            return host;
-        }
-        return parts[parts.length - 2] + "." + parts[parts.length - 1];
     }
 
     private static ClientProvider buildEphemeralLocalProvider(ServerCapabilities capabilities) {
