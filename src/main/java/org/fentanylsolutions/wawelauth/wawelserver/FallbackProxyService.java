@@ -19,7 +19,6 @@ import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
-import org.fentanylsolutions.wawelauth.wawelcore.util.JsonUtil;
 import org.fentanylsolutions.wawelauth.wawelnet.BinaryResponse;
 import org.fentanylsolutions.wawelauth.wawelnet.NetException;
 import org.fentanylsolutions.wawelauth.wawelnet.RequestContext;
@@ -495,10 +494,6 @@ public class FallbackProxyService {
             return 1;
         }
         return weight > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) weight;
-    }
-
-    private static String getAsString(JsonObject obj, String key) {
-        return JsonUtil.getString(obj, key);
     }
 
     private static class FallbackEntry {

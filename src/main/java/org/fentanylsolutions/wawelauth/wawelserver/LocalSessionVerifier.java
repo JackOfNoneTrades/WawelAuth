@@ -4,8 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.InetAddress;
-import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -18,13 +16,11 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.ServerConfigurationManager;
 
 import org.fentanylsolutions.fentlib.util.NetUtil;
-import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
-import org.fentanylsolutions.wawelauth.wawelcore.ping.WawelPingPayload;
 import org.fentanylsolutions.wawelauth.wawelcore.util.JsonUtil;
 
 import com.google.gson.JsonArray;
@@ -125,7 +121,7 @@ public final class LocalSessionVerifier {
             String rawSessionUrl = normalizeUrl(fallback.getSessionServerUrl());
             if (rawSessionUrl == null) continue;
 
-            String sessionMinecraftBase = resolveSessionMinecraftBase(rawSessionUrl);
+            String sessionMinecraftBase = ApiUrlUtil.resolveSessionMinecraftBase(rawSessionUrl);
             URL checkUrl = HttpAuthenticationService.constantURL(sessionMinecraftBase + "/hasJoined");
             Map<String, Object> args = new HashMap<String, Object>();
             args.put("username", username);
@@ -157,56 +153,6 @@ public final class LocalSessionVerifier {
         }
 
         return null;
-    }
-
-    private static String resolveSessionMinecraftBase(String sessionServerUrl) {
-        String base = normalizeUrl(sessionServerUrl);
-        if (base == null) return null;
-
-        if (base.endsWith("/session/minecraft")) {
-            return base;
-        }
-        if (base.endsWith("/sessionserver")) {
-            return base + "/session/minecraft";
-        }
-        if (base.endsWith("/session")) {
-            return base + "/minecraft";
-        }
-
-        try {
-            URI uri = URI.create(base);
-            String host = uri.getHost();
-            String path = uri.getPath();
-            if (host != null && "sessionserver.mojang.com".equalsIgnoreCase(host) && (path == null || path.isEmpty())) {
-                return base + "/session/minecraft";
-            }
-        } catch (Exception ignored) {}
-
-        // Default for entries configured as server roots
-        return base + "/session/minecraft";
-    }
-
-    private static String resolveLocalApiRoot() {
-        String apiRoot = WawelPingPayload.normalizeUrl(
-            Config.server() == null ? null
-                : Config.server()
-                    .getEffectiveApiRoot());
-        if (apiRoot != null) {
-            return apiRoot;
-        }
-
-        MinecraftServer server = MinecraftServer.getServer();
-        if (server == null) return null;
-
-        int port = server.getServerPort();
-        if (port <= 0) {
-            port = server.getPort();
-        }
-        if (port <= 0) return null;
-
-        InetAddress loopback = InetAddress.getLoopbackAddress();
-        String host = loopback == null ? "127.0.0.1" : loopback.getHostAddress();
-        return "http://" + NetworkAddressUtil.formatHostPort(host, port);
     }
 
     public static String consumeDisconnectReason(String defaultReason) {
@@ -444,7 +390,7 @@ public final class LocalSessionVerifier {
     }
 
     private static String resolveLocalSessionServerUrl() {
-        String apiRoot = resolveLocalApiRoot();
+        String apiRoot = ApiUrlUtil.resolveLocalApiRoot();
         return apiRoot != null ? apiRoot + "/sessionserver" : null;
     }
 }

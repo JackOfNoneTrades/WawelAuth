@@ -1,18 +1,15 @@
 package org.fentanylsolutions.wawelauth.wawelserver.compat;
 
-import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collection;
 
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.server.MinecraftServer;
 
-import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
 import org.fentanylsolutions.fentlib.util.StringUtil;
-import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
 import org.fentanylsolutions.wawelauth.wawelcore.ping.WawelPingPayload;
+import org.fentanylsolutions.wawelauth.wawelserver.ApiUrlUtil;
 import org.fentanylsolutions.wawelauth.wawelserver.WawelServer;
 
 import com.google.gson.JsonObject;
@@ -33,7 +30,7 @@ public final class DynmapSkinUrlResolver {
             return fromProfile;
         }
 
-        String apiRoot = resolveLocalApiRoot();
+        String apiRoot = ApiUrlUtil.resolveLocalApiRoot();
         String normalizedCurrent = absolutizeSkinUrl(currentSkinUrl, apiRoot);
         if (normalizedCurrent != null) {
             return normalizedCurrent;
@@ -71,7 +68,7 @@ public final class DynmapSkinUrlResolver {
             return null;
         }
 
-        String apiRoot = resolveLocalApiRoot();
+        String apiRoot = ApiUrlUtil.resolveLocalApiRoot();
         for (Property property : properties) {
             if (property == null) continue;
             String url = extractSkinUrlFromTexturesProperty(property.getValue());
@@ -142,30 +139,6 @@ public final class DynmapSkinUrlResolver {
 
     private static boolean isAbsoluteHttpUrl(String value) {
         return value.startsWith("http://") || value.startsWith("https://");
-    }
-
-    private static String resolveLocalApiRoot() {
-        String configured = normalizeApiRoot(
-            WawelPingPayload.normalizeUrl(
-                Config.server() == null ? null
-                    : Config.server()
-                        .getEffectiveApiRoot()));
-        if (configured != null) {
-            return configured;
-        }
-
-        MinecraftServer server = MinecraftServer.getServer();
-        if (server == null) return null;
-
-        int port = server.getServerPort();
-        if (port <= 0) {
-            port = server.getPort();
-        }
-        if (port <= 0) return null;
-
-        InetAddress loopback = InetAddress.getLoopbackAddress();
-        String host = loopback == null ? "127.0.0.1" : loopback.getHostAddress();
-        return "http://" + NetworkAddressUtil.formatHostPort(host, port);
     }
 
     private static String normalizeApiRoot(String apiRoot) {

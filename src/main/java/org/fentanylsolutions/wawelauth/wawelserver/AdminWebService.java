@@ -39,7 +39,6 @@ import net.minecraft.server.management.ServerConfigurationManager;
 import net.minecraft.server.management.UserListOps;
 import net.minecraft.server.management.UserListWhitelist;
 
-import org.fentanylsolutions.fentlib.util.NetUtil;
 import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
@@ -2101,7 +2100,7 @@ public class AdminWebService {
     }
 
     private String fetchFallbackSkinUrl(FallbackServer fallback, String uuidUnsigned) {
-        String base = resolveSessionMinecraftBase(normalizeUrl(fallback.getSessionServerUrl()));
+        String base = ApiUrlUtil.resolveSessionMinecraftBase(fallback.getSessionServerUrl());
         if (base == null) {
             return null;
         }
@@ -2127,32 +2126,6 @@ public class AdminWebService {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private String resolveSessionMinecraftBase(String rawSessionServerUrl) {
-        String base = normalizeUrl(rawSessionServerUrl);
-        if (base == null) return null;
-
-        if (base.endsWith("/session/minecraft")) {
-            return base;
-        }
-        if (base.endsWith("/sessionserver")) {
-            return base + "/session/minecraft";
-        }
-        if (base.endsWith("/session")) {
-            return base + "/minecraft";
-        }
-
-        try {
-            java.net.URI uri = java.net.URI.create(base);
-            String host = uri.getHost();
-            String path = uri.getPath();
-            if (host != null && "sessionserver.mojang.com".equalsIgnoreCase(host) && (path == null || path.isEmpty())) {
-                return base + "/session/minecraft";
-            }
-        } catch (Exception ignored) {}
-
-        return base + "/session/minecraft";
     }
 
     private static String parseSkinUrlFromProfileResponse(JsonObject profile) {
@@ -2209,10 +2182,6 @@ public class AdminWebService {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private static String normalizeUrl(String raw) {
-        return NetUtil.normalizeHttpUrl(raw);
     }
 
     private static String appendPath(String base, String suffix) {
