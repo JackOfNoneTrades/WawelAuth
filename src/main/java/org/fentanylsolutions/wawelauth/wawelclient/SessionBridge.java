@@ -551,8 +551,7 @@ public class SessionBridge {
 
             ClientAccount existing = accountDAO.findByProviderAndProfile(provider.getName(), profileUuid);
             if (existing != null) {
-                WawelAuth
-                    .debug("Account '" + username + "' already exists on " + provider.getName() + ", skipping import");
+                resyncImportedAccount(existing, token, username);
                 return;
             }
 
@@ -579,6 +578,23 @@ public class SessionBridge {
         } catch (Exception e) {
             WawelAuth.LOG.warn("Failed to auto-import launcher session: {}", e.getMessage());
         }
+    }
+
+    private void resyncImportedAccount(ClientAccount existing, String token, String username) {
+        if (StringUtil.trimToNull(existing.getRefreshToken()) != null) {
+            WawelAuth.debug("Account '" + username + "' is WawelAuth-managed, leaving launcher session untouched");
+            return;
+        }
+        long now = System.currentTimeMillis();
+        existing.setAccessToken(token);
+        existing.setStatus(AccountStatus.VALID);
+        existing.setConsecutiveFailures(0);
+        existing.setLastValidatedAt(now);
+        existing.setTokenIssuedAt(now);
+        existing.setLastError(null);
+        accountDAO.update(existing);
+        accountManager.cacheStatus(existing.getId(), AccountStatus.VALID);
+        WawelAuth.LOG.info("Re-synced imported account from launcher session: {}", username);
     }
 
     private ClientProvider resolveLauncherSessionProvider() {
