@@ -197,23 +197,22 @@ public class WawelTextureResolver {
         ResourceLocation fallback = fallbackFor(kind);
         TextureEntry entry = cache.get(kind, cacheKey);
         if (entry != null) {
-            switch (entry.state) {
+            TextureFetchState observedState = entry.state;
+            switch (observedState) {
                 case RESOLVED:
                     if (isResolvedReady(entry)) {
                         return entry.texLocation;
                     }
-                    entry.texLocation = fallback;
-                    entry.state = TextureFetchState.PENDING;
+                    cache.restartIfCurrent(entry, observedState, fallback);
                     break;
                 case REGISTERED_LOADING:
-                    // Main-thread only: render checks and queued texture registrations both run on the client thread.
-                    if (entry.texLocation != null && hasUsableRegisteredTexture(entry.texLocation)) {
-                        entry.markResolved(entry.texLocation);
-                        return entry.texLocation;
+                    ResourceLocation registered = entry.texLocation;
+                    if (registered != null && hasUsableRegisteredTexture(registered)) {
+                        cache.resolveIfCurrent(entry, observedState, registered);
+                        return registered;
                     }
                     if (entry.isRegisteredLoadingTimedOut()) {
-                        entry.texLocation = fallback;
-                        entry.markFailure();
+                        cache.failIfCurrent(entry, observedState, fallback);
                     }
                     return fallback;
                 case FETCHING:
@@ -221,7 +220,7 @@ public class WawelTextureResolver {
                 case PLACEHOLDER:
                 case FAILED:
                     if (entry.shouldRetry()) {
-                        entry.state = TextureFetchState.PENDING;
+                        cache.retryIfCurrent(entry, observedState);
                         break;
                     }
                     return fallback;

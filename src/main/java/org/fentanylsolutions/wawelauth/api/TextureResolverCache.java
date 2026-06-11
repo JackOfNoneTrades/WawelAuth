@@ -126,6 +126,43 @@ final class TextureResolverCache {
         }
     }
 
+    // Render-thread transitions take the same lock as worker completions and
+    // re-check the state observed before the lock was acquired.
+
+    void restartIfCurrent(TextureEntry entry, TextureFetchState expectedState, ResourceLocation fallbackLocation) {
+        synchronized (completionLock) {
+            if (isCurrent(entry) && entry.state == expectedState) {
+                entry.texLocation = fallbackLocation;
+                entry.state = TextureFetchState.PENDING;
+            }
+        }
+    }
+
+    void retryIfCurrent(TextureEntry entry, TextureFetchState expectedState) {
+        synchronized (completionLock) {
+            if (isCurrent(entry) && entry.state == expectedState) {
+                entry.state = TextureFetchState.PENDING;
+            }
+        }
+    }
+
+    void resolveIfCurrent(TextureEntry entry, TextureFetchState expectedState, ResourceLocation location) {
+        synchronized (completionLock) {
+            if (isCurrent(entry) && entry.state == expectedState) {
+                entry.markResolved(location);
+            }
+        }
+    }
+
+    void failIfCurrent(TextureEntry entry, TextureFetchState expectedState, ResourceLocation fallbackLocation) {
+        synchronized (completionLock) {
+            if (isCurrent(entry) && entry.state == expectedState) {
+                entry.texLocation = fallbackLocation;
+                entry.markFailure();
+            }
+        }
+    }
+
     void invalidate(UUID profileId) {
         if (profileId == null) return;
         String suffix = "|" + profileId.toString();
