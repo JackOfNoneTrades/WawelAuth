@@ -22,6 +22,9 @@ public abstract class MixinUniverse {
             return;
         }
 
+        // Always cancels: ServerUtilities' name and substring fallbacks assume
+        // unique names, which does not hold across providers. Offline players
+        // must be referenced by qualified name.
         cir.setReturnValue(ServerUtilitiesForgePlayerResolver.resolveCommandPlayer((Universe) (Object) this, nameOrId));
     }
 }

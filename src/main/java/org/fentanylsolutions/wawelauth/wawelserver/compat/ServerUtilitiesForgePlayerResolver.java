@@ -110,15 +110,22 @@ public final class ServerUtilitiesForgePlayerResolver {
     }
 
     private static ForgePlayer findStoredPlayerByExactName(Universe universe, String input) {
+        ForgePlayer match = null;
         for (ForgePlayer player : universe.getPlayers()) {
             String name = player == null ? null : player.getName();
             if (name != null && name.equalsIgnoreCase(input)) {
-                ProviderAwareUserListManager.resolveProviderKey(LIST_TYPE, player.getProfile(), true);
-                return player;
+                if (match != null) {
+                    // Same name under multiple providers, do not guess.
+                    return null;
+                }
+                match = player;
             }
         }
 
-        return null;
+        if (match != null) {
+            ProviderAwareUserListManager.resolveProviderKey(LIST_TYPE, match.getProfile(), true);
+        }
+        return match;
     }
 
     private static void rememberOnlineProvider(ForgePlayer player) {
