@@ -1066,7 +1066,7 @@ public class AccountManager {
             return AccountStatus.UNAUTHED;
         }
 
-        if (isMicrosoftManagedMojangAccount(provider, account)) {
+        if (BuiltinProviders.isMojangProvider(provider.getName())) {
             return doValidateOrRefreshMicrosoft(account, provider);
         }
         if (isProviderOauthManagedAccount(provider, account)) {
@@ -1394,15 +1394,6 @@ public class AccountManager {
             markUnverified(account, e.getMessage());
             return AccountStatus.UNVERIFIED;
         }
-    }
-
-    private static boolean isMicrosoftManagedMojangAccount(ClientProvider provider, ClientAccount account) {
-        return provider != null && account != null
-            && BuiltinProviders.isMojangProvider(provider.getName())
-            && account.getRefreshToken() != null
-            && !account.getRefreshToken()
-                .trim()
-                .isEmpty();
     }
 
     private static boolean isProviderOauthManagedAccount(ClientProvider provider, ClientAccount account) {
