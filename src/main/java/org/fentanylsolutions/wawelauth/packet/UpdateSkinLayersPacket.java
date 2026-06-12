@@ -2,6 +2,9 @@ package org.fentanylsolutions.wawelauth.packet;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 
+import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.common.ServerTaskScheduler;
+
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
@@ -33,10 +36,16 @@ public class UpdateSkinLayersPacket implements IMessage {
         @Override
         public IMessage onMessage(UpdateSkinLayersPacket message, MessageContext ctx) {
             EntityPlayerMP player = ctx.getServerHandler().playerEntity;
-            if (player != null) {
-                player.getDataWatcher()
-                    .updateObject(16, message.mask);
+            if (player == null) {
+                return null;
             }
+            byte mask = (byte) (message.mask & SkinLayersHelper.ALL_PARTS_MASK);
+            ServerTaskScheduler.schedule(() -> {
+                if (!player.isDead) {
+                    player.getDataWatcher()
+                        .updateObject(16, mask);
+                }
+            });
             return null;
         }
     }

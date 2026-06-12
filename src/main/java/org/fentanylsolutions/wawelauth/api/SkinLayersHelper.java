@@ -74,6 +74,16 @@ public class SkinLayersHelper {
         }
     }
 
+    public static final byte ALL_PARTS_MASK;
+
+    static {
+        byte mask = 0;
+        for (EnumPlayerModelParts part : EnumPlayerModelParts.values()) {
+            mask |= part.getPartMask();
+        }
+        ALL_PARTS_MASK = mask;
+    }
+
     public static boolean isSkinLayerHidden(EntityPlayer player, EnumPlayerModelParts part) {
         return (player.getDataWatcher()
             .getWatchableObjectByte(16) & part.getPartMask()) != 0;

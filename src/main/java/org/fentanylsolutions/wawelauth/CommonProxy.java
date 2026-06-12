@@ -7,6 +7,7 @@ import net.minecraft.server.MinecraftServer;
 import org.fentanylsolutions.fentlib.services.http.HttpPortUnification;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersConfig;
+import org.fentanylsolutions.wawelauth.common.ServerTaskScheduler;
 import org.fentanylsolutions.wawelauth.packet.PacketHandler;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ClientConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
@@ -41,6 +42,7 @@ public class CommonProxy {
         }
 
         PacketHandler.init();
+        ServerTaskScheduler.register();
         WawelAuth.LOG.info("I am Wawel Auth at version {}", Tags.VERSION);
     }
 
@@ -112,6 +114,7 @@ public class CommonProxy {
     }
 
     public void serverStopping(FMLServerStoppingEvent event) {
+        ServerTaskScheduler.clear();
         WawelServer.stop();
     }
 
