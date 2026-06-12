@@ -39,12 +39,12 @@ dependencies {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.102-GTNH:dev")
     runtimeOnlyNonPublishable("curse.maven:archaicfix-677782:6785842")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:7695645")) // 1.0.2-1.7.10
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.35:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.36:dev")
     //runtimeOnlyNonPublishable("org.fentanylsolutions.vintagedamageindicators:VintageDamageIndicators:test2")
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:skinport-234948:3212017"))
 
     // Compile + runtime
-    devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.11.13:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.11.14:dev")
     devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:0.0.50:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.74-1.7.10:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.3.1:dev")
@@ -53,7 +53,7 @@ dependencies {
 
     // Pure compile
     compileOnly("org.jetbrains:annotations:26.1.0")
-    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.23:dev")
+    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.24:dev")
     compileOnly("org.lwjgl:lwjgl-sdl:3.4.1")
     compileOnly("com.github.GTNewHorizons:GTNH-Web-Map:0.3.46:dev")
     compileOnly("com.github.GTNewHorizons:twilightforest:2.7.33:dev")
