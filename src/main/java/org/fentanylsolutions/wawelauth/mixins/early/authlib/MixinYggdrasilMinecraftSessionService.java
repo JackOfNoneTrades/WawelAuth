@@ -34,36 +34,10 @@ import com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService;
  * remap = false because authlib is not obfuscated.
  *
  * Hooks: signature verification, domain whitelisting, profile fetching,
- * provider context skip, animated cape detection.
+ * animated cape detection.
  */
 @Mixin(value = YggdrasilMinecraftSessionService.class, remap = false)
 public class MixinYggdrasilMinecraftSessionService {
-
-    @Inject(method = "getTextures", at = @At("HEAD"))
-    private void wawelauth$refreshProfileBeforeTextureVerify(GameProfile profile, boolean requireSecure,
-        CallbackInfoReturnable<Map<MinecraftProfileTexture.Type, MinecraftProfileTexture>> cir) {
-        if (profile == null || profile.getId() == null) {
-            return;
-        }
-
-        WawelClient client = WawelClient.instance();
-        if (client == null) {
-            return;
-        }
-
-        // Provider context set = resolver already filled the profile
-        ClientProvider providerContext = client.getSessionBridge()
-            .getActiveProviderContext();
-        if (providerContext != null) {
-            return;
-        }
-
-        // In-world: resolver handles skin fetching per-player. Don't fill here,
-        // would use wrong provider for other players.
-        if (net.minecraft.client.Minecraft.getMinecraft().theWorld != null) {
-            return;
-        }
-    }
 
     /** Redirect signature check to use provider context key, falling back to Mojang. */
     @Redirect(
