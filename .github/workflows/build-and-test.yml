@@ -7,9 +7,6 @@ on:
   push:
     branches: [ master, main ]
 
-env:
-  WAWELAUTH_CI: "true"
-
 jobs:
   build-and-test:
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
