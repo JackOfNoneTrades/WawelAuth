@@ -61,6 +61,7 @@ public final class LoginDialog {
             String[] errorText = { initMsg != null ? initMsg : "" };
             boolean[] isError = { initMsg == null };
             boolean[] busy = { false };
+            boolean[] cancelled = { false };
             String[] oauthDeviceCode = { null };
 
             ButtonWidget<?> loginBtn = new ButtonWidget<>();
@@ -71,6 +72,9 @@ public final class LoginDialog {
 
             cancelBtn.size(56, 18)
                 .onMousePressed(mouseButton -> {
+                    // Disarm any in-flight auth completion so a late success
+                    // cannot fire the result consumer of a dismissed dialog.
+                    cancelled[0] = true;
                     dialog.closeWith(null);
                     return true;
                 });
@@ -110,6 +114,7 @@ public final class LoginDialog {
                     .whenComplete((account, err) -> {
                         Minecraft.getMinecraft()
                             .func_152344_a(() -> { // Minecraft.addScheduledTask
+                                if (cancelled[0]) return;
                                 busy[0] = false;
                                 if (err != null) {
                                     Throwable cause = err.getCause() != null ? err.getCause() : err;
@@ -162,6 +167,7 @@ public final class LoginDialog {
                         .whenComplete((account, err) -> {
                             Minecraft.getMinecraft()
                                 .func_152344_a(() -> {
+                                    if (cancelled[0]) return;
                                     busy[0] = false;
                                     if (err != null) {
                                         Throwable cause = err.getCause() != null ? err.getCause() : err;
@@ -194,6 +200,7 @@ public final class LoginDialog {
                         .whenComplete((account, err) -> {
                             Minecraft.getMinecraft()
                                 .func_152344_a(() -> {
+                                    if (cancelled[0]) return;
                                     busy[0] = false;
                                     oauthDeviceCode[0] = err != null ? null : oauthDeviceCode[0];
                                     if (err != null) {

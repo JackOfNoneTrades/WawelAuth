@@ -48,11 +48,14 @@ public final class RegisterDialog {
 
             String[] statusText = { "" };
             boolean[] busy = { false };
+            boolean[] cancelled = { false };
 
             ButtonWidget<?> cancelBtn = new ButtonWidget<>();
             cancelBtn.size(62, 18)
                 .onMousePressed(mouseButton -> {
-                    if (busy[0]) return true;
+                    // Disarm any in-flight register completion so a late success
+                    // cannot fire the result consumer of a dismissed dialog.
+                    cancelled[0] = true;
                     dialog.closeWith(Boolean.FALSE);
                     return true;
                 });
@@ -100,6 +103,7 @@ public final class RegisterDialog {
                     .whenComplete((v, err) -> {
                         Minecraft.getMinecraft()
                             .func_152344_a(() -> { // Minecraft.addScheduledTask
+                                if (cancelled[0]) return;
                                 busy[0] = false;
                                 if (err != null) {
                                     Throwable cause = err.getCause() != null ? err.getCause() : err;

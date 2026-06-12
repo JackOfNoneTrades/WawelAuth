@@ -65,12 +65,16 @@ public final class AddProviderDialog {
 
         String[] statusText = { "" };
         boolean[] busy = { false };
+        boolean[] cancelled = { false };
 
         ButtonWidget<?> discoverBtn = new ButtonWidget<>();
         ButtonWidget<?> cancelBtn = new ButtonWidget<>();
 
         cancelBtn.size(60, 18)
             .onMousePressed(mouseButton -> {
+                // Disarm any in-flight discovery so a late success cannot pop
+                // the confirm dialog after the user dismissed this one.
+                cancelled[0] = true;
                 dialog.closeWith(null);
                 return true;
             });
@@ -108,6 +112,7 @@ public final class AddProviderDialog {
                 .whenComplete((provider, err) -> {
                     Minecraft.getMinecraft()
                         .func_152344_a(() -> { // Minecraft.addScheduledTask
+                            if (cancelled[0]) return;
                             busy[0] = false;
                             if (err != null) {
                                 Throwable cause = err.getCause() != null ? err.getCause() : err;
