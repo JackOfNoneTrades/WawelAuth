@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.fentanylsolutions.fentlib.services.http.HttpPortUnification;
 import org.fentanylsolutions.fentlib.services.http.ReverseProxyHttpHandler;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelserver.WawelServer;
@@ -80,14 +81,14 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
             ctx.channel()
                 .remoteAddress(),
             ctx.pipeline()
-                .get("https_ssl") instanceof SslHandler);
+                .get(HttpPortUnification.SSL_HANDLER_NAME) instanceof SslHandler);
 
         // The full request has arrived and responses always close the connection,
         // so the read timeout would only misfire while a worker is still busy.
         if (ctx.pipeline()
-            .get("http_timeout") != null) {
+            .get(HttpPortUnification.TIMEOUT_HANDLER_NAME) != null) {
             ctx.pipeline()
-                .remove("http_timeout");
+                .remove(HttpPortUnification.TIMEOUT_HANDLER_NAME);
         }
 
         // Run the handler on the worker pool. Blocking there (PBKDF2, fallback

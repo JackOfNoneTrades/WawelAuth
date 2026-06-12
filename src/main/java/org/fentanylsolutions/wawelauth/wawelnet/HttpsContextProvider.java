@@ -81,7 +81,7 @@ public final class HttpsContextProvider {
         ensureInitialized();
     }
 
-    static synchronized SSLEngine newServerEngine() {
+    public static synchronized SSLEngine newServerEngine() {
         ensureInitialized();
         SSLEngine engine = cachedContext.createSSLEngine();
         engine.setUseClientMode(false);

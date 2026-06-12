@@ -4,11 +4,13 @@ import java.io.File;
 
 import net.minecraft.server.MinecraftServer;
 
+import org.fentanylsolutions.fentlib.services.http.HttpPortUnification;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersConfig;
 import org.fentanylsolutions.wawelauth.packet.PacketHandler;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ClientConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
+import org.fentanylsolutions.wawelauth.wawelnet.HttpRequestHandler;
 import org.fentanylsolutions.wawelauth.wawelnet.HttpsContextProvider;
 import org.fentanylsolutions.wawelauth.wawelserver.CommandWawelAuth;
 import org.fentanylsolutions.wawelauth.wawelserver.WawelPingServerHooks;
@@ -57,6 +59,12 @@ public class CommonProxy {
             return;
         }
 
+        ServerConfig.Http httpConfig = config.getHttp();
+        HttpPortUnification.setRequestHandler(
+            HttpRequestHandler::new,
+            httpConfig.getReadTimeoutSeconds(),
+            httpConfig.getMaxContentLengthBytes());
+
         if (config.hasAbsoluteLikeApiRoot()) {
             failAbsoluteApiRootStartup(config);
             return;
@@ -76,9 +84,10 @@ public class CommonProxy {
             return;
         }
 
-        if (config.getHttp()
-            .isHttpsEnabled()) {
+        if (httpConfig.isHttpsEnabled()) {
             HttpsContextProvider.prepareForStartup();
+            HttpPortUnification
+                .setHttpsSupport(HttpsContextProvider::newServerEngine, httpConfig.getTlsHandshakeTimeoutSeconds());
         }
     }
 

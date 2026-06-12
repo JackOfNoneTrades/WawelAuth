@@ -11,10 +11,6 @@ public class Mixins extends FentMixins {
     @Override
     protected void registerMixins(MixinUtil.Registry registry) {
         // Minecraft Accessors
-        registry.mixin("AccessorNetworkSystem")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
         registry.mixin("AccessorUserList")
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.SERVER)
@@ -25,10 +21,6 @@ public class Mixins extends FentMixins {
             .build();
 
         // Minecraft Mixins
-        registry.mixin("MixinNetworkSystem")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
         registry.mixin("MixinNetHandlerLoginServerAuthThread")
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.SERVER)
