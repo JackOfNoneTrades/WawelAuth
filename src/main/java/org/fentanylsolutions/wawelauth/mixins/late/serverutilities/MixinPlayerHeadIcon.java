@@ -1,13 +1,17 @@
 package org.fentanylsolutions.wawelauth.mixins.late.serverutilities;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.WeakHashMap;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
+import org.fentanylsolutions.wawelauth.client.render.SkinTextureState;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.lwjgl.opengl.GL11;
@@ -33,6 +37,9 @@ public abstract class MixinPlayerHeadIcon extends ImageIcon {
     @Final
     public UUID uuid;
 
+    @Unique
+    private static final Map<ITextureObject, Boolean> wawelauth$layoutCache = new WeakHashMap<>();
+
     public MixinPlayerHeadIcon(ResourceLocation texture) {
         super(texture);
     }
@@ -56,17 +63,41 @@ public abstract class MixinPlayerHeadIcon extends ImageIcon {
     @Overwrite(remap = false)
     @SideOnly(Side.CLIENT)
     public void draw(int x, int y, int w, int h) {
-        bindTexture();
+        ResourceLocation skin = wawelauth$resolveSkin();
+        Minecraft.getMinecraft()
+            .getTextureManager()
+            .bindTexture(skin);
 
-        int texWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-        int texHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
-        boolean legacyLayout = texWidth > 0 && texHeight > 0 && texWidth == texHeight * 2;
+        boolean legacyLayout = wawelauth$isLegacyLayout(skin);
 
         double v0 = legacyLayout ? 0.25D : 0.125D;
         double v1 = legacyLayout ? 0.50D : 0.25D;
 
         GuiHelper.drawTexturedRect(x, y, w, h, this.color, 0.125D, v0, 0.25D, v1);
         GuiHelper.drawTexturedRect(x, y, w, h, this.color, 0.625D, v0, 0.75D, v1);
+    }
+
+    @Unique
+    private static boolean wawelauth$isLegacyLayout(ResourceLocation skin) {
+        ITextureObject texture = Minecraft.getMinecraft()
+            .getTextureManager()
+            .getTexture(skin);
+        if (texture != null) {
+            Boolean cached = wawelauth$layoutCache.get(texture);
+            if (cached != null) {
+                return cached;
+            }
+        }
+
+        int texWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+        int texHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+        boolean legacy = texWidth > 0 && texHeight > 0 && texWidth == texHeight * 2;
+
+        // Provider downloads change dimensions under the same texture object once the image arrives
+        if (texture != null && SkinTextureState.isReadyForRender(texture)) {
+            wawelauth$layoutCache.put(texture, legacy);
+        }
+        return legacy;
     }
 
     @Unique
