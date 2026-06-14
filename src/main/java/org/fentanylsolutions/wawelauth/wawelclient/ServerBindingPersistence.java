@@ -467,6 +467,8 @@ public final class ServerBindingPersistence {
 
             File backup = nextServerListBackupFile(backupDir);
             Files.copy(source.toPath(), backup.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+            WawelAuth.LOG
+                .info("[ServerListDiag] backed up servers.dat ({} bytes) to {}", source.length(), backup.getName());
             pruneServerListBackups(backupDir);
         } catch (IOException e) {
             WawelAuth.debug("Failed to back up servers.dat before save: " + e.getMessage());
