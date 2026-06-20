@@ -209,6 +209,7 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     @Unique
     private void remapUV(ModelRenderer renderer, int texOffsetX, int texOffsetY) {
         renderer.setTextureSize(64, 64);
+        renderer.mirror = false;
         renderer.cubeList.clear();
         renderer.setTextureOffset(texOffsetX, texOffsetY);
     }
