@@ -151,6 +151,7 @@ wawelauth.gui.server_picker.status.bound=Bound to this server as %s
 wawelauth.gui.server_picker.title=Select Account for %s
 wawelauth.gui.server_picker.tooltip.account=Account: %s
 wawelauth.gui.server_picker.tooltip.provider=Provider: %s
+wawelauth.gui.server_picker.manage_account=Manage Account
 
 wawelauth.gui.server_tooltip.account_fallback=account #%s
 wawelauth.gui.server_tooltip.account_selected=Wawel Auth: %s

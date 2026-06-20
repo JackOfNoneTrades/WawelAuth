@@ -124,10 +124,16 @@ final class AccountManagerAccountListPanel {
                 entry.background(new Rectangle().color(0x44FFFFFF));
             }
 
-            Row dot = new Row();
+            Row dot = new Row() {
+
+                @Override
+                public boolean canHover() {
+                    return false;
+                }
+            };
             Rectangle dotBorderRect = new Rectangle().color(0xFF2A2A2A);
             Rectangle dotFillRect = new Rectangle().color(statusColor);
-            Widget<?> dotFill = new Widget<>();
+            NonHoverableWidget dotFill = new NonHoverableWidget();
             dotFill.size(6, 6)
                 .margin(1, 1)
                 .background(dotFillRect);
@@ -146,16 +152,22 @@ final class AccountManagerAccountListPanel {
                 nameLabel.addTooltipLine(profileName);
             }
 
-            Row row = new Row();
+            Row row = new Row() {
+
+                @Override
+                public boolean canHover() {
+                    return false;
+                }
+            };
             row.widthRel(1.0f)
                 .heightRel(1.0f);
-            row.child(new Widget<>().size(2, 14));
+            row.child(nonHoverable(2, 14));
             if (account.getProfileUuid() != null) {
                 row.child(createAccountFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
-                row.child(new Widget<>().size(2, 14));
+                row.child(nonHoverable(2, 14));
             }
             row.child(dot);
-            row.child(new Widget<>().size(2, 14));
+            row.child(nonHoverable(2, 14));
             row.child(nameLabel);
 
             entry.child(row);
@@ -258,5 +270,19 @@ final class AccountManagerAccountListPanel {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static Widget<?> nonHoverable(int width, int height) {
+        NonHoverableWidget w = new NonHoverableWidget();
+        w.size(width, height);
+        return w;
+    }
+
+    private static class NonHoverableWidget extends Widget<NonHoverableWidget> {
+
+        @Override
+        public boolean canHover() {
+            return false;
+        }
     }
 }

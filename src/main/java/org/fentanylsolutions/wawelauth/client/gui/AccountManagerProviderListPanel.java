@@ -18,10 +18,13 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderType;
 
 import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.api.layout.IViewport;
+import com.cleanroommc.modularui.api.layout.IViewportStack;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.Rectangle;
 import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.utils.HoveredWidgetList;
 import com.cleanroommc.modularui.widget.Widget;
 import com.cleanroommc.modularui.widget.WidgetTree;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
@@ -43,6 +46,7 @@ final class AccountManagerProviderListPanel {
     private final ListWidget<IWidget, ?> providerList;
     private final AccountManagerScreenState state;
     private boolean showingLocal;
+    private int pendingScrollOffset = -1;
     private final Supplier<Boolean> hasFocusedLocalContext;
     private final Runnable refreshFocusedLocalProviderState;
     private final Consumer<ClientProvider> selectProvider;
@@ -58,14 +62,37 @@ final class AccountManagerProviderListPanel {
         this.selectProvider = selectProvider;
         this.clearPreview = clearPreview;
         this.openProviderSettingsDialog = openProviderSettingsDialog;
-        this.providerList = new ListWidget<>();
+        this.providerList = new ChildPassthroughListWidget();
     }
 
     ListWidget<IWidget, ?> widget() {
         return providerList;
     }
 
+    void scrollToSelected() {
+        pendingScrollOffset = 0; // will be updated with actual offset during rebuild
+    }
+
+    /**
+     * Try to apply a pending scroll-to-selected offset. Call from onUpdate()
+     * so the widget tree is laid out. Returns true when consumed.
+     */
+    boolean applyPendingScroll() {
+        if (pendingScrollOffset < 0) return false;
+        int offset = pendingScrollOffset;
+        try {
+            WidgetTree.resizeInternal(providerList.resizer(), false);
+            providerList.getScrollData()
+                .scrollTo(providerList.getScrollArea(), offset);
+            pendingScrollOffset = -1;
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     void rebuild() {
+        boolean scrollToSelected = pendingScrollOffset >= 0;
         int savedScroll = saveScroll();
         providerList.removeAll();
         WawelClient client = WawelClient.instance();
@@ -76,6 +103,11 @@ final class AccountManagerProviderListPanel {
                 refreshFocusedLocalProviderState.run();
             }
             return;
+        }
+
+        // Auto-expand local section if the selected provider is local.
+        if (!showingLocal && isLocalProvider(state.selectedProvider)) {
+            showingLocal = true;
         }
 
         ClientProvider connectedProvider = resolveConnectedProvider(client);
@@ -101,12 +133,20 @@ final class AccountManagerProviderListPanel {
         providers.sort(byDisplayName);
 
         boolean selectedVisible = false;
+        int selectedRowOffset = -1;
+        int rowOffset = 0;
         ClientProvider currentSelected = state.selectedProvider;
         if (connectedProvider != null) {
-            selectedVisible |= addProviderRow(connectedProvider, currentSelected, true);
+            boolean hit = addProviderRow(connectedProvider, currentSelected, true);
+            if (hit) selectedRowOffset = rowOffset;
+            selectedVisible |= hit;
+            rowOffset += PROVIDER_ROW_HEIGHT;
         }
         for (ClientProvider provider : providers) {
-            selectedVisible |= addProviderRow(provider, currentSelected);
+            boolean hit = addProviderRow(provider, currentSelected);
+            if (hit) selectedRowOffset = rowOffset;
+            selectedVisible |= hit;
+            rowOffset += PROVIDER_ROW_HEIGHT;
         }
 
         if (!localProviders.isEmpty()) {
@@ -137,11 +177,15 @@ final class AccountManagerProviderListPanel {
                 .mainAxisAlignment(Alignment.MainAxis.CENTER)
                 .child(toggleButton);
             providerList.child(toggleRow);
+            rowOffset += SHOW_LOCAL_BUTTON_HEIGHT + 2; // height + margin(0,1) top+bottom
 
             if (showingLocal) {
                 localProviders.sort(byDisplayName);
                 for (ClientProvider provider : localProviders) {
-                    selectedVisible |= addProviderRow(provider, currentSelected);
+                    boolean hit = addProviderRow(provider, currentSelected);
+                    if (hit) selectedRowOffset = rowOffset;
+                    selectedVisible |= hit;
+                    rowOffset += PROVIDER_ROW_HEIGHT;
                 }
             }
         }
@@ -162,7 +206,9 @@ final class AccountManagerProviderListPanel {
             }
         }
 
-        if (savedScroll > 0 && providerList.isValid()) {
+        if (scrollToSelected && selectedRowOffset >= 0) {
+            pendingScrollOffset = selectedRowOffset;
+        } else if (savedScroll > 0 && providerList.isValid()) {
             try {
                 WidgetTree.resizeInternal(providerList.resizer(), false);
                 providerList.getScrollData()
@@ -213,8 +259,6 @@ final class AccountManagerProviderListPanel {
 
         ButtonWidget<?> settingsButton = new ButtonWidget<>();
         settingsButton.size(14, 14)
-            .background(IDrawable.EMPTY)
-            .hoverBackground(IDrawable.EMPTY)
             .overlay(PROVIDER_SETTINGS_ICON)
             .hoverOverlay(PROVIDER_SETTINGS_ICON_HOVER)
             .addTooltipLine(GuiText.tr("wawelauth.gui.account_manager.provider_settings"))
@@ -223,11 +267,17 @@ final class AccountManagerProviderListPanel {
                 return true;
             });
 
-        Row providerRow = new Row();
+        Row providerRow = new Row() {
+
+            @Override
+            public boolean canHover() {
+                return false;
+            }
+        };
         providerRow.widthRel(1.0f)
             .height(14)
             .child(selectButton)
-            .child(new Widget<>().size(1, 14))
+            .child(nonHoverable(1, 14))
             .child(settingsButton);
 
         providerList.child(providerRow);
@@ -308,5 +358,32 @@ final class AccountManagerProviderListPanel {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static Widget<?> nonHoverable(int width, int height) {
+        NonHoverableWidget w = new NonHoverableWidget();
+        w.size(width, height);
+        return w;
+    }
+
+    private static class NonHoverableWidget extends Widget<NonHoverableWidget> {
+
+        @Override
+        public boolean canHover() {
+            return false;
+        }
+    }
+
+    /**
+     * ListWidget that always lets children receive hover/click, even in the scrollbar area.
+     */
+    private static class ChildPassthroughListWidget extends ListWidget<IWidget, ChildPassthroughListWidget> {
+
+        @Override
+        public void getWidgetsAt(IViewportStack stack, HoveredWidgetList widgets, int x, int y) {
+            if (widgets.peek() == this && hasChildren()) {
+                IViewport.getChildrenAt(this, stack, widgets, x, y);
+            }
+        }
     }
 }

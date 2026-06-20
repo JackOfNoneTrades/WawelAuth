@@ -27,9 +27,11 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderProxySettings;
 import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderProxySupport;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
+import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.Rectangle;
+import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
@@ -47,7 +49,10 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class ServerAccountPickerScreen extends ParentAwareModularScreen {
 
-    private static final int ACCOUNT_LABEL_MAX_WIDTH_PX = 174;
+    private static final UITexture MANAGE_PROVIDER_TEXTURE = UITexture.fullImage("wawelauth", "unauthed");
+    private static final IDrawable MANAGE_PROVIDER_ICON = (context, x, y, width, height,
+        widgetTheme) -> MANAGE_PROVIDER_TEXTURE.draw(context, x + 1, y, width, height, widgetTheme);
+    private static final int ACCOUNT_LABEL_MAX_WIDTH_PX = 153;
     private static final int ACCOUNT_ENTRY_HEIGHT = 16;
     private static final int ACCOUNT_LIST_TOP_MARGIN = 4;
     private static final int ACCOUNT_LIST_MAX_VISIBLE_ROWS = 8;
@@ -468,7 +473,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         return null;
     }
 
-    private ButtonWidget<?> buildAccountEntry(ClientAccount account, long selectedAccountId, ModularPanel panel,
+    private Row buildAccountEntry(ClientAccount account, long selectedAccountId, ModularPanel panel,
         Consumer<ClientAccount> onSelect) {
         AccountStatus status = getLiveStatus(account);
         int statusColor = StatusColors.getColor(status);
@@ -476,50 +481,86 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         String providerName = ProviderDisplayName.displayName(account.getProviderName());
         boolean isSelected = selectedAccountId == account.getId();
 
-        ButtonWidget<?> entry = new ButtonWidget<>();
-        entry.widthRel(1.0f)
-            .height(16);
+        ButtonWidget<?> selectButton = new ButtonWidget<>();
+        selectButton.expanded()
+            .height(ACCOUNT_ENTRY_HEIGHT);
         if (isSelected) {
-            entry.background(new Rectangle().color(0x44FFFFFF));
+            selectButton.background(new Rectangle().color(0x44FFFFFF));
         }
 
-        Row dot = new Row();
+        Row dot = new Row() {
+
+            @Override
+            public boolean canHover() {
+                return false;
+            }
+        };
         dot.size(8, 8)
             .margin(1, 4)
             .background(new Rectangle().color(0xFF2A2A2A))
             .child(
-                new Widget<>().size(6, 6)
-                    .margin(1, 1)
+                nonHoverable(6, 6).margin(1, 1)
                     .background(new Rectangle().color(statusColor)));
 
         String fullLabel = profileName;
         String displayLabel = GuiText.ellipsizeToPixelWidth(fullLabel, ACCOUNT_LABEL_MAX_WIDTH_PX);
-        TextWidget<?> label = new TextWidget<>(IKey.str(displayLabel));
+        @SuppressWarnings("unchecked")
+        TextWidget<?> label = new TextWidget(IKey.str(displayLabel)) {
+
+            @Override
+            public boolean canHoverThrough() {
+                return true;
+            }
+        };
         label.expanded()
             .heightRel(1.0f);
         label.addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.tooltip.account", fullLabel));
         label.addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.tooltip.provider", providerName));
 
-        Row row = new Row();
-        row.widthRel(1.0f)
+        Row innerRow = new Row() {
+
+            @Override
+            public boolean canHover() {
+                return false;
+            }
+        };
+        innerRow.widthRel(1.0f)
             .heightRel(1.0f)
-            .child(new Widget<>().size(2, 16));
+            .child(nonHoverable(2, ACCOUNT_ENTRY_HEIGHT));
         if (account.getProfileUuid() != null) {
-            row.child(createFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
-            row.child(new Widget<>().size(2, 16));
+            innerRow.child(createFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
+            innerRow.child(nonHoverable(2, ACCOUNT_ENTRY_HEIGHT));
         }
-        row.child(dot)
-            .child(new Widget<>().size(2, 16))
+        innerRow.child(dot)
+            .child(nonHoverable(2, ACCOUNT_ENTRY_HEIGHT))
             .child(label);
 
-        entry.child(row);
-        entry.onMousePressed(mouseButton -> {
+        selectButton.child(innerRow);
+        selectButton.onMousePressed(mouseButton -> {
             onSelect.accept(account);
             panel.closeIfOpen();
             return true;
         });
 
-        return entry;
+        ButtonWidget<?> manageButton = new ButtonWidget<>();
+        manageButton.size(ACCOUNT_ENTRY_HEIGHT, ACCOUNT_ENTRY_HEIGHT)
+            .overlay(MANAGE_PROVIDER_ICON)
+            .addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.manage_account"))
+            .onMousePressed(mouseButton -> {
+                GuiTransitionScheduler.transition(
+                    panel,
+                    () -> AccountManagerScreen.openForProvider(account.getProviderName(), account.getId()));
+                return true;
+            });
+
+        Row entryRow = new Row();
+        entryRow.widthRel(1.0f)
+            .height(ACCOUNT_ENTRY_HEIGHT)
+            .child(selectButton)
+            .child(new Widget<>().size(1, ACCOUNT_ENTRY_HEIGHT))
+            .child(manageButton);
+
+        return entryRow;
     }
 
     private ButtonWidget<?> buildSingleplayerClearEntry(long selectedAccountId, ModularPanel panel) {
@@ -555,6 +596,20 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
     private static boolean notBlank(String value) {
         return value != null && !value.trim()
             .isEmpty();
+    }
+
+    private static Widget<?> nonHoverable(int width, int height) {
+        NonHoverableWidget w = new NonHoverableWidget();
+        w.size(width, height);
+        return w;
+    }
+
+    private static class NonHoverableWidget extends Widget<NonHoverableWidget> {
+
+        @Override
+        public boolean canHover() {
+            return false;
+        }
     }
 
     private static AccountStatus getLiveStatus(ClientAccount account) {

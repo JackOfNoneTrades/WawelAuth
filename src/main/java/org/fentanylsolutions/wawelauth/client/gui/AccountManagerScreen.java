@@ -97,6 +97,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private static ServerData pendingFocusedServerData;
     private static ServerCapabilities pendingFocusedCapabilities;
+    private static String pendingSelectedProviderName;
+    private static long pendingSelectedAccountId = -1L;
 
     private AccountManagerScreenState state;
 
@@ -170,6 +172,16 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 .tr("wawelauth.gui.account_manager.cape_selected", trimPath(file.getAbsolutePath(), 68));
         }
         state.textureUploadStatus = "";
+    }
+
+    public static void openForProvider(String providerName) {
+        openForProvider(providerName, -1L);
+    }
+
+    public static void openForProvider(String providerName, long accountId) {
+        pendingSelectedProviderName = providerName;
+        pendingSelectedAccountId = accountId;
+        ClientGUI.open(new AccountManagerScreen());
     }
 
     public static void openForLocalAuth(ServerData serverData) {
@@ -568,6 +580,28 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 .tooltip(tooltip -> tooltip.addLine(GuiText.key("wawelauth.gui.common.close"))));
 
         clearTextureSelection();
+        if (pendingSelectedProviderName != null) {
+            String targetName = pendingSelectedProviderName;
+            long targetAccountId = pendingSelectedAccountId;
+            pendingSelectedProviderName = null;
+            pendingSelectedAccountId = -1L;
+            WawelClient targetClient = WawelClient.instance();
+            if (targetClient != null) {
+                ClientProvider target = targetClient.getProviderRegistry()
+                    .getProvider(targetName);
+                if (target != null) {
+                    selectProvider(target);
+                    providerListPanel.scrollToSelected();
+                    if (targetAccountId >= 0) {
+                        ClientAccount targetAccount = targetClient.getAccountManager()
+                            .getAccount(targetAccountId);
+                        if (targetAccount != null) {
+                            selectAccount(targetAccount);
+                        }
+                    }
+                }
+            }
+        }
         rebuildProviderList();
         if (hasFocusedLocalContext()) {
             rebuildAccountList();
@@ -698,6 +732,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     public void onUpdate() {
         super.onUpdate();
 
+        if (providerListPanel != null) {
+            providerListPanel.applyPendingScroll();
+        }
         if (accountListPanel != null && accountListPanel.consumeRebuildRequest()) {
             rebuildAccountList();
         }

@@ -46,6 +46,11 @@ public class FaceWidget extends Widget<FaceWidget> {
     }
 
     @Override
+    public boolean canHover() {
+        return false;
+    }
+
+    @Override
     public void draw(ModularGuiContext context, WidgetThemeEntry<?> widgetTheme) {
         WawelClient client = WawelClient.instance();
         ResourceLocation skin;
