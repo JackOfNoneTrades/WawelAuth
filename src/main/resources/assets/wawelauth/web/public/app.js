@@ -34,35 +34,38 @@
     }
 
     function cacheElements() {
+        const byId = function (id) {
+            return document.getElementById(id);
+        };
         return {
-            iconWrap: document.getElementById("iconWrap"),
-            serverIcon: document.getElementById("serverIcon"),
-            serverName: document.getElementById("serverName"),
-            motdLine: document.getElementById("motdLine"),
-            serverDescription: document.getElementById("serverDescription"),
-            playerCountPill: document.getElementById("playerCountPill"),
-            minecraftVersionPill: document.getElementById("minecraftVersionPill"),
-            adminButton: document.getElementById("adminButton"),
-            dynmapButton: document.getElementById("dynmapButton"),
-            serverAddressButton: document.getElementById("serverAddressButton"),
-            serverAddressText: document.getElementById("serverAddressText"),
-            serverAddressWarning: document.getElementById("serverAddressWarning"),
-            homepageButton: document.getElementById("homepageButton"),
-            registerButton: document.getElementById("registerButton"),
-            registrationPolicy: document.getElementById("registrationPolicy"),
-            registrationDescription: document.getElementById("registrationDescription"),
-            apiRootValue: document.getElementById("apiRootValue"),
-            apiRootDescription: document.getElementById("apiRootDescription"),
-            fallbackList: document.getElementById("fallbackList"),
-            fallbackEmpty: document.getElementById("fallbackEmpty"),
-            playerList: document.getElementById("playerList"),
-            playerListEmpty: document.getElementById("playerListEmpty"),
-            modlistToggle: document.getElementById("modlistToggle"),
-            modlistCount: document.getElementById("modlistCount"),
-            modlist: document.getElementById("modlist"),
-            authlibText: document.getElementById("authlibText"),
-            footerImplementationName: document.getElementById("footerImplementationName"),
-            footerVersion: document.getElementById("footerVersion")
+            iconWrap: byId("iconWrap"),
+            serverIcon: byId("serverIcon"),
+            serverName: byId("serverName"),
+            motdLine: byId("motdLine"),
+            serverDescription: byId("serverDescription"),
+            playerCountPill: byId("playerCountPill"),
+            registrationPill: byId("registrationPill"),
+            minecraftVersionPill: byId("minecraftVersionPill"),
+            adminButton: byId("adminButton"),
+            dynmapButton: byId("dynmapButton"),
+            serverAddressButton: byId("serverAddressButton"),
+            serverAddressText: byId("serverAddressText"),
+            serverAddressWarning: byId("serverAddressWarning"),
+            joinHint: byId("joinHint"),
+            homepageButton: byId("homepageButton"),
+            registerButton: byId("registerButton"),
+            registrationPolicy: byId("registrationPolicy"),
+            registrationDescription: byId("registrationDescription"),
+            apiRootValue: byId("apiRootValue"),
+            apiRootDescription: byId("apiRootDescription"),
+            fallbackList: byId("fallbackList"),
+            fallbackEmpty: byId("fallbackEmpty"),
+            playerList: byId("playerList"),
+            playerListEmpty: byId("playerListEmpty"),
+            modlistCount: byId("modlistCount"),
+            modlist: byId("modlist"),
+            footerImplementationName: byId("footerImplementationName"),
+            footerVersion: byId("footerVersion")
         };
     }
 
@@ -130,6 +133,7 @@
         el.motdLine.textContent = motd;
         el.playerCountPill.textContent = "Players: " + formatPlayerCount(playersOnline, maxPlayers);
         el.minecraftVersionPill.textContent = "Minecraft " + minecraftVersion;
+        el.registrationPill.textContent = registrationLabel;
         el.registrationPolicy.textContent = registrationLabel;
         el.registrationDescription.textContent = registrationDescription;
 
@@ -141,22 +145,14 @@
             el.serverDescription.classList.add("hidden");
         }
 
-        if (apiRoot) {
-            el.apiRootValue.textContent = apiRoot;
-            el.apiRootDescription.textContent = "Point authlib-injector at this URL.";
-            el.authlibText.innerHTML = "Point authlib-injector at <code>" + escapeHtml(apiRoot) + "</code>.";
-        } else {
-            el.apiRootValue.textContent = "Not configured";
-            el.apiRootDescription.textContent = "Required for authlib-injector and public API discovery.";
-            el.authlibText.textContent = "This server has not configured a public authlib-injector API root yet.";
-        }
+        configureApiRoot(el, apiRoot);
 
         configureLink(el.homepageButton, homepage);
         configureLink(el.registerButton, registerUrl);
         configureLink(el.adminButton, nonEmpty(links.admin));
         configureLink(el.dynmapButton, nonEmpty(links.dynmap));
         configureServerAddress(el, serverName, serverAddress, serverAddressWarning);
-        renderFallbacks(el, fallbacks);
+        renderFallbacks(el, buildAuthorizedProviders(fallbacks, apiRoot));
         renderConnectedPlayers(el, connectedPlayers);
         renderModlist(el, modlist);
         configureIcon(el, icons);
@@ -166,7 +162,6 @@
         document.title = "Wawel Auth Server";
         el.serverDescription.textContent = "Failed to load public server information: " + message;
         el.serverDescription.classList.remove("hidden");
-        el.authlibText.textContent = "Public server information is unavailable right now.";
         el.iconWrap.classList.add("fallback");
         el.iconWrap.classList.remove("is-switchable");
         el.iconWrap.removeAttribute("title");
@@ -176,8 +171,11 @@
         el.playerCountPill.textContent = "Players: ? / ?";
         configureServerAddress(el, null, null);
         el.apiRootValue.textContent = "Unavailable";
+        el.apiRootValue.disabled = true;
+        el.apiRootValue.onclick = null;
+        el.apiRootValue.removeAttribute("title");
         el.apiRootDescription.textContent = "Public server information could not be loaded.";
-        el.fallbackList.classList.add("hidden");
+        el.fallbackList.innerHTML = "";
         el.fallbackEmpty.classList.remove("hidden");
         el.playerList.classList.add("hidden");
         el.playerListEmpty.classList.remove("hidden");
@@ -188,13 +186,10 @@
     function renderFallbacks(el, fallbacks) {
         el.fallbackList.innerHTML = "";
         if (!fallbacks.length) {
-            el.fallbackList.classList.add("hidden");
             el.fallbackEmpty.classList.remove("hidden");
             return;
         }
-
         el.fallbackEmpty.classList.add("hidden");
-        el.fallbackList.classList.remove("hidden");
 
         fallbacks.forEach(function (fallback) {
             const name = nonEmpty(fallback && fallback.name) || "fallback";
@@ -204,37 +199,25 @@
                 makeFallbackLink("Services API", fallback && fallback.servicesUrl)
             ].filter(Boolean);
 
-            const row = document.createElement("div");
-            row.className = "fallback-entry";
+            const entry = document.createElement("details");
+            entry.className = "fallback-entry";
 
-            const toggle = document.createElement("button");
-            toggle.type = "button";
-            toggle.className = "fallback-toggle";
-            toggle.setAttribute("aria-expanded", "false");
-
-            const arrow = document.createElement("span");
-            arrow.className = "fallback-arrow";
-            arrow.textContent = ">";
-
-            const label = document.createElement("span");
-            label.className = "fallback-name";
-            label.textContent = name;
-
-            toggle.appendChild(arrow);
-            toggle.appendChild(label);
+            const summary = document.createElement("summary");
+            summary.textContent = name;
+            entry.appendChild(summary);
 
             const details = document.createElement("div");
-            details.className = "fallback-details hidden";
+            details.className = "fallback-details";
 
             if (!links.length) {
-                const empty = document.createElement("div");
-                empty.className = "fallback-link-row muted";
+                const empty = document.createElement("p");
+                empty.className = "muted small";
                 empty.textContent = "No public API links configured.";
                 details.appendChild(empty);
             } else {
                 links.forEach(function (item) {
-                    const line = document.createElement("div");
-                    line.className = "fallback-link-row";
+                    const row = document.createElement("div");
+                    row.className = "fallback-link-row";
 
                     const key = document.createElement("span");
                     key.className = "fallback-link-label";
@@ -247,22 +230,42 @@
                     value.rel = "noreferrer";
                     value.textContent = item.url;
 
-                    line.appendChild(key);
-                    line.appendChild(value);
-                    details.appendChild(line);
+                    row.appendChild(key);
+                    row.appendChild(value);
+                    details.appendChild(row);
                 });
             }
 
-            toggle.onclick = function () {
-                const expanded = toggle.getAttribute("aria-expanded") === "true";
-                toggle.setAttribute("aria-expanded", expanded ? "false" : "true");
-                row.classList.toggle("expanded", !expanded);
-                details.classList.toggle("hidden", expanded);
-            };
+            entry.appendChild(details);
+            el.fallbackList.appendChild(entry);
+        });
+    }
 
-            row.appendChild(toggle);
-            row.appendChild(details);
-            el.fallbackList.appendChild(row);
+    function buildAuthorizedProviders(fallbacks, apiRoot) {
+        const providers = Array.isArray(fallbacks) ? fallbacks.slice() : [];
+        const base = stripTrailingSlash(nonEmpty(apiRoot));
+        if (!base || hasProviderForApiRoot(providers, base)) {
+            return providers;
+        }
+
+        providers.unshift({
+            name: "Local (Wawel Auth)",
+            accountUrl: base + "/authserver",
+            sessionServerUrl: base + "/sessionserver",
+            servicesUrl: base
+        });
+        return providers;
+    }
+
+    function hasProviderForApiRoot(providers, apiRoot) {
+        const authUrl = apiRoot + "/authserver";
+        const sessionUrl = apiRoot + "/sessionserver";
+        return providers.some(function (provider) {
+            const name = String((provider && provider.name) || "").toLowerCase();
+            return name === "local" || name === "localauth" || name === "wawelauth" || name === "self"
+                || stripTrailingSlash(nonEmpty(provider && provider.servicesUrl)) === apiRoot
+                || stripTrailingSlash(nonEmpty(provider && provider.accountUrl)) === authUrl
+                || stripTrailingSlash(nonEmpty(provider && provider.sessionServerUrl)) === sessionUrl;
         });
     }
 
@@ -271,7 +274,30 @@
         return url ? { label: label, url: url } : null;
     }
 
+    function configureApiRoot(el, apiRoot) {
+        if (!apiRoot) {
+            el.apiRootValue.textContent = "Not configured";
+            el.apiRootValue.disabled = true;
+            el.apiRootValue.onclick = null;
+            el.apiRootValue.removeAttribute("title");
+            el.apiRootDescription.textContent = "Required for authlib-injector and public API discovery.";
+            return;
+        }
+
+        el.apiRootValue.textContent = apiRoot;
+        el.apiRootValue.disabled = false;
+        el.apiRootValue.title = "Copy API root";
+        el.apiRootValue.onclick = function () {
+            copyText(apiRoot);
+            flashText(el.apiRootDescription, "Copied API root.");
+        };
+        el.apiRootDescription.textContent = "Click to copy. Point authlib-injector at this URL.";
+    }
+
     function configureLink(anchor, url) {
+        if (!anchor) {
+            return;
+        }
         if (!url) {
             anchor.classList.add("hidden");
             anchor.removeAttribute("href");
@@ -282,50 +308,50 @@
     }
 
     function configureServerAddress(el, serverName, address, warning) {
+        const button = el.serverAddressButton;
+
         if (address) {
             const payload = buildServerDragPayload(serverName || address, address);
             el.serverAddressText.textContent = address;
-            el.serverAddressButton.setAttribute("href", "#");
-            el.serverAddressButton.dataset.serverAddress = address;
-            el.serverAddressButton.dataset.serverName = serverName || address;
-            el.serverAddressButton.dataset.dragPayload = payload;
-            el.serverAddressButton.setAttribute("draggable", "true");
-            el.serverAddressButton.onclick = function (event) {
+            button.setAttribute("href", "#");
+            button.dataset.serverAddress = address;
+            button.dataset.serverName = serverName || address;
+            button.dataset.dragPayload = payload;
+            button.setAttribute("draggable", "true");
+            button.onclick = function (event) {
                 event.preventDefault();
+                copyText(address);
+                flashJoinHint(el, "Copied " + address);
             };
-            el.serverAddressButton.ondragstart = function (event) {
+            button.ondragstart = function (event) {
                 if (!event.dataTransfer) {
-                    console.info("[WawelAuth public-page] dragstart without dataTransfer");
                     return;
                 }
-                console.info("[WawelAuth public-page] dragstart", {
-                    serverName: serverName || address,
-                    address: address,
-                    payload: payload
-                });
                 event.dataTransfer.effectAllowed = "copy";
                 safeSetDragData(event.dataTransfer, "text/plain", payload);
                 safeSetDragData(event.dataTransfer, "text/uri-list", payload);
                 safeSetDragData(event.dataTransfer, "application/x-wawelauth-server", payload);
             };
-            el.serverAddressButton.ondragend = function () {
-                console.info("[WawelAuth public-page] dragend");
-            };
-            el.serverAddressButton.classList.remove("hidden");
+            button.classList.remove("hidden");
             el.serverAddressWarning.classList.add("hidden");
             el.serverAddressWarning.textContent = "";
+            if (el.joinHint) {
+                el.joinHint.classList.remove("hidden");
+            }
             return;
         }
 
-        el.serverAddressButton.classList.add("hidden");
-        el.serverAddressButton.removeAttribute("href");
-        el.serverAddressButton.setAttribute("draggable", "false");
-        delete el.serverAddressButton.dataset.serverAddress;
-        delete el.serverAddressButton.dataset.serverName;
-        delete el.serverAddressButton.dataset.dragPayload;
-        el.serverAddressButton.onclick = null;
-        el.serverAddressButton.ondragstart = null;
-        el.serverAddressButton.ondragend = null;
+        button.classList.add("hidden");
+        button.removeAttribute("href");
+        button.setAttribute("draggable", "false");
+        delete button.dataset.serverAddress;
+        delete button.dataset.serverName;
+        delete button.dataset.dragPayload;
+        button.onclick = null;
+        button.ondragstart = null;
+        if (el.joinHint) {
+            el.joinHint.classList.add("hidden");
+        }
 
         if (warning) {
             el.serverAddressWarning.textContent = warning;
@@ -334,6 +360,26 @@
             el.serverAddressWarning.textContent = "";
             el.serverAddressWarning.classList.add("hidden");
         }
+    }
+
+    function flashJoinHint(el, message) {
+        if (!el.joinHint) {
+            return;
+        }
+        flashText(el.joinHint, message);
+    }
+
+    function flashText(node, message) {
+        if (!node) {
+            return;
+        }
+        const original = node.dataset.original || node.textContent;
+        node.dataset.original = original;
+        node.textContent = message;
+        window.clearTimeout(node._resetTimer);
+        node._resetTimer = window.setTimeout(function () {
+            node.textContent = node.dataset.original;
+        }, 2000);
     }
 
     function renderConnectedPlayers(el, players) {
@@ -359,6 +405,8 @@
             avatar.className = "player-avatar";
             avatar.alt = name + " head";
             avatar.loading = "lazy";
+            avatar.width = 40;
+            avatar.height = 40;
             avatar.src = avatarUrl || FALLBACK_ICON_URL;
 
             const text = document.createElement("div");
@@ -375,16 +423,6 @@
     function renderModlist(el, modlist) {
         el.modlist.innerHTML = "";
         el.modlistCount.textContent = modlist.length + (modlist.length === 1 ? " mod" : " mods");
-        el.modlist.classList.add("hidden");
-        el.modlistToggle.setAttribute("aria-expanded", "false");
-        el.modlistToggle.parentElement.classList.remove("expanded");
-
-        el.modlistToggle.onclick = function () {
-            const expanded = el.modlistToggle.getAttribute("aria-expanded") === "true";
-            el.modlistToggle.setAttribute("aria-expanded", expanded ? "false" : "true");
-            el.modlist.classList.toggle("hidden", expanded);
-            el.modlistToggle.parentElement.classList.toggle("expanded", !expanded);
-        };
 
         if (!modlist.length) {
             const empty = document.createElement("div");
@@ -405,7 +443,6 @@
             const main = document.createElement("div");
             main.className = "mod-mainline";
             main.textContent = version ? (name + " " + version) : name;
-
             row.appendChild(main);
 
             if (filename) {
@@ -468,11 +505,41 @@
             + encodeURIComponent(address);
     }
 
+    function stripTrailingSlash(value) {
+        const text = nonEmpty(value);
+        return text ? text.replace(/\/+$/, "") : null;
+    }
+
     function safeSetDragData(dataTransfer, mimeType, value) {
         try {
             dataTransfer.setData(mimeType, value);
         } catch (err) {
             console.debug("[WawelAuth public-page] Failed to set drag data", mimeType, err);
+        }
+    }
+
+    function copyText(value) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(value).catch(function () {
+                legacyCopy(value);
+            });
+            return;
+        }
+        legacyCopy(value);
+    }
+
+    function legacyCopy(value) {
+        try {
+            const textarea = document.createElement("textarea");
+            textarea.value = value;
+            textarea.setAttribute("readonly", "");
+            textarea.className = "offscreen-clipboard";
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+        } catch (err) {
+            console.debug("[WawelAuth public-page] Clipboard copy failed", err);
         }
     }
 

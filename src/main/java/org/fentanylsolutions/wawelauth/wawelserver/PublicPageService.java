@@ -79,6 +79,11 @@ public final class PublicPageService {
         staticFiles.put(
             "/assets/wawelauth/web/admin/fonts/nerd-fonts/SymbolsNerdFont-Subset.woff2",
             "fonts/nerd-fonts/SymbolsNerdFont-Subset.woff2");
+        staticFiles.put("/assets/wawelauth/web/public/links/github.svg", "links/github.svg");
+        staticFiles.put("/assets/wawelauth/web/public/links/67.png", "links/67.png");
+        staticFiles.put("/assets/wawelauth/web/public/links/modrinth.svg", "links/modrinth.svg");
+        staticFiles.put("/assets/wawelauth/web/public/links/curseforge.svg", "links/curseforge.svg");
+        staticFiles.put("/assets/wawelauth/web/public/links/mcmodcn.png", "links/mcmodcn.png");
         STATIC_SEED_RESOURCES = Collections.unmodifiableMap(staticFiles);
     }
 

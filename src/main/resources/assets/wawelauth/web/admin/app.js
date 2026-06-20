@@ -13,13 +13,15 @@
         profileUuidDrafts: {},
         users: [],
         configLoaded: false,
+        configOriginal: null,
         providers: [],
         opsEntries: [],
         whitelistEntries: [],
         opsResolved: null,
         whitelistResolved: null,
         serverProperties: [],
-        serverPropertiesLoaded: false
+        serverPropertiesLoaded: false,
+        serverPropertiesOriginal: []
     };
 
     const el = {};
@@ -55,7 +57,8 @@
         el.loginBtn = document.getElementById("loginBtn");
         el.transportHint = document.getElementById("transportHint");
         el.siteFooter = document.getElementById("siteFooter");
-        el.footerVersionLine = document.getElementById("footerVersionLine");
+        el.footerImplementationName = document.getElementById("footerImplementationName");
+        el.footerVersion = document.getElementById("footerVersion");
 
         el.refreshBtn = document.getElementById("refreshBtn");
         el.logoutBtn = document.getElementById("logoutBtn");
@@ -115,10 +118,14 @@
         el.cfgAllowAnimatedCapes = document.getElementById("cfgAllowAnimatedCapes");
         el.cfgMaxCapeFrameCount = document.getElementById("cfgMaxCapeFrameCount");
         el.cfgMaxAnimatedCapeFileSize = document.getElementById("cfgMaxAnimatedCapeFileSize");
+        el.configDirtyActions = document.getElementById("configDirtyActions");
+        el.configResetBtn = document.getElementById("configResetBtn");
+        el.configSaveBtn = document.getElementById("configSaveBtn");
 
         el.propsForm = document.getElementById("propsForm");
         el.propsFilterInput = document.getElementById("propsFilterInput");
-        el.propsAddRowBtn = document.getElementById("propsAddRowBtn");
+        el.propsDirtyActions = document.getElementById("propsDirtyActions");
+        el.propsResetBtn = document.getElementById("propsResetBtn");
         el.propsSaveBtn = document.getElementById("propsSaveBtn");
         el.propsBody = document.getElementById("propsBody");
         el.propsStatusLine = document.getElementById("propsStatusLine");
@@ -165,11 +172,13 @@
         el.invitesBody.addEventListener("click", onInviteTableClick);
 
         el.configForm.addEventListener("submit", onConfigSave);
+        el.configForm.addEventListener("input", onConfigFormInput);
+        el.configForm.addEventListener("change", onConfigFormInput);
+        el.configResetBtn.addEventListener("click", onConfigReset);
         el.propsForm.addEventListener("submit", onServerPropertiesSave);
         el.propsFilterInput.addEventListener("input", renderServerProperties);
-        el.propsAddRowBtn.addEventListener("click", onAddServerPropertyRow);
+        el.propsResetBtn.addEventListener("click", onServerPropertiesReset);
         el.propsBody.addEventListener("input", onServerPropertiesTableInput);
-        el.propsBody.addEventListener("click", onServerPropertiesTableClick);
 
         el.opsResolveBtn.addEventListener("click", onResolveOpsProfile);
         el.opsAddForm.addEventListener("submit", onAddOp);
@@ -304,12 +313,14 @@
         state.sessionExpiresAt = 0;
         state.configLoaded = false;
         state.users = [];
+        state.configOriginal = null;
         state.providers = [];
         state.opsEntries = [];
         state.whitelistEntries = [];
         state.opsResolved = null;
         state.whitelistResolved = null;
         state.serverProperties = [];
+        state.serverPropertiesOriginal = [];
         state.serverPropertiesLoaded = false;
         stopSessionTimer();
         clearAvatarObjectUrls();
@@ -320,6 +331,7 @@
         el.loginCard.classList.remove("hidden");
         disableLogin(false);
         updateSessionLine();
+        updateDirtyActions();
     }
 
     async function onLogoutClick() {
@@ -369,6 +381,7 @@
         for (const section of el.viewSections) {
             section.classList.toggle("hidden", section.id !== viewId);
         }
+        updateDirtyActions();
     }
 
     async function refreshData(manual) {
@@ -430,6 +443,7 @@
         try {
             const config = await requestJson("/api/wawelauth/admin/config/server", { method: "GET" }, true);
             populateConfigForm(config || {});
+            markConfigClean();
             state.configLoaded = true;
             if (showNotice) {
                 showBanner("Loaded server config.", "ok");
@@ -446,11 +460,10 @@
         try {
             const data = await requestJson("/api/wawelauth/admin/config/server-properties", { method: "GET" }, true);
             state.serverProperties = normalizeServerProperties((data && data.properties) || []);
+            markServerPropertiesClean();
             state.serverPropertiesLoaded = true;
             renderServerProperties();
-            el.propsStatusLine.textContent = String(
-                (data && data.statusMessage) || "Most server.properties changes require reload/restart to take effect."
-            );
+            el.propsStatusLine.textContent = "";
             if (showNotice) {
                 showBanner("Loaded server.properties.", "ok");
             }
@@ -484,6 +497,7 @@
             );
 
             populateConfigForm(response || {});
+            markConfigClean();
             state.configLoaded = true;
             state.bootstrap = Object.assign({}, state.bootstrap || {}, {
                 serverName: (response && response.serverName) || "",
@@ -515,7 +529,8 @@
 
     function renderFooter(data) {
         const modVersion = String(data.modVersion || "-");
-        el.footerVersionLine.textContent = `Wawel Auth version ${modVersion}`;
+        el.footerImplementationName.textContent = String(data.implementationName || "Wawel Auth");
+        el.footerVersion.textContent = modVersion;
         el.siteFooter.classList.remove("hidden");
     }
 
@@ -547,7 +562,8 @@
         }
 
         if (!rows.length) {
-            el.propsBody.innerHTML = `<tr><td colspan="3" class="empty">No matching properties</td></tr>`;
+            el.propsBody.innerHTML = `<tr><td colspan="2" class="empty">No matching properties</td></tr>`;
+            updateDirtyActions();
             return;
         }
 
@@ -555,20 +571,9 @@
             <tr>
                 <td><input type="text" data-action="prop-key" data-index="${row.index}" value="${escapeAttr(row.key)}"></td>
                 <td><input type="text" data-action="prop-value" data-index="${row.index}" value="${escapeAttr(row.value)}"></td>
-                <td><button type="button" class="small danger" data-action="prop-remove" data-index="${row.index}">Remove</button></td>
             </tr>
         `).join("");
-    }
-
-    function onAddServerPropertyRow() {
-        state.serverProperties.push({ key: "", value: "" });
-        renderServerProperties();
-        const index = state.serverProperties.length - 1;
-        const selector = `input[data-action='prop-key'][data-index='${index}']`;
-        const input = el.propsBody.querySelector(selector);
-        if (input) {
-            input.focus();
-        }
+        updateDirtyActions();
     }
 
     function onServerPropertiesTableInput(event) {
@@ -587,19 +592,7 @@
         } else if (action === "prop-value") {
             state.serverProperties[index].value = input.value;
         }
-    }
-
-    function onServerPropertiesTableClick(event) {
-        const button = event.target.closest("button[data-action='prop-remove'][data-index]");
-        if (!button) {
-            return;
-        }
-        const index = Number(button.getAttribute("data-index"));
-        if (!Number.isInteger(index) || index < 0 || index >= state.serverProperties.length) {
-            return;
-        }
-        state.serverProperties.splice(index, 1);
-        renderServerProperties();
+        updateDirtyActions();
     }
 
     function buildServerPropertiesPayload() {
@@ -648,14 +641,11 @@
             );
 
             state.serverProperties = normalizeServerProperties((response && response.properties) || []);
+            markServerPropertiesClean();
             state.serverPropertiesLoaded = true;
             renderServerProperties();
-            const status = String(
-                (response && response.statusMessage) ||
-                "Saved server.properties. Reload/restart server for changes to take effect."
-            );
-            el.propsStatusLine.textContent = status;
-            showBanner(status, "ok");
+            el.propsStatusLine.textContent = "";
+            showBanner("server.properties saved.", "ok");
         } catch (err) {
             showBanner(`Failed to save server.properties: ${err.message}`, "err");
         }
@@ -781,6 +771,149 @@
         el.cfgMaxAnimatedCapeFileSize.value = safeNumber(textures.maxAnimatedCapeFileSizeBytes, 10485760);
     }
 
+    function onConfigFormInput() {
+        updateDirtyActions();
+    }
+
+    function onConfigReset() {
+        if (!state.configOriginal) {
+            return;
+        }
+        applyConfigSnapshot(state.configOriginal);
+        updateDirtyActions();
+        showBanner("server.json changes reset.", "ok");
+    }
+
+    function onServerPropertiesReset() {
+        if (!state.serverPropertiesLoaded) {
+            return;
+        }
+        state.serverProperties = cloneServerProperties(state.serverPropertiesOriginal);
+        renderServerProperties();
+        el.propsStatusLine.textContent = "";
+        showBanner("server.properties changes reset.", "ok");
+    }
+
+    function markConfigClean() {
+        state.configOriginal = createConfigSnapshot();
+        updateDirtyActions();
+    }
+
+    function markServerPropertiesClean() {
+        state.serverPropertiesOriginal = cloneServerProperties(state.serverProperties);
+        updateDirtyActions();
+    }
+
+    function createConfigSnapshot() {
+        return {
+            serverName: el.cfgServerName.value || "",
+            publicBaseUrl: el.cfgPublicBaseUrl.value || "",
+            apiRoot: el.cfgApiRoot.value || "",
+            publicPagePath: el.cfgPublicPagePath.value || "",
+            publicInfoApiPath: el.cfgPublicInfoApiPath.value || "",
+            serverAddress: el.cfgServerAddress.value || "",
+            serverHomepage: el.cfgServerHomepage.value || "",
+            serverRegister: el.cfgServerRegister.value || "",
+            publicDescription: el.cfgPublicDescription.value || "",
+            legacySkinApi: Boolean(el.cfgLegacySkinApi.checked),
+            noMojangNamespace: Boolean(el.cfgNoMojangNamespace.checked),
+            usernameCheck: Boolean(el.cfgUsernameCheck.checked),
+            registrationPolicy: el.cfgRegistrationPolicy.value || "",
+            playerNameRegex: el.cfgPlayerNameRegex.value || "",
+            defaultInviteUses: el.cfgDefaultInviteUses.value || "",
+            tokenMaxPerUser: el.cfgTokenMaxPerUser.value || "",
+            sessionTimeoutMs: el.cfgSessionTimeoutMs.value || "",
+            httpHttpsEnabled: Boolean(el.cfgHttpHttpsEnabled.checked),
+            httpReadTimeoutSec: el.cfgHttpReadTimeoutSec.value || "",
+            httpTlsHandshakeTimeoutSec: el.cfgHttpTlsHandshakeTimeoutSec.value || "",
+            httpMaxContentLen: el.cfgHttpMaxContentLen.value || "",
+            maxSkinWidth: el.cfgMaxSkinWidth.value || "",
+            maxSkinHeight: el.cfgMaxSkinHeight.value || "",
+            maxCapeWidth: el.cfgMaxCapeWidth.value || "",
+            maxCapeHeight: el.cfgMaxCapeHeight.value || "",
+            maxFileSizeBytes: el.cfgMaxFileSizeBytes.value || "",
+            allowElytra: Boolean(el.cfgAllowElytra.checked),
+            skinDomains: el.cfgSkinDomains.value || "",
+            defaultUploadableTextures: el.cfgDefaultUploadableTextures.value || "",
+            allowAnimatedCapes: Boolean(el.cfgAllowAnimatedCapes.checked),
+            maxCapeFrameCount: el.cfgMaxCapeFrameCount.value || "",
+            maxAnimatedCapeFileSize: el.cfgMaxAnimatedCapeFileSize.value || ""
+        };
+    }
+
+    function applyConfigSnapshot(snapshot) {
+        el.cfgServerName.value = snapshot.serverName || "";
+        el.cfgPublicBaseUrl.value = snapshot.publicBaseUrl || "";
+        el.cfgApiRoot.value = snapshot.apiRoot || "";
+        el.cfgPublicPagePath.value = snapshot.publicPagePath || "";
+        el.cfgPublicInfoApiPath.value = snapshot.publicInfoApiPath || "";
+        el.cfgServerAddress.value = snapshot.serverAddress || "";
+        el.cfgServerHomepage.value = snapshot.serverHomepage || "";
+        el.cfgServerRegister.value = snapshot.serverRegister || "";
+        el.cfgPublicDescription.value = snapshot.publicDescription || "";
+        el.cfgLegacySkinApi.checked = Boolean(snapshot.legacySkinApi);
+        el.cfgNoMojangNamespace.checked = Boolean(snapshot.noMojangNamespace);
+        el.cfgUsernameCheck.checked = Boolean(snapshot.usernameCheck);
+        el.cfgRegistrationPolicy.value = snapshot.registrationPolicy || "INVITE_ONLY";
+        el.cfgPlayerNameRegex.value = snapshot.playerNameRegex || "";
+        el.cfgDefaultInviteUses.value = snapshot.defaultInviteUses || "";
+        el.cfgTokenMaxPerUser.value = snapshot.tokenMaxPerUser || "";
+        el.cfgSessionTimeoutMs.value = snapshot.sessionTimeoutMs || "";
+        el.cfgHttpHttpsEnabled.checked = Boolean(snapshot.httpHttpsEnabled);
+        el.cfgHttpReadTimeoutSec.value = snapshot.httpReadTimeoutSec || "";
+        el.cfgHttpTlsHandshakeTimeoutSec.value = snapshot.httpTlsHandshakeTimeoutSec || "";
+        el.cfgHttpMaxContentLen.value = snapshot.httpMaxContentLen || "";
+        el.cfgMaxSkinWidth.value = snapshot.maxSkinWidth || "";
+        el.cfgMaxSkinHeight.value = snapshot.maxSkinHeight || "";
+        el.cfgMaxCapeWidth.value = snapshot.maxCapeWidth || "";
+        el.cfgMaxCapeHeight.value = snapshot.maxCapeHeight || "";
+        el.cfgMaxFileSizeBytes.value = snapshot.maxFileSizeBytes || "";
+        el.cfgAllowElytra.checked = Boolean(snapshot.allowElytra);
+        el.cfgSkinDomains.value = snapshot.skinDomains || "";
+        el.cfgDefaultUploadableTextures.value = snapshot.defaultUploadableTextures || "";
+        el.cfgAllowAnimatedCapes.checked = Boolean(snapshot.allowAnimatedCapes);
+        el.cfgMaxCapeFrameCount.value = snapshot.maxCapeFrameCount || "";
+        el.cfgMaxAnimatedCapeFileSize.value = snapshot.maxAnimatedCapeFileSize || "";
+    }
+
+    function cloneServerProperties(entries) {
+        return normalizeServerProperties(entries).map((entry) => ({
+            key: entry.key,
+            value: entry.value
+        }));
+    }
+
+    function isConfigDirty() {
+        return Boolean(
+            state.configLoaded &&
+            state.configOriginal &&
+            stableString(createConfigSnapshot()) !== stableString(state.configOriginal)
+        );
+    }
+
+    function isServerPropertiesDirty() {
+        return Boolean(
+            state.serverPropertiesLoaded &&
+            stableString(cloneServerProperties(state.serverProperties)) !==
+                stableString(cloneServerProperties(state.serverPropertiesOriginal))
+        );
+    }
+
+    function updateDirtyActions() {
+        const configDirty = isConfigDirty();
+        const propsDirty = isServerPropertiesDirty();
+        el.configDirtyActions.classList.toggle("hidden", !(state.activeView === "configView" && configDirty));
+        el.propsDirtyActions.classList.toggle("hidden", !(state.activeView === "propsView" && propsDirty));
+        el.configSaveBtn.disabled = !configDirty;
+        el.configResetBtn.disabled = !configDirty;
+        el.propsSaveBtn.disabled = !propsDirty;
+        el.propsResetBtn.disabled = !propsDirty;
+    }
+
+    function stableString(value) {
+        return JSON.stringify(value);
+    }
+
     function renderStats(stats) {
         el.statUsers.textContent = safeStat(stats.users);
         el.statProfiles.textContent = safeStat(stats.profiles);
@@ -832,8 +965,8 @@
             const username = String(user.username || "");
 
             return `<tr>
-                <td data-label="Username">${escapeHtml(username)}</td>
-                <td data-label="UUID"><code class="uuid-code" title="${escapeAttr(uuid)}">${escapeHtml(uuid)}</code></td>
+                <td data-label="Username">${renderCopyButton(username, "username", "name-copy")}</td>
+                <td data-label="UUID">${renderCopyButton(uuid, "user UUID", "uuid-code")}</td>
                 <td data-label="Profiles">${profiles}</td>
                 <td data-label="Flags">${flags || "<span class=\"empty\">none</span>"}</td>
                 <td data-label="Actions">
@@ -890,10 +1023,13 @@
             return `<div class="profile-entry">
                 <div class="profile-entry-row">
                     ${avatarHtml(avatarUrl, "profile-avatar")}
-                    ${editing
-                        ? `<input type="text" class="profile-uuid-input" data-action="profile-uuid-input" data-profile-uuid="${escapeAttr(profileUuid)}" data-current-uuid="${escapeAttr(profileUuid)}" value="${escapeAttr(draftValue)}" autocomplete="off" spellcheck="false">`
-                        : `<code class="uuid-code profile-uuid-code" title="${escapeAttr(profileUuid)}">${escapeHtml(profileUuid || "-")}</code>`
-                    }
+                    <div class="profile-field-stack">
+                        ${renderCopyButton(profileName, "profile name", "profile-name-chip")}
+                        ${editing
+                            ? `<input type="text" class="profile-uuid-input" data-action="profile-uuid-input" data-profile-uuid="${escapeAttr(profileUuid)}" data-current-uuid="${escapeAttr(profileUuid)}" value="${escapeAttr(draftValue)}" autocomplete="off" spellcheck="false">`
+                            : renderCopyButton(profileUuid, "profile UUID", "uuid-code profile-uuid-code")
+                        }
+                    </div>
                     ${editing
                         ? renderIconButton("profile-save-uuid", "Save UUID", "save", {
                             profileUuid,
@@ -923,6 +1059,16 @@
                 </div>
             </div>`;
         }).join("")}</div>`;
+    }
+
+    function renderCopyButton(value, label, extraClass) {
+        const text = String(value || "");
+        if (!text) {
+            return `<span class="empty">-</span>`;
+        }
+        const copyLabel = label || "value";
+        const className = `copy-chip${extraClass ? ` ${extraClass}` : ""}`;
+        return `<button type="button" class="${escapeAttr(className)}" data-action="copy-value" data-copy-value="${escapeAttr(text)}" data-copy-label="${escapeAttr(copyLabel)}" title="Copy ${escapeAttr(copyLabel)}" aria-label="Copy ${escapeAttr(copyLabel)}">${escapeHtml(text)}</button>`;
     }
 
     function renderIconButton(action, title, icon, dataset, extraClass) {
@@ -987,6 +1133,11 @@
         }
 
         try {
+            if (action === "copy-value") {
+                await copyValueFromButton(button);
+                return;
+            }
+
             if (action === "profile-start-edit-uuid" || action === "profile-save-uuid" || action === "profile-cancel-edit-uuid"
                 || action === "profile-use-offline-uuid") {
                 const profileUuid = button.getAttribute("data-profile-uuid");
@@ -1136,14 +1287,13 @@
                 : "-";
             const code = String(invite.code || "");
             return `<tr>
-                <td><code>${escapeHtml(code)}</code></td>
+                <td>
+                    <button type="button" class="invite-code" data-action="copy-invite" data-code="${escapeAttr(code)}" title="Copy invite code" aria-label="Copy invite code ${escapeAttr(code)}">${escapeHtml(code)}</button>
+                </td>
                 <td>${escapeHtml(usesLabel)}</td>
                 <td>${escapeHtml(createdAt)}</td>
-                <td>
-                    <div class="action-buttons">
-                        <button type="button" class="small" data-action="copy-invite" data-code="${escapeAttr(code)}">Copy</button>
-                        <button type="button" class="small danger" data-action="delete-invite" data-code="${escapeAttr(code)}">Delete</button>
-                    </div>
+                <td class="row-actions">
+                    <button type="button" class="small danger" data-action="delete-invite" data-code="${escapeAttr(code)}">Delete</button>
                 </td>
             </tr>`;
         }).join("");
@@ -1347,8 +1497,8 @@
                 throw new Error("No profile returned.");
             }
             state.opsResolved = profile;
-            el.opsResolvedName.textContent = String(profile.name || "");
-            el.opsResolvedUuid.textContent = String(profile.uuid || "");
+            el.opsResolvedName.innerHTML = renderCopyButton(profile.name || "", "profile name", "name-copy");
+            el.opsResolvedUuid.innerHTML = renderCopyButton(profile.uuid || "", "profile UUID", "uuid-code profile-uuid-code");
             el.opsResolvedProvider.textContent = String(profile.providerLabel || profile.provider || "");
             setAvatar(el.opsResolvedAvatar, profile.avatarUrl || null);
             el.opsResolvedCard.classList.remove("hidden");
@@ -1390,6 +1540,12 @@
     }
 
     async function onOpsTableClick(event) {
+        const copyButton = event.target.closest("button[data-action='copy-value']");
+        if (copyButton) {
+            await copyValueFromButton(copyButton);
+            return;
+        }
+
         const button = event.target.closest("button[data-action='remove-op']");
         if (!button || !state.sessionToken) return;
 
@@ -1430,8 +1586,8 @@
 
             return `<tr>
                 <td class="face-cell">${avatarCellHtml(avatarUrl)}</td>
-                <td>${escapeHtml(name)}</td>
-                <td><code>${escapeHtml(uuid)}</code></td>
+                <td>${renderCopyButton(name, "profile name", "name-copy")}</td>
+                <td>${renderCopyButton(uuid, "profile UUID", "uuid-code")}</td>
                 <td class="${providerKnown ? "" : "provider-unknown"}">${escapeHtml(providerLabel)}</td>
                 <td><button type="button" class="small danger" data-action="remove-op" data-uuid="${escapeAttr(uuid)}" data-name="${escapeAttr(name)}">Remove</button></td>
             </tr>`;
@@ -1459,8 +1615,8 @@
                 throw new Error("No profile returned.");
             }
             state.whitelistResolved = profile;
-            el.whitelistResolvedName.textContent = String(profile.name || "");
-            el.whitelistResolvedUuid.textContent = String(profile.uuid || "");
+            el.whitelistResolvedName.innerHTML = renderCopyButton(profile.name || "", "profile name", "name-copy");
+            el.whitelistResolvedUuid.innerHTML = renderCopyButton(profile.uuid || "", "profile UUID", "uuid-code profile-uuid-code");
             el.whitelistResolvedProvider.textContent = String(profile.providerLabel || profile.provider || "");
             setAvatar(el.whitelistResolvedAvatar, profile.avatarUrl || null);
             el.whitelistResolvedCard.classList.remove("hidden");
@@ -1502,6 +1658,12 @@
     }
 
     async function onWhitelistTableClick(event) {
+        const copyButton = event.target.closest("button[data-action='copy-value']");
+        if (copyButton) {
+            await copyValueFromButton(copyButton);
+            return;
+        }
+
         const button = event.target.closest("button[data-action='remove-whitelist']");
         if (!button || !state.sessionToken) return;
 
@@ -1566,8 +1728,8 @@
 
             return `<tr>
                 <td class="face-cell">${avatarCellHtml(avatarUrl)}</td>
-                <td>${escapeHtml(name)}</td>
-                <td><code>${escapeHtml(uuid)}</code></td>
+                <td>${renderCopyButton(name, "profile name", "name-copy")}</td>
+                <td>${renderCopyButton(uuid, "profile UUID", "uuid-code")}</td>
                 <td class="${providerKnown ? "" : "provider-unknown"}">${escapeHtml(providerLabel)}</td>
                 <td><button type="button" class="small danger" data-action="remove-whitelist" data-uuid="${escapeAttr(uuid)}" data-name="${escapeAttr(name)}">Remove</button></td>
             </tr>`;
@@ -1769,7 +1931,7 @@
         el.invitesBody.innerHTML = `<tr><td colspan="4" class="empty">Not loaded</td></tr>`;
         el.opsBody.innerHTML = `<tr><td colspan="5" class="empty">Not loaded</td></tr>`;
         el.whitelistBody.innerHTML = `<tr><td colspan="5" class="empty">Not loaded</td></tr>`;
-        el.propsBody.innerHTML = `<tr><td colspan="3" class="empty">Not loaded</td></tr>`;
+        el.propsBody.innerHTML = `<tr><td colspan="2" class="empty">Not loaded</td></tr>`;
         el.propsStatusLine.textContent = "";
         el.whitelistEnabledToggle.checked = false;
         el.statUsers.textContent = "-";
@@ -1780,18 +1942,84 @@
         el.statTexturesSize.textContent = "-";
         clearOpsResolved();
         clearWhitelistResolved();
+        updateDirtyActions();
     }
 
+    // Toast notifications. "ok" toasts are transient status (auto-dismiss);
+    // "warn"/"err" are important and stay until dismissed.
+    const TRANSIENT_TOAST_MS = 2600;
+
     function showBanner(message, level) {
-        el.banner.classList.remove("hidden", "ok", "warn", "err");
-        el.banner.classList.add(level || "ok");
-        el.banner.textContent = message;
+        const container = el.banner;
+        if (!container) {
+            return null;
+        }
+        const kind = level || "ok";
+        const persistent = kind === "warn" || kind === "err";
+
+        const toast = document.createElement("div");
+        toast.className = "toast toast-" + kind;
+        toast.setAttribute("role", persistent ? "alert" : "status");
+
+        const text = document.createElement("span");
+        text.className = "toast-msg";
+        text.textContent = message;
+        toast.appendChild(text);
+
+        if (persistent) {
+            const close = document.createElement("button");
+            close.type = "button";
+            close.className = "toast-close";
+            close.setAttribute("aria-label", "Dismiss");
+            close.textContent = "×";
+            close.addEventListener("click", function () {
+                dismissToast(toast);
+            });
+            toast.appendChild(close);
+        } else {
+            // Transient toasts of the same nature shouldn't pile up.
+            const stale = container.querySelectorAll(".toast.toast-ok");
+            for (let i = 0; i < stale.length; i++) {
+                dismissToast(stale[i]);
+            }
+        }
+
+        container.appendChild(toast);
+        window.requestAnimationFrame(function () {
+            toast.classList.add("toast-in");
+        });
+
+        if (!persistent) {
+            toast._dismissTimer = window.setTimeout(function () {
+                dismissToast(toast);
+            }, TRANSIENT_TOAST_MS);
+        }
+        return toast;
+    }
+
+    function dismissToast(toast) {
+        if (!toast || toast._dismissing) {
+            return;
+        }
+        toast._dismissing = true;
+        window.clearTimeout(toast._dismissTimer);
+        toast.classList.remove("toast-in");
+        toast.classList.add("toast-out");
+        window.setTimeout(function () {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 200);
     }
 
     function clearBanner() {
-        el.banner.classList.add("hidden");
-        el.banner.classList.remove("ok", "warn", "err");
-        el.banner.textContent = "";
+        if (!el.banner) {
+            return;
+        }
+        const toasts = el.banner.querySelectorAll(".toast");
+        for (let i = 0; i < toasts.length; i++) {
+            dismissToast(toasts[i]);
+        }
     }
 
     function safeStat(value) {
@@ -1868,6 +2096,17 @@
         }
         if (!copied) {
             throw new Error("Browser blocked clipboard access.");
+        }
+    }
+
+    async function copyValueFromButton(button) {
+        const value = button ? button.getAttribute("data-copy-value") : "";
+        const label = button ? (button.getAttribute("data-copy-label") || "value") : "value";
+        try {
+            await copyTextToClipboard(value);
+            showBanner(`Copied ${label}.`, "ok");
+        } catch (err) {
+            showBanner(`Copy failed: ${err.message}`, "warn");
         }
     }
 

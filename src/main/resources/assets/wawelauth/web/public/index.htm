@@ -11,124 +11,138 @@
 </head>
 
 <body>
-    <div class="bg-blur bg-blur-a"></div>
-    <div class="bg-blur bg-blur-b"></div>
-
-    <main class="page">
-        <section class="card hero">
+    <main class="container wa-page">
+        <!-- Hero -->
+        <article class="hero">
             <div class="hero-art">
-                <div class="icon-wrap" id="iconWrap" title="">
-                    <img id="serverIcon" src="./pack-fallback.png" alt="Server icon">
+                <div class="icon-wrap" id="iconWrap">
+                    <img id="serverIcon" src="./pack-fallback.png" alt="Server icon" width="128" height="128">
                 </div>
             </div>
 
             <div class="hero-copy">
                 <div class="hero-head">
-                    <h1 id="serverName">Wawel Auth Server</h1>
+                    <hgroup>
+                        <h1 id="serverName">Wawel Auth Server</h1>
+                        <p class="motd-line" id="motdLine">Minecraft Server</p>
+                    </hgroup>
                     <div class="hero-corner-actions">
-                        <a class="btn icon-only-btn hidden" id="adminButton" href="/admin" title="Admin Panel" aria-label="Admin Panel">
+                        <a class="secondary icon-only-btn hidden" id="adminButton" href="/admin" role="button"
+                            title="Admin Panel" aria-label="Admin Panel">
                             <span class="nf-icon" aria-hidden="true">&#xf0bc4;</span>
                         </a>
-                        <a class="btn icon-only-btn alt hidden" id="dynmapButton" href="/dynmap" title="Dynmap" aria-label="Dynmap">
+                        <a class="secondary outline icon-only-btn hidden" id="dynmapButton" href="/dynmap" role="button"
+                            title="Dynmap" aria-label="Dynmap">
                             <span class="nf-icon" aria-hidden="true">&#xf0352;</span>
                         </a>
                     </div>
                 </div>
-                <p class="label hero-label">MOTD</p>
-                <p class="sub motd-line" id="motdLine">Minecraft Server</p>
+
                 <p class="desc hidden" id="serverDescription"></p>
 
-                <div class="hero-meta">
-                    <span class="pill" id="playerCountPill">Players: 0 / ?</span>
-                    <span class="pill" id="minecraftVersionPill">Minecraft 1.7.10</span>
+                <div class="badge-row">
+                    <span class="badge" id="playerCountPill">Players: 0 / ?</span>
+                    <span class="badge" id="registrationPill">Invite Only</span>
+                    <span class="badge muted" id="minecraftVersionPill">Minecraft 1.7.10</span>
                 </div>
 
-                <div class="actions">
-                    <a class="btn alt hidden" id="homepageButton" href="#" target="_blank" rel="noreferrer">Homepage</a>
-                    <a class="btn hidden" id="registerButton" href="#" target="_blank" rel="noreferrer">Register</a>
+                <div class="hero-actions">
+                    <a class="server-address-btn hidden" id="serverAddressButton" role="button" href="#"
+                        draggable="false" title="Advertised Minecraft server address. Drag into Minecraft, or click to copy.">
+                        <span class="nf-icon" aria-hidden="true">&#xf0318;</span>
+                        <span id="serverAddressText">example.org:25565</span>
+                    </a>
+                    <a class="hidden" id="registerButton" role="button" href="#" target="_blank"
+                        rel="noreferrer">Register</a>
+                    <a class="secondary outline hidden" id="homepageButton" role="button" href="#" target="_blank"
+                        rel="noreferrer">Homepage</a>
+                    <span class="muted small hidden" id="joinHint">Click to copy, or drag into Minecraft.</span>
                 </div>
+                <p class="muted hidden" id="serverAddressWarning"></p>
             </div>
-        </section>
+        </article>
 
-        <section class="layout">
+        <!-- Two-column layout -->
+        <div class="layout">
             <div class="stack">
-                <article class="card section">
-                    <p class="section-title">How to Connect</p>
-                    <div class="server-address-block">
-                        <a class="btn icon-btn server-address-btn hidden" id="serverAddressButton" href="#" draggable="false" title="Advertised Minecraft server address. Drag into Minecraft to add this server.">
-                            <span class="nf-icon" aria-hidden="true">&#xf0318;</span>
-                            <span id="serverAddressText">example.org:25565</span>
-                        </a>
-                        <p class="muted hidden" id="serverAddressWarning">Admin: set server-address in Wawel Auth server.json to advertise a join address on this page.</p>
-                    </div>
-                    <div class="connect">
-                        <div class="connect-card">
-                            <h3>Wawel Auth Client</h3>
-                            <p>
-                                Install the Wawel Auth mod on your client, pick the matching account, and connect to the
-                                Minecraft server normally.
-                            </p>
-                        </div>
-                        <div class="connect-card">
-                            <h3>authlib-injector</h3>
-                            <p id="authlibText">
-                                This server has not configured a public API root yet.
-                            </p>
-                        </div>
-                    </div>
+                <article>
+                    <p class="section-title">Authorized Auth Providers</p>
+                    <p class="section-help">You can join this server using an account from one of the listed auth
+                        providers.</p>
+                    <div id="fallbackList"></div>
+                    <p class="muted" id="fallbackEmpty">No authorized auth providers are configured.</p>
                 </article>
 
-                <article class="card section">
-                    <p class="section-title">Allowed Fallbacks</p>
-                    <div class="fallback-list hidden" id="fallbackList"></div>
-                    <p class="muted" id="fallbackEmpty">No fallback providers are configured.</p>
-                </article>
-
-                <article class="card section">
+                <article>
                     <p class="section-title">Installed Mods</p>
-                    <div class="modlist-widget">
-                        <button type="button" class="modlist-toggle" id="modlistToggle" aria-expanded="false">
-                            <span class="fallback-arrow">></span>
-                            <span>Installed modlist</span>
-                            <span class="modlist-count" id="modlistCount">0 mods</span>
-                        </button>
-                        <div class="modlist hidden" id="modlist"></div>
-                    </div>
+                    <details id="modlistDetails" class="modlist-details">
+                        <summary>
+                            <span>View list</span>
+                            <span class="badge muted" id="modlistCount">0 mods</span>
+                        </summary>
+                        <div class="modlist" id="modlist"></div>
+                    </details>
                 </article>
             </div>
 
             <div class="stack">
-                <article class="card section">
+                <article>
                     <p class="section-title">Connected Players</p>
                     <div class="player-list hidden" id="playerList"></div>
                     <p class="muted" id="playerListEmpty">Nobody is connected right now.</p>
                 </article>
 
-                <article class="card section">
-                    <p class="section-title">Additional Info</p>
-                    <div class="stats-grid">
-                        <div class="stat-card">
+                <article>
+                    <p class="section-title">Server Info</p>
+                    <div class="info-grid">
+                        <div class="info-card">
                             <p class="label">Registration</p>
-                            <div class="value" id="registrationPolicy">Invite Only</div>
-                            <p class="muted" id="registrationDescription">Registration requires a valid invite token.</p>
+                            <p class="value" id="registrationPolicy">Invite Only</p>
+                            <p class="muted small" id="registrationDescription">Registration requires a valid invite
+                                token.</p>
                         </div>
-                        <div class="stat-card">
+                        <div class="info-card">
                             <p class="label">API Root</p>
-                            <div class="value value-wrap" id="apiRootValue">Not configured</div>
-                            <p class="muted" id="apiRootDescription">Required for authlib-injector and public API discovery.</p>
+                            <button type="button" class="copy-value info-copy-value" id="apiRootValue" disabled>Not configured</button>
+                            <p class="muted small" id="apiRootDescription">Required for authlib-injector and public API
+                                discovery.</p>
                         </div>
                     </div>
                 </article>
             </div>
-        </section>
+        </div>
 
-        <footer class="footer">
-            <img class="footer-logo" src="./logo-dragon-outline.png" alt="Wawel Auth logo">
-            <span class="footer-textline">
-                <span id="footerImplementationName">Wawel Auth</span>
-                <span>version</span>
-                <span id="footerVersion">unknown</span>
-            </span>
+        <footer class="wa-footer">
+            <div class="footer-brand">
+                <img class="footer-logo" src="./logo-dragon-outline.png" alt="Wawel Auth logo" width="28" height="28">
+                <span class="footer-textline">
+                    <span id="footerImplementationName">Wawel Auth</span>
+                    <span class="muted">version</span>
+                    <span id="footerVersion">unknown</span>
+                </span>
+            </div>
+            <nav class="footer-links" aria-label="Wawel Auth project links">
+                <a class="footer-link github-link" href="https://github.com/JackOfNoneTrades/WawelAuth/releases"
+                    target="_blank" rel="noreferrer" aria-label="Wawel Auth on GitHub">
+                    <img src="./links/github.svg" alt="" width="24" height="24">
+                </a>
+                <a class="footer-link" href="https://67.fentanylsolutions.org/mod/wawel-auth" target="_blank"
+                    rel="noreferrer" aria-label="Wawel Auth on 67">
+                    <img src="./links/67.png" alt="" width="24" height="24">
+                </a>
+                <a class="footer-link" href="https://modrinth.com/mod/wawel-auth" target="_blank" rel="noreferrer"
+                    aria-label="Wawel Auth on Modrinth">
+                    <img src="./links/modrinth.svg" alt="" width="24" height="24">
+                </a>
+                <a class="footer-link" href="https://www.curseforge.com/minecraft/mc-mods/wawel-auth" target="_blank"
+                    rel="noreferrer" aria-label="Wawel Auth on CurseForge">
+                    <img src="./links/curseforge.svg" alt="" width="24" height="24">
+                </a>
+                <a class="footer-link" href="https://www.mcmod.cn/class/27750.html" target="_blank" rel="noreferrer"
+                    aria-label="Wawel Auth on MCModCN">
+                    <img src="./links/mcmodcn.png" alt="" width="24" height="24">
+                </a>
+            </nav>
         </footer>
     </main>
 </body>

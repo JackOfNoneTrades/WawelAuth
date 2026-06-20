@@ -114,6 +114,11 @@ public class AdminWebService {
     private final byte[] logoPng;
     private final byte[] packFallbackPng;
     private final byte[] nerdSymbolsSubsetWoff2;
+    private final byte[] githubSvg;
+    private final byte[] link67Png;
+    private final byte[] modrinthSvg;
+    private final byte[] curseforgeSvg;
+    private final byte[] mcmodcnPng;
 
     public AdminWebService(ServerConfig serverConfig, UserDAO userDAO, ProfileDAO profileDAO, TokenDAO tokenDAO,
         InviteDAO inviteDAO, RequestRateLimiter rateLimiter, TextureFileStore textureFileStore) {
@@ -131,6 +136,11 @@ public class AdminWebService {
         this.packFallbackPng = loadResourceBytes("/assets/wawelauth/web/admin/pack-fallback.png");
         this.nerdSymbolsSubsetWoff2 = loadResourceBytes(
             "/assets/wawelauth/web/admin/fonts/nerd-fonts/SymbolsNerdFont-Subset.woff2");
+        this.githubSvg = loadResourceBytes("/assets/wawelauth/web/public/links/github.svg");
+        this.link67Png = loadResourceBytes("/assets/wawelauth/web/public/links/67.png");
+        this.modrinthSvg = loadResourceBytes("/assets/wawelauth/web/public/links/modrinth.svg");
+        this.curseforgeSvg = loadResourceBytes("/assets/wawelauth/web/public/links/curseforge.svg");
+        this.mcmodcnPng = loadResourceBytes("/assets/wawelauth/web/public/links/mcmodcn.png");
 
         if (serverConfig.getAdmin()
             .isEnabled() && resolveConfiguredAdminToken() == null) {
@@ -156,6 +166,11 @@ public class AdminWebService {
         router.get("/admin/server-icon.png", this::serveServerIconPng);
         router.get("/admin/server-icon.gif", this::serveServerIconGif);
         router.get("/admin/fonts/nerd-fonts/SymbolsNerdFont-Subset.woff2", this::serveNerdSymbolsSubsetWoff2);
+        router.get("/admin/links/github.svg", this::serveGithubSvg);
+        router.get("/admin/links/67.png", this::serve67Png);
+        router.get("/admin/links/modrinth.svg", this::serveModrinthSvg);
+        router.get("/admin/links/curseforge.svg", this::serveCurseforgeSvg);
+        router.get("/admin/links/mcmodcn.png", this::serveMcmodcnPng);
 
         router.get("/api/wawelauth/admin/bootstrap", this::bootstrap);
         router.post("/api/wawelauth/admin/login", this::login);
@@ -220,6 +235,26 @@ public class AdminWebService {
 
     private Object serveNerdSymbolsSubsetWoff2(RequestContext ctx) {
         return staticResponse(nerdSymbolsSubsetWoff2, "font/woff2");
+    }
+
+    private Object serveGithubSvg(RequestContext ctx) {
+        return staticResponse(githubSvg, "image/svg+xml");
+    }
+
+    private Object serve67Png(RequestContext ctx) {
+        return staticResponse(link67Png, "image/png");
+    }
+
+    private Object serveModrinthSvg(RequestContext ctx) {
+        return staticResponse(modrinthSvg, "image/svg+xml");
+    }
+
+    private Object serveCurseforgeSvg(RequestContext ctx) {
+        return staticResponse(curseforgeSvg, "image/svg+xml");
+    }
+
+    private Object serveMcmodcnPng(RequestContext ctx) {
+        return staticResponse(mcmodcnPng, "image/png");
     }
 
     private Object bootstrap(RequestContext ctx) {

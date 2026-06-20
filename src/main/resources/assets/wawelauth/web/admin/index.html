@@ -1,33 +1,33 @@
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Wawel Auth Admin</title>
     <link rel="stylesheet" href="/admin/styles.css">
 </head>
-<body>
-    <div class="bg-blur bg-blur-a"></div>
-    <div class="bg-blur bg-blur-b"></div>
 
-    <main class="page">
+<body>
+    <main class="container wa-page">
         <div class="masthead-row">
-            <header class="hero card">
-                <img class="hero-logo" src="/admin/logo-dragon-outline.png" alt="Wawel Auth logo">
-                <div>
+            <header class="hero">
+                <img class="hero-logo" src="/admin/logo-dragon-outline.png" alt="Wawel Auth logo" width="48"
+                    height="48">
+                <hgroup>
                     <h1>Wawel Auth Admin</h1>
                     <p class="sub" id="serverLine">Waiting for server metadata...</p>
-                </div>
+                </hgroup>
             </header>
 
-            <div id="toolbarCard" class="toolbar card section hidden">
-                <div class="toolbar-left">
-                    <button id="refreshBtn" type="button" class="toolbar-btn">
-                        <span class="nf-icon toolbar-btn-icon" aria-hidden="true">&#xf0450;</span>
+            <div id="toolbarCard" class="toolbar hidden">
+                <div class="toolbar-left" role="group">
+                    <button id="refreshBtn" type="button" class="secondary outline toolbar-btn">
+                        <span class="nf-icon" aria-hidden="true">&#xf0450;</span>
                         <span>Refresh</span>
                     </button>
                     <button id="logoutBtn" type="button" class="toolbar-btn danger">
-                        <span class="nf-icon toolbar-btn-icon" aria-hidden="true">&#xf05fd;</span>
+                        <span class="nf-icon" aria-hidden="true">&#xf05fd;</span>
                         <span>Logout</span>
                     </button>
                 </div>
@@ -35,21 +35,24 @@
             </div>
         </div>
 
-        <div id="banner" class="banner hidden"></div>
+        <div id="banner" class="toast-container" aria-live="polite"></div>
 
-        <section id="loginCard" class="card section">
-            <h2>Admin Login</h2>
-            <p class="muted">Use the admin token from <code>server.json</code> or the configured environment variable.</p>
-            <form id="loginForm" class="form-grid">
+        <article id="loginCard">
+            <hgroup>
+                <h2>Admin Login</h2>
+                <p class="muted">Use the admin token from <code>server.json</code> or the configured environment
+                    variable.</p>
+            </hgroup>
+            <form id="loginForm" class="login-form">
                 <label for="tokenInput">Admin Token</label>
                 <input id="tokenInput" type="password" autocomplete="off" placeholder="Enter admin token">
                 <button id="loginBtn" type="submit">Login</button>
             </form>
             <p id="transportHint" class="hint hidden"></p>
-        </section>
+        </article>
 
         <section id="appCard" class="hidden">
-            <nav class="nav card section" id="navBar">
+            <nav class="nav" id="navBar">
                 <button class="nav-btn active" type="button" data-view-target="dashboardView">Dashboard</button>
                 <button class="nav-btn" type="button" data-view-target="usersView">Users</button>
                 <button class="nav-btn" type="button" data-view-target="configView">Server Config</button>
@@ -60,23 +63,25 @@
 
             <section id="dashboardView" class="view-section">
                 <div class="stats-grid" id="statsGrid">
-                    <article class="card stat"><h3>Users</h3><strong id="statUsers">-</strong></article>
-                    <article class="card stat"><h3>Profiles</h3><strong id="statProfiles">-</strong></article>
-                    <article class="card stat"><h3>Tokens</h3><strong id="statTokens">-</strong></article>
-                    <article class="card stat"><h3>Invites</h3><strong id="statInvites">-</strong></article>
-                    <article class="card stat"><h3>Database</h3><strong id="statDbSize">-</strong></article>
-                    <article class="card stat"><h3>Textures</h3><strong id="statTexturesSize">-</strong></article>
+                    <article class="stat"><h3>Users</h3><strong id="statUsers">-</strong></article>
+                    <article class="stat"><h3>Profiles</h3><strong id="statProfiles">-</strong></article>
+                    <article class="stat"><h3>Tokens</h3><strong id="statTokens">-</strong></article>
+                    <article class="stat"><h3>Invites</h3><strong id="statInvites">-</strong></article>
+                    <article class="stat"><h3>Database</h3><strong id="statDbSize">-</strong></article>
+                    <article class="stat"><h3>Textures</h3><strong id="statTexturesSize">-</strong></article>
                 </div>
 
-                <section class="card section">
+                <article>
                     <h2>Invites</h2>
                     <form id="inviteForm" class="invite-form">
-                        <div>
-                            <label for="inviteUses">Uses (-1 = unlimited)</label>
+                        <label for="inviteUses">
+                            Uses <span class="muted">(-1 = unlimited)</span>
                             <input id="inviteUses" type="number" value="1" min="-1" step="1">
+                        </label>
+                        <div class="invite-actions" role="group">
+                            <button id="inviteCreateBtn" type="submit">Create Invite</button>
+                            <button id="invitePurgeBtn" type="button" class="secondary">Purge Consumed</button>
                         </div>
-                        <button id="inviteCreateBtn" type="submit">Create Invite</button>
-                        <button id="invitePurgeBtn" type="button">Purge Consumed</button>
                     </form>
                     <div class="table-wrap">
                         <table>
@@ -91,14 +96,15 @@
                             <tbody id="invitesBody"></tbody>
                         </table>
                     </div>
-                </section>
+                </article>
             </section>
 
             <section id="usersView" class="view-section hidden">
-                <section class="card section">
+                <article>
                     <h2>Users</h2>
                     <div class="users-toolbar">
-                        <input id="userFilterInput" type="text" placeholder="Filter users by name..." autocomplete="off">
+                        <input id="userFilterInput" type="search" placeholder="Filter users by name..."
+                            autocomplete="off">
                     </div>
                     <div class="table-wrap">
                         <table id="usersTable" class="users-table">
@@ -106,13 +112,13 @@
                             <tbody id="usersBody"></tbody>
                         </table>
                     </div>
-                </section>
+                </article>
             </section>
 
             <section id="configView" class="view-section hidden">
-                <section class="card section">
+                <article>
                     <h2>Server Config</h2>
-                    <p class="muted config-intro">Edits are written directly to <code>server.json</code>.</p>
+                    <p class="muted config-intro">Edits are written to <code>server.json</code> upon saving.</p>
 
                     <form id="configForm" class="config-grid">
                         <fieldset class="config-group">
@@ -123,31 +129,37 @@
                             <label for="cfgPublicBaseUrl">Public Base URL</label>
                             <input id="cfgPublicBaseUrl" type="text" placeholder="auth.example.com:25565">
                             <p class="muted field-note">
-                                Public URL prefix used for authlib-injector metadata and texture links. If no scheme is provided, Wawel Auth assumes <code>http://</code>.
+                                Public URL prefix used for authlib-injector metadata and texture links. If no scheme is
+                                provided, Wawel Auth assumes <code>http://</code>.
                             </p>
 
                             <label for="cfgApiRoot">API Root</label>
                             <input id="cfgApiRoot" type="text" placeholder="auth">
                             <p class="muted field-note">
-                                Relative auth API mount path appended to <code>publicBaseUrl</code>. Use a path like <code>auth</code> or <code>auth/v2</code>. Leave empty to mount at <code>/</code>.
+                                Relative auth API mount path appended to <code>publicBaseUrl</code>. Use a path like
+                                <code>auth</code> or <code>auth/v2</code>. Leave empty to mount at <code>/</code>.
                             </p>
 
                             <label for="cfgPublicPagePath">Public Page Path</label>
                             <input id="cfgPublicPagePath" type="text" placeholder="/">
                             <p class="muted field-note">
-                                Custom public-site files are snapshotted from the Wawel Auth config directory on startup. If no top-level <code>index.htm</code> exists there, the bundled public page is copied into that directory first.
+                                Custom public-site files are snapshotted from the Wawel Auth config directory on startup.
+                                If no top-level <code>index.htm</code> exists there, the bundled public page is copied
+                                into that directory first.
                             </p>
 
                             <label for="cfgPublicInfoApiPath">Public Info API Path</label>
                             <input id="cfgPublicInfoApiPath" type="text" placeholder="__server-info">
                             <p class="muted field-note">
-                                Exposes cached public server information for the landing page. Leave empty to disable it entirely. Relative paths are resolved under the public page path.
+                                Exposes cached public server information for the landing page. Leave empty to disable it
+                                entirely. Relative paths are resolved under the public page path.
                             </p>
 
                             <label for="cfgServerAddress">Advertised Server Address</label>
                             <input id="cfgServerAddress" type="text" placeholder="localhost:25565">
                             <p class="muted field-note">
-                                Public Minecraft server address shown on the landing page. Stored in <code>server.json</code> as <code>server-address</code>.
+                                Public Minecraft server address shown on the landing page. Stored in
+                                <code>server.json</code> as <code>server-address</code>.
                             </p>
 
                             <label for="cfgServerHomepage">Server Homepage</label>
@@ -165,11 +177,14 @@
                         </fieldset>
 
                         <fieldset class="config-group">
-                            <legend>Features & Registration</legend>
+                            <legend>Features &amp; Registration</legend>
 
-                            <label class="checkbox-row"><input id="cfgLegacySkinApi" type="checkbox"> Legacy Skin API</label>
-                            <label class="checkbox-row"><input id="cfgNoMojangNamespace" type="checkbox"> No Mojang Namespace</label>
-                            <label class="checkbox-row"><input id="cfgUsernameCheck" type="checkbox"> Enforce Username Regex</label>
+                            <label class="checkbox-row"><input id="cfgLegacySkinApi" type="checkbox"> Legacy Skin
+                                API</label>
+                            <label class="checkbox-row"><input id="cfgNoMojangNamespace" type="checkbox"> No Mojang
+                                Namespace</label>
+                            <label class="checkbox-row"><input id="cfgUsernameCheck" type="checkbox"> Enforce Username
+                                Regex</label>
 
                             <label for="cfgRegistrationPolicy">Registration Policy</label>
                             <select id="cfgRegistrationPolicy">
@@ -189,7 +204,7 @@
                         </fieldset>
 
                         <fieldset class="config-group">
-                            <legend>Limits & HTTP</legend>
+                            <legend>Limits &amp; HTTP</legend>
 
                             <label for="cfgTokenMaxPerUser">Max Tokens Per User</label>
                             <input id="cfgTokenMaxPerUser" type="number" min="1" step="1">
@@ -231,9 +246,11 @@
                             <label for="cfgMaxFileSizeBytes">Max Texture File Size (bytes)</label>
                             <input id="cfgMaxFileSizeBytes" type="number" min="1" step="1">
 
-                            <label class="checkbox-row"><input id="cfgAllowElytra" type="checkbox"> Allow Elytra Texture</label>
+                            <label class="checkbox-row"><input id="cfgAllowElytra" type="checkbox"> Allow Elytra
+                                Texture</label>
 
-                            <label class="checkbox-row"><input id="cfgAllowAnimatedCapes" type="checkbox"> Allow Animated Capes</label>
+                            <label class="checkbox-row"><input id="cfgAllowAnimatedCapes" type="checkbox"> Allow Animated
+                                Capes</label>
 
                             <label for="cfgMaxCapeFrameCount">Max Cape Frame Count</label>
                             <input id="cfgMaxCapeFrameCount" type="number" min="2" step="1">
@@ -242,24 +259,25 @@
                             <input id="cfgMaxAnimatedCapeFileSize" type="number" min="1" step="1">
                         </fieldset>
 
-                        <div class="config-actions">
-                            <button id="configSaveBtn" type="submit">Save server.json</button>
+                        <div id="configDirtyActions" class="floating-actions hidden">
+                            <button id="configResetBtn" type="button" class="secondary">Reset</button>
+                            <button id="configSaveBtn" type="submit">Save</button>
                         </div>
                     </form>
-                </section>
+                </article>
             </section>
 
             <section id="propsView" class="view-section hidden">
-                <section class="card section">
+                <article>
                     <h2>Server.properties</h2>
                     <p class="muted">
-                        Edits are written directly to <code>server.properties</code>. Most settings require reload/restart to take effect.
+                        Edits are written to <code>server.properties</code> upon saving. Most settings require
+                        reload/restart to take effect.
                     </p>
                     <form id="propsForm" class="props-grid">
                         <div class="props-toolbar">
-                            <input id="propsFilterInput" type="text" autocomplete="off" placeholder="Filter by key or value...">
-                            <button id="propsAddRowBtn" type="button">Add Property</button>
-                            <button id="propsSaveBtn" type="submit">Save server.properties</button>
+                            <input id="propsFilterInput" type="search" autocomplete="off"
+                                placeholder="Filter by key or value...">
                         </div>
 
                         <div class="table-wrap props-table-wrap">
@@ -268,20 +286,24 @@
                                     <tr>
                                         <th class="props-key-col">Key</th>
                                         <th>Value</th>
-                                        <th class="props-actions-col"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="propsBody"></tbody>
                             </table>
                         </div>
 
-                        <p id="propsStatusLine" class="muted props-status"></p>
+                        <p id="propsStatusLine" class="muted props-status hidden"></p>
+
+                        <div id="propsDirtyActions" class="floating-actions hidden">
+                            <button id="propsResetBtn" type="button" class="secondary">Reset</button>
+                            <button id="propsSaveBtn" type="submit">Save</button>
+                        </div>
                     </form>
-                </section>
+                </article>
             </section>
 
             <section id="opsView" class="view-section hidden">
-                <section class="card section">
+                <article>
                     <h2>Ops</h2>
                     <p class="muted">Select provider + username, resolve profile, then add operator.</p>
                     <div class="manage-grid">
@@ -294,8 +316,8 @@
                                 <label for="opsUsernameInput">Username</label>
                                 <input id="opsUsernameInput" type="text" autocomplete="off" placeholder="playername">
 
-                                <div class="manage-actions">
-                                    <button id="opsResolveBtn" type="button">Resolve</button>
+                                <div class="manage-actions" role="group">
+                                    <button id="opsResolveBtn" type="button" class="secondary">Resolve</button>
                                     <button id="opsAddBtn" type="submit" disabled>Add Op</button>
                                 </div>
                             </form>
@@ -306,7 +328,7 @@
                                     <img id="opsResolvedAvatar" class="avatar-2d" alt="" src="">
                                     <div>
                                         <div id="opsResolvedName"></div>
-                                        <div class="muted"><code id="opsResolvedUuid"></code></div>
+                                        <div id="opsResolvedUuid"></div>
                                         <div class="muted" id="opsResolvedProvider"></div>
                                     </div>
                                 </div>
@@ -331,19 +353,17 @@
                             </div>
                         </section>
                     </div>
-                </section>
+                </article>
             </section>
 
             <section id="whitelistView" class="view-section hidden">
-                <section class="card section">
+                <article>
                     <h2>Whitelist</h2>
                     <p class="muted">Select provider + username, resolve profile, then add to whitelist.</p>
-                    <div class="whitelist-toggle-row">
-                        <label class="checkbox-row">
-                            <input id="whitelistEnabledToggle" type="checkbox">
-                            Whitelist Enabled
-                        </label>
-                    </div>
+                    <label class="checkbox-row whitelist-toggle-row">
+                        <input id="whitelistEnabledToggle" type="checkbox">
+                        Whitelist Enabled
+                    </label>
                     <div class="manage-grid">
                         <section class="manage-pane">
                             <h3>Add Whitelist Entry</h3>
@@ -352,10 +372,11 @@
                                 <select id="whitelistProviderSelect"></select>
 
                                 <label for="whitelistUsernameInput">Username</label>
-                                <input id="whitelistUsernameInput" type="text" autocomplete="off" placeholder="playername">
+                                <input id="whitelistUsernameInput" type="text" autocomplete="off"
+                                    placeholder="playername">
 
-                                <div class="manage-actions">
-                                    <button id="whitelistResolveBtn" type="button">Resolve</button>
+                                <div class="manage-actions" role="group">
+                                    <button id="whitelistResolveBtn" type="button" class="secondary">Resolve</button>
                                     <button id="whitelistAddBtn" type="submit" disabled>Add</button>
                                 </div>
                             </form>
@@ -366,7 +387,7 @@
                                     <img id="whitelistResolvedAvatar" class="avatar-2d" alt="" src="">
                                     <div>
                                         <div id="whitelistResolvedName"></div>
-                                        <div class="muted"><code id="whitelistResolvedUuid"></code></div>
+                                        <div id="whitelistResolvedUuid"></div>
                                         <div class="muted" id="whitelistResolvedProvider"></div>
                                     </div>
                                 </div>
@@ -391,15 +412,46 @@
                             </div>
                         </section>
                     </div>
-                </section>
+                </article>
             </section>
         </section>
 
-        <footer id="siteFooter" class="site-footer hidden">
-            <span id="footerVersionLine">Wawel Auth version -</span>
+        <footer id="siteFooter" class="wa-footer hidden">
+            <div class="footer-brand">
+                <img class="footer-logo" src="/admin/logo-dragon-outline.png" alt="Wawel Auth logo" width="28"
+                    height="28">
+                <span class="footer-textline">
+                    <span id="footerImplementationName">Wawel Auth</span>
+                    <span class="muted">version</span>
+                    <span id="footerVersion">unknown</span>
+                </span>
+            </div>
+            <nav class="footer-links" aria-label="Wawel Auth project links">
+                <a class="footer-link github-link" href="https://github.com/JackOfNoneTrades/WawelAuth/releases"
+                    target="_blank" rel="noreferrer" aria-label="Wawel Auth on GitHub">
+                    <img src="/admin/links/github.svg" alt="" width="24" height="24">
+                </a>
+                <a class="footer-link" href="https://67.fentanylsolutions.org/mod/wawel-auth" target="_blank"
+                    rel="noreferrer" aria-label="Wawel Auth on 67">
+                    <img src="/admin/links/67.png" alt="" width="24" height="24">
+                </a>
+                <a class="footer-link" href="https://modrinth.com/mod/wawel-auth" target="_blank" rel="noreferrer"
+                    aria-label="Wawel Auth on Modrinth">
+                    <img src="/admin/links/modrinth.svg" alt="" width="24" height="24">
+                </a>
+                <a class="footer-link" href="https://www.curseforge.com/minecraft/mc-mods/wawel-auth" target="_blank"
+                    rel="noreferrer" aria-label="Wawel Auth on CurseForge">
+                    <img src="/admin/links/curseforge.svg" alt="" width="24" height="24">
+                </a>
+                <a class="footer-link" href="https://www.mcmod.cn/class/27750.html" target="_blank" rel="noreferrer"
+                    aria-label="Wawel Auth on MCModCN">
+                    <img src="/admin/links/mcmodcn.png" alt="" width="24" height="24">
+                </a>
+            </nav>
         </footer>
     </main>
 
     <script src="/admin/app.js"></script>
 </body>
+
 </html>
