@@ -2,7 +2,7 @@ package org.fentanylsolutions.wawelauth.client.render.skinlayers;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
-@Config(modid = "wawelauth", category = "skinlayers")
+@Config(modid = "wawelauth", category = "skinlayers", configSubDirectory = "wawelauth")
 public class SkinLayersConfig {
 
     @Config.Comment("Render cape.")

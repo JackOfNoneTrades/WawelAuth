@@ -53,6 +53,7 @@ public class Config {
     public static void loadAll(File mcConfigDir) {
         minecraftConfigRoot = mcConfigDir;
         localConfigDir = ensureDirectory(new File(mcConfigDir, CONFIG_DIR_NAME));
+        migrateLegacyCfgFile(mcConfigDir);
         File localConfigFile = new File(localConfigDir, LOCAL_CONFIG_FILE);
         boolean localConfigExisted = localConfigFile.exists();
         localConfig = JsonConfigIO.load(localConfigFile, LocalConfig.class);
@@ -102,6 +103,29 @@ public class Config {
             return new File(minecraftConfigRoot, CONFIG_DIR_NAME);
         }
         return new File(CONFIG_DIR_NAME);
+    }
+
+    /**
+     * Migrate legacy config/wawelauth.cfg to config/wawelauth/wawelauth.cfg.
+     * Never overwrites an existing destination file.
+     */
+    private static void migrateLegacyCfgFile(File mcConfigDir) {
+        File legacyFile = new File(mcConfigDir, CONFIG_DIR_NAME + ".cfg");
+        if (!legacyFile.exists()) {
+            return;
+        }
+        File destination = new File(localConfigDir, CONFIG_DIR_NAME + ".cfg");
+        if (destination.exists()) {
+            return;
+        }
+        if (legacyFile.renameTo(destination)) {
+            WawelAuth.LOG.info("Migrated {} -> {}", legacyFile.getAbsolutePath(), destination.getAbsolutePath());
+        } else {
+            WawelAuth.LOG.warn(
+                "Failed to migrate legacy config file {} to {}",
+                legacyFile.getAbsolutePath(),
+                destination.getAbsolutePath());
+        }
     }
 
     private static File ensureDirectory(File dir) {

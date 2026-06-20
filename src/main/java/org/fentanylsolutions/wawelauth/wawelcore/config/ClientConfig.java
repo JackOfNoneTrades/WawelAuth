@@ -11,7 +11,7 @@ import com.gtnewhorizon.gtnhlib.config.Config;
  * Client-side configuration for account manager behavior (provider defaults,
  * upload policy, etc).
  */
-@Config(modid = "wawelauth", category = "client")
+@Config(modid = "wawelauth", category = "client", configSubDirectory = "wawelauth")
 public class ClientConfig {
 
     @Config.Comment("Provider name to auto-select when none is chosen. Empty = ask user.")

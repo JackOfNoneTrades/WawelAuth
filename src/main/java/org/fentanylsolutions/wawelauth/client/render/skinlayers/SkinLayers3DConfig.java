@@ -7,7 +7,7 @@ import com.gtnewhorizon.gtnhlib.config.Config;
  * <p>
  * Field defaults match 3d-Skin-Layers upstream where applicable.
  */
-@Config(modid = "wawelauth", category = "skinlayers3D")
+@Config(modid = "wawelauth", category = "skinlayers3D", configSubDirectory = "wawelauth")
 public class SkinLayers3DConfig {
 
     @Config.Comment("Enable modern skin support (64x64, slim arms, HD pass-through).")
