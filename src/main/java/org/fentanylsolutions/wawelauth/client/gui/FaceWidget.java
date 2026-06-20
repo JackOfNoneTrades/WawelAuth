@@ -72,7 +72,7 @@ public class FaceWidget extends Widget<FaceWidget> {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             RenderHelper.disableStandardItemLighting();
 
-            WawelFaceRendererClient.drawFace(skin, 0, 0, alpha);
+            WawelFaceRendererClient.drawFace(skin, 0, 0, getArea().width, getArea().height, alpha);
         } finally {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             GL11.glPopAttrib();

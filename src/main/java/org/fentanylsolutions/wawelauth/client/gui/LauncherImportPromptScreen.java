@@ -43,6 +43,7 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
         LauncherImportCandidate candidate = pending;
         String name = candidate != null ? candidate.getUsername() : "";
         String providerName = candidate != null ? candidate.getProviderName() : "";
+        java.util.UUID profileUuid = candidate != null ? candidate.getProfileUuid() : null;
 
         WawelClient client = WawelClient.instance();
         SessionBridge bridge = client != null ? client.getSessionBridge() : null;
@@ -84,6 +85,21 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
             });
         GuiText.fitButtonLabel(dontAskBtn, 110, "wawelauth.gui.launcher_import.dont_ask");
 
+        Row detailRow = new Row();
+        detailRow.widthRel(1.0f)
+            .height(24)
+            .margin(0, 4)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER);
+        if (profileUuid != null) {
+            detailRow.child(new FaceWidget(name, profileUuid, providerName).size(18, 18));
+            detailRow.child(new Widget<>().size(4, 18));
+        }
+        detailRow.child(
+            new TextWidget<>(GuiText.key("wawelauth.gui.launcher_import.detail", name, providerName)).color(0xFF777777)
+                .scale(0.9f)
+                .expanded()
+                .height(48));
+
         panel.child(
             new Column().widthRel(1.0f)
                 .heightRel(1.0f)
@@ -91,13 +107,7 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
                 .child(
                     new TextWidget<>(GuiText.key("wawelauth.gui.launcher_import.title")).widthRel(1.0f)
                         .height(14))
-                .child(
-                    new TextWidget<>(GuiText.key("wawelauth.gui.launcher_import.detail", name, providerName))
-                        .color(0xFFAAAAAA)
-                        .scale(0.9f)
-                        .widthRel(1.0f)
-                        .height(24)
-                        .margin(0, 4))
+                .child(detailRow)
                 .child(
                     new TextWidget<>(GuiText.key("wawelauth.gui.launcher_import.question")).widthRel(1.0f)
                         .height(12)
