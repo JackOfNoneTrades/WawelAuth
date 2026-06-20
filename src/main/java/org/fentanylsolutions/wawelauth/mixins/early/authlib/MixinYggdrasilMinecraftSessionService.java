@@ -13,6 +13,7 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTexture;
 import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTracker;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
+import org.fentanylsolutions.wawelauth.wawelclient.compat.AuthlibInjectorCompat;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderRoutedHttp;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.PropertySigner;
@@ -39,21 +40,6 @@ import com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService;
  */
 @Mixin(value = YggdrasilMinecraftSessionService.class, remap = false)
 public class MixinYggdrasilMinecraftSessionService {
-
-    /**
-     * Whether authlib-injector is present and has replaced Property.isSignatureValid,
-     * making the PublicKey parameter ignored. Detected once at class load.
-     */
-    private static final boolean AUTHLIB_INJECTOR_ACTIVE = detectAuthlibInjector();
-
-    private static boolean detectAuthlibInjector() {
-        try {
-            Class.forName("moe.yushi.authlibinjector.AuthlibInjector");
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-    }
 
     /** Redirect signature check to use provider context key, falling back to Mojang. */
     @Redirect(
@@ -88,7 +74,7 @@ public class MixinYggdrasilMinecraftSessionService {
      * so we verify directly using PropertySigner to bypass the hijacked method.
      */
     private static boolean wawelauth$verifyProperty(Property property, PublicKey key) {
-        if (AUTHLIB_INJECTOR_ACTIVE) {
+        if (AuthlibInjectorCompat.isActive()) {
             String signature = property.getSignature();
             if (signature == null) return false;
             return PropertySigner.verifyWithKey(property.getValue(), signature, key);
