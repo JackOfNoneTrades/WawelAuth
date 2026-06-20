@@ -21,6 +21,7 @@ import org.fentanylsolutions.wawelauth.client.fakeworld.DummyEntityClientPlayerM
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyWorldClient;
 import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
+import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
 import org.fentanylsolutions.wawelauth.wawelclient.LocalAuthProviderResolver;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
@@ -191,6 +192,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             pendingFocusedCapabilities = null;
         }
         state.resetForBuild(focusedLocalServerData, focusedLocalCapabilities);
+
+        if (focusedLocalServerData == null) {
+            state.connectedServerCapabilities = detectConnectedServerLocalAuth();
+        }
 
         focusedLocalPanel = new FocusedLocalAuthPanel(
             state,
@@ -675,6 +680,18 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private boolean hasFocusedLocalMetadata() {
         return focusedLocalPanel != null && focusedLocalPanel.hasMetadata();
+    }
+
+    private static ServerCapabilities detectConnectedServerLocalAuth() {
+        ServerData serverData = Minecraft.getMinecraft()
+            .func_147104_D();
+        if (serverData instanceof IServerDataExt) {
+            ServerCapabilities caps = ((IServerDataExt) serverData).getWawelCapabilities();
+            if (caps != null && caps.isLocalAuthSupported()) {
+                return caps;
+            }
+        }
+        return null;
     }
 
     @Override

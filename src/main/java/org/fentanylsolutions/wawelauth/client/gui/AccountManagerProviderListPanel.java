@@ -38,6 +38,7 @@ final class AccountManagerProviderListPanel {
         .getSubArea(0.5f, 0.0f, 1.0f, 1.0f);
     private static final int SHOW_LOCAL_BUTTON_HEIGHT = 10;
     private static final int PROVIDER_ROW_HEIGHT = 14;
+    private static final int CONNECTED_PROVIDER_TEXT_COLOR = 0xFFFFFF88;
 
     private final ListWidget<IWidget, ?> providerList;
     private final AccountManagerScreenState state;
@@ -77,12 +78,17 @@ final class AccountManagerProviderListPanel {
             return;
         }
 
+        ClientProvider connectedProvider = resolveConnectedProvider(client);
+
         List<ClientProvider> allProviders = client.getProviderRegistry()
             .listProviders();
 
         List<ClientProvider> providers = new ArrayList<>();
         List<ClientProvider> localProviders = new ArrayList<>();
         for (ClientProvider provider : allProviders) {
+            if (isConnectedProvider(provider, connectedProvider)) {
+                continue;
+            }
             if (shouldShowProviderInGeneralList(provider)) {
                 providers.add(provider);
             } else if (isLocalProvider(provider)) {
@@ -96,6 +102,9 @@ final class AccountManagerProviderListPanel {
 
         boolean selectedVisible = false;
         ClientProvider currentSelected = state.selectedProvider;
+        if (connectedProvider != null) {
+            selectedVisible |= addProviderRow(connectedProvider, currentSelected, true);
+        }
         for (ClientProvider provider : providers) {
             selectedVisible |= addProviderRow(provider, currentSelected);
         }
@@ -138,7 +147,11 @@ final class AccountManagerProviderListPanel {
         }
 
         if (!selectedVisible) {
-            if (!providers.isEmpty()) {
+            if (connectedProvider != null) {
+                selectProvider.accept(connectedProvider);
+                rebuild();
+                return;
+            } else if (!providers.isEmpty()) {
                 selectProvider.accept(providers.get(0));
                 rebuild();
                 return;
@@ -168,6 +181,11 @@ final class AccountManagerProviderListPanel {
     }
 
     private boolean addProviderRow(ClientProvider provider, ClientProvider currentSelected) {
+        return addProviderRow(provider, currentSelected, false);
+    }
+
+    private boolean addProviderRow(ClientProvider provider, ClientProvider currentSelected,
+        boolean connectedHighlight) {
         String providerName = provider.getName() != null ? provider.getName() : "?";
         String providerDisplayName = ProviderDisplayName.displayName(providerName);
         String displayProviderName = GuiText.ellipsizeToPixelWidth(providerDisplayName, PROVIDER_NAME_MAX_WIDTH_PX);
@@ -179,7 +197,13 @@ final class AccountManagerProviderListPanel {
         if (isSelected) {
             selectButton.background(new Rectangle().color(0x44FFFFFF));
         }
-        selectButton.overlay(IKey.str(displayProviderName));
+        if (connectedHighlight) {
+            selectButton.overlay(
+                IKey.str(displayProviderName)
+                    .color(CONNECTED_PROVIDER_TEXT_COLOR));
+        } else {
+            selectButton.overlay(IKey.str(displayProviderName));
+        }
         addProviderTooltip(selectButton, provider, providerDisplayName, displayProviderName);
         selectButton.onMousePressed(mouseButton -> {
             selectProvider.accept(provider);
@@ -216,6 +240,26 @@ final class AccountManagerProviderListPanel {
 
     private static boolean isLocalProvider(ClientProvider provider) {
         return provider != null && provider.getType() == ProviderType.CUSTOM && !provider.isManualEntry();
+    }
+
+    private ClientProvider resolveConnectedProvider(WawelClient client) {
+        if (state.connectedServerCapabilities == null) return null;
+        try {
+            ClientProvider existing = client.getLocalAuthProviderResolver()
+                .findExisting(state.connectedServerCapabilities);
+            if (existing != null) return existing;
+            return client.getLocalAuthProviderResolver()
+                .resolveOrCreate(state.connectedServerCapabilities);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static boolean isConnectedProvider(ClientProvider provider, ClientProvider connected) {
+        if (connected == null || provider == null) return false;
+        String name = provider.getName();
+        String connectedName = connected.getName();
+        return name != null && name.equals(connectedName);
     }
 
     private static void addProviderTooltip(ButtonWidget<?> button, ClientProvider provider, String providerName,

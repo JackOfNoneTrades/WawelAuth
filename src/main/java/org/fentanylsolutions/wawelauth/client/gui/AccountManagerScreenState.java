@@ -21,6 +21,8 @@ final class AccountManagerScreenState {
     ServerCapabilities focusedLocalCapabilities;
     String focusedLocalStatusText = "";
 
+    ServerCapabilities connectedServerCapabilities;
+
     long pendingRemoveAccountId = -1L;
     String pendingRemoveAccountName;
     String pendingProviderSettingsName;
@@ -45,6 +47,7 @@ final class AccountManagerScreenState {
         this.focusedLocalServerData = focusedLocalServerData;
         this.focusedLocalCapabilities = focusedLocalCapabilities;
         this.focusedLocalStatusText = "";
+        this.connectedServerCapabilities = null;
         this.pendingRemoveAccountId = -1L;
         this.pendingRemoveAccountName = null;
         this.pendingProviderSettingsName = null;
