@@ -35,7 +35,7 @@
  */
 dependencies {
     // Pure runtime
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.162:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.164:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.104-GTNH:dev")
     // Disabled: client.core.MixinMinecraft @Redirect on displayWorkingScreen clashes with Et Futurum's MixinMinecraft_LoadingBridge
     //runtimeOnlyNonPublishable("curse.maven:archaicfix-677782:6785842")
@@ -49,7 +49,7 @@ dependencies {
     devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:7c1c531-2-snapshot:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.75-1.7.10:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.3.1:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.8.71-GTNH:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.8.72-GTNH:dev")
     devOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.43-GTNH:dev")
 
     // Pure compile
