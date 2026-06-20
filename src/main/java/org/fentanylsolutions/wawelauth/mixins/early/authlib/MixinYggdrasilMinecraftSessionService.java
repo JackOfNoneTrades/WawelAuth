@@ -15,6 +15,7 @@ import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTr
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderRoutedHttp;
+import org.fentanylsolutions.wawelauth.wawelcore.crypto.PropertySigner;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -39,6 +40,21 @@ import com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService;
 @Mixin(value = YggdrasilMinecraftSessionService.class, remap = false)
 public class MixinYggdrasilMinecraftSessionService {
 
+    /**
+     * Whether authlib-injector is present and has replaced Property.isSignatureValid,
+     * making the PublicKey parameter ignored. Detected once at class load.
+     */
+    private static final boolean AUTHLIB_INJECTOR_ACTIVE = detectAuthlibInjector();
+
+    private static boolean detectAuthlibInjector() {
+        try {
+            Class.forName("moe.yushi.authlibinjector.AuthlibInjector");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
     /** Redirect signature check to use provider context key, falling back to Mojang. */
     @Redirect(
         method = "getTextures",
@@ -54,16 +70,30 @@ public class MixinYggdrasilMinecraftSessionService {
 
         // Check vanilla Mojang key first if allowed
         if (client.getSessionBridge()
-            .isVanillaTextureTrustAllowed() && property.isSignatureValid(mojangKey)) {
+            .isVanillaTextureTrustAllowed() && wawelauth$verifyProperty(property, mojangKey)) {
             return true;
         }
 
         // Check provider-scoped keys
         for (PublicKey key : client.getSessionBridge()
             .getTextureVerificationKeys()) {
-            if (property.isSignatureValid(key)) return true;
+            if (wawelauth$verifyProperty(property, key)) return true;
         }
         return false;
+    }
+
+    /**
+     * Verify a property signature against a specific key.
+     * When authlib-injector is active, Property.isSignatureValid ignores the key parameter,
+     * so we verify directly using PropertySigner to bypass the hijacked method.
+     */
+    private static boolean wawelauth$verifyProperty(Property property, PublicKey key) {
+        if (AUTHLIB_INJECTOR_ACTIVE) {
+            String signature = property.getSignature();
+            if (signature == null) return false;
+            return PropertySigner.verifyWithKey(property.getValue(), signature, key);
+        }
+        return property.isSignatureValid(key);
     }
 
     /** Redirect domain whitelist to use provider context domains, falling back to vanilla. */
