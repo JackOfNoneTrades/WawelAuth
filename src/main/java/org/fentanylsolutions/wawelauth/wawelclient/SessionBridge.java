@@ -1144,9 +1144,15 @@ public class SessionBridge {
                 if (hasProperties(fetched)) {
                     String altKey = buildProfileCacheKey(provider, profileId, !requireSecure);
                     cacheFetchedProfile(cacheKey, altKey, fetched, requireSecure);
+                } else {
+                    // Cache the unfilled profile to prevent repeated fetch attempts.
+                    // Cleared on disconnect and by invalidateProfileCache (texture TTL expiry / upload).
+                    profileCache.putIfAbsent(cacheKey, probe);
                 }
             } catch (Exception e) {
                 WawelAuth.debug("Background profile fetch failed: " + e.getMessage());
+                // Cache the original profile to suppress further fetch attempts until invalidation.
+                profileCache.putIfAbsent(cacheKey, new GameProfile(profileId, profileName));
             } finally {
                 profileFetchInFlight.remove(cacheKey);
             }
