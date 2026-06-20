@@ -591,6 +591,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .getProvider(targetName);
                 if (target != null) {
                     selectProvider(target);
+                    if (target.getType() == ProviderType.CUSTOM && !target.isManualEntry()) {
+                        providerListPanel.expandLocal();
+                    }
                     providerListPanel.scrollToSelected();
                     if (targetAccountId >= 0) {
                         ClientAccount targetAccount = targetClient.getAccountManager()

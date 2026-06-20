@@ -69,6 +69,10 @@ final class AccountManagerProviderListPanel {
         return providerList;
     }
 
+    void expandLocal() {
+        showingLocal = true;
+    }
+
     void scrollToSelected() {
         pendingScrollOffset = 0; // will be updated with actual offset during rebuild
     }
@@ -103,11 +107,6 @@ final class AccountManagerProviderListPanel {
                 refreshFocusedLocalProviderState.run();
             }
             return;
-        }
-
-        // Auto-expand local section if the selected provider is local.
-        if (!showingLocal && isLocalProvider(state.selectedProvider)) {
-            showingLocal = true;
         }
 
         ClientProvider connectedProvider = resolveConnectedProvider(client);
@@ -190,7 +189,7 @@ final class AccountManagerProviderListPanel {
             }
         }
 
-        if (!selectedVisible) {
+        if (!selectedVisible && !(isLocalProvider(currentSelected) && !localProviders.isEmpty())) {
             if (connectedProvider != null) {
                 selectProvider.accept(connectedProvider);
                 rebuild();
