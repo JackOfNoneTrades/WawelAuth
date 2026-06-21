@@ -8,7 +8,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemArmor;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -117,26 +116,14 @@ public final class SkinResolverClientHandler {
         RenderPlayer renderer = event.renderer;
         IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
 
-        if (((ISkinLayerExtender) player).wawelAuth$getHideHat()) {
+        if (((ISkinLayerExtender) player).wawelAuth$getHideHat())
             renderer.modelBipedMain.bipedHeadwear.showModel = false;
-        }
-        if (((ISkinLayerExtender) player).wawelAuth$getHideJacket()) {
-            ext.getBodyWear().showModel = false;
-        }
-        if (((ISkinLayerExtender) player).wawelAuth$getHideLeftSleeve()) {
-            ext.getLeftArmWear().showModel = false;
-        }
-        if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()) {
-            ext.getRightArmWear().showModel = false;
-        }
-        if (((ISkinLayerExtender) player).wawelAuth$getHideLeftPants()) {
-            ext.getLeftLegWear().showModel = false;
-        }
-        if (((ISkinLayerExtender) player).wawelAuth$getHideRightPants()) {
-            ext.getRightLegWear().showModel = false;
-        }
+        if (((ISkinLayerExtender) player).wawelAuth$getHideJacket()) ext.getBodyWear().showModel = false;
+        if (((ISkinLayerExtender) player).wawelAuth$getHideLeftSleeve()) ext.getLeftArmWear().showModel = false;
+        if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()) ext.getRightArmWear().showModel = false;
+        if (((ISkinLayerExtender) player).wawelAuth$getHideLeftPants()) ext.getLeftLegWear().showModel = false;
+        if (((ISkinLayerExtender) player).wawelAuth$getHideRightPants()) ext.getRightLegWear().showModel = false;
 
-        // TODO: find a better solution instead of disabling
         if (SkinLayers3DConfig.hideOverlayArmor) {
             ItemStack[] armor = player.inventory.armorInventory;
 
@@ -145,16 +132,13 @@ public final class SkinResolverClientHandler {
             ItemStack legs = armor[1];
             ItemStack boots = armor[0];
 
-            if (helmet != null && helmet.getItem() instanceof ItemArmor) {
-                renderer.modelBipedMain.bipedHeadwear.showModel = false;
-            }
-            if (chest != null && chest.getItem() instanceof ItemArmor) {
+            if (helmet != null) renderer.modelBipedMain.bipedHeadwear.showModel = false;
+            if (chest != null) {
                 ext.getBodyWear().showModel = false;
                 ext.getLeftArmWear().showModel = false;
                 ext.getRightArmWear().showModel = false;
             }
-            if ((legs != null && legs.getItem() instanceof ItemArmor)
-                || (boots != null && boots.getItem() instanceof ItemArmor)) {
+            if (legs != null || boots != null) {
                 ext.getLeftLegWear().showModel = false;
                 ext.getRightLegWear().showModel = false;
             }

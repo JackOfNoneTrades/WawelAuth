@@ -6,6 +6,8 @@ import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
@@ -222,17 +224,19 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     }
 
     @Unique
-    boolean headWearSaved;
+    boolean headWearEnabled;
     @Unique
-    boolean bodyWearSaved;
+    boolean bodyWearEnabled;
     @Unique
-    boolean rightArmWearSaved;
+    boolean rightArmWearEnabled;
     @Unique
-    boolean leftArmWearSaved;
+    boolean leftArmWearEnabled;
     @Unique
-    boolean rightLegWearSaved;
+    boolean rightLegWearEnabled;
     @Unique
-    boolean leftLegWearSaved;
+    boolean leftLegWearEnabled;
+    @Unique
+    boolean[] armorEquipped = new boolean[4];
 
     @Override
     public void render3DRightArmWear(float scale) {
@@ -263,36 +267,38 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
         float headPitch, float scaleFactor, CallbackInfo ci) {
         if (!is3DEnabled()) return;
 
+        if (entity instanceof EntityPlayer player) {
+            ItemStack[] armor = player.inventory.armorInventory;
+            for (int i = 0; i < 4; i++) {
+                // boots[0] | legs[1] | chest[2] | helmet[3]
+                armorEquipped[i] = (armor[i] != null);
+            }
+        }
+
         ModelRenderer rightArmWear = this.getRightArmWear();
         ModelRenderer leftArmWear = this.getLeftArmWear();
 
-        headWearSaved = this.bipedHeadwear.showModel;
-        bodyWearSaved = this.bodyWear.showModel;
-        rightArmWearSaved = rightArmWear.showModel;
-        leftArmWearSaved = leftArmWear.showModel;
-        rightLegWearSaved = this.rightLegWear.showModel;
-        leftLegWearSaved = this.leftLegWear.showModel;
+        headWearEnabled = this.bipedHeadwear.showModel;
+        bodyWearEnabled = this.bodyWear.showModel;
+        rightArmWearEnabled = rightArmWear.showModel;
+        leftArmWearEnabled = leftArmWear.showModel;
+        rightLegWearEnabled = this.rightLegWear.showModel;
+        leftLegWearEnabled = this.leftLegWear.showModel;
 
         SkinLayers3DState state3d = SkinLayers3DSetup.getState(currentRenderingPlayerUuid);
         if (state3d != null && state3d.initialized) {
-            if (state3d.hatMesh != null && SkinLayers3DConfig.enableHat3D) {
+            if (state3d.hatMesh != null && SkinLayers3DConfig.enableHat3D && !armorEquipped[3])
                 this.bipedHeadwear.showModel = false;
-            }
-            if (state3d.jacketMesh != null && SkinLayers3DConfig.enableJacket3D) {
+            if (state3d.jacketMesh != null && SkinLayers3DConfig.enableJacket3D && !armorEquipped[2])
                 this.bodyWear.showModel = false;
-            }
-            if (state3d.rightSleeveMesh != null && SkinLayers3DConfig.enableRightSleeve3D) {
+            if (state3d.rightSleeveMesh != null && SkinLayers3DConfig.enableRightSleeve3D && !armorEquipped[2])
                 rightArmWear.showModel = false;
-            }
-            if (state3d.leftSleeveMesh != null && SkinLayers3DConfig.enableLeftSleeve3D) {
+            if (state3d.leftSleeveMesh != null && SkinLayers3DConfig.enableLeftSleeve3D && !armorEquipped[2])
                 leftArmWear.showModel = false;
-            }
-            if (state3d.rightPantsMesh != null && SkinLayers3DConfig.enableRightPants3D) {
-                this.rightLegWear.showModel = false;
-            }
-            if (state3d.leftPantsMesh != null && SkinLayers3DConfig.enableLeftPants3D) {
-                this.leftLegWear.showModel = false;
-            }
+            if (state3d.rightPantsMesh != null && SkinLayers3DConfig.enableRightPants3D
+                && (!armorEquipped[1] || !armorEquipped[0])) this.rightLegWear.showModel = false;
+            if (state3d.leftPantsMesh != null && SkinLayers3DConfig.enableLeftPants3D
+                && (!armorEquipped[1] || !armorEquipped[0])) this.leftLegWear.showModel = false;
         }
     }
 
@@ -300,9 +306,20 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
      * Render all 3D overlay layers after the base model renders
      */
     @Inject(method = "render", at = @At("TAIL"))
-    private void render3DOverlays(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks,
-        float netHeadYaw, float headPitch, float scaleFactor, CallbackInfo ci) {
+    private void postRender(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw,
+        float headPitch, float scaleFactor, CallbackInfo ci) {
         if (!is3DEnabled()) return;
+
+        if (armorEquipped[3]) headWearEnabled = false;
+        if (armorEquipped[2]) {
+            bodyWearEnabled = false;
+            leftArmWearEnabled = false;
+            rightArmWearEnabled = false;
+        }
+        if (armorEquipped[1] || armorEquipped[0]) {
+            leftLegWearEnabled = false;
+            rightLegWearEnabled = false;
+        }
 
         if (this.isChild) {
             GL11.glPushMatrix();
@@ -310,22 +327,22 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
             GL11.glTranslatef(0.0F, 24.0F * scaleFactor, 0.0F);
             render3D(
                 scaleFactor,
-                headWearSaved,
-                bodyWearSaved,
-                rightArmWearSaved,
-                leftArmWearSaved,
-                rightLegWearSaved,
-                leftLegWearSaved);
+                headWearEnabled,
+                bodyWearEnabled,
+                rightArmWearEnabled,
+                leftArmWearEnabled,
+                rightLegWearEnabled,
+                leftLegWearEnabled);
             GL11.glPopMatrix();
         } else {
             render3D(
                 scaleFactor,
-                headWearSaved,
-                bodyWearSaved,
-                rightArmWearSaved,
-                leftArmWearSaved,
-                rightLegWearSaved,
-                leftLegWearSaved);
+                headWearEnabled,
+                bodyWearEnabled,
+                rightArmWearEnabled,
+                leftArmWearEnabled,
+                rightLegWearEnabled,
+                leftLegWearEnabled);
         }
     }
 

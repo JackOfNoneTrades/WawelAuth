@@ -16,12 +16,8 @@ public class SkinLayers3DConfig {
     public static boolean modernSkinSupport = true;
 
     @Config.Comment("Disable skin overlay rendering when armor is equipped.")
-    @Config.DefaultBoolean(true)
-    public static boolean hideOverlayArmor = true;
-
-    @Config.Comment("Allow first-person 3D sleeve layers to render even when armor would normally hide overlays.")
     @Config.DefaultBoolean(false)
-    public static boolean showFirstPerson3DLayersWithArmor = false;
+    public static boolean hideOverlayArmor = false;
 
     @Config.Comment("Master toggle for all 3D skin layer rendering (players and skulls). Not compatible with SmartMoving.")
     @Config.DefaultBoolean(true)

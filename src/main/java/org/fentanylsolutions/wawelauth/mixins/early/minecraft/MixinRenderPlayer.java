@@ -6,8 +6,6 @@ import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemArmor;
-import net.minecraft.item.ItemStack;
 
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.SkinModelHelper;
@@ -125,23 +123,6 @@ public class MixinRenderPlayer {
         // Apply right sleeve visibility for first-person arm
         if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()) {
             ext.getRightArmWear().showModel = false;
-        }
-
-        // TODO: find a better solution instead of disabling
-        if (SkinLayers3DConfig.hideOverlayArmor) {
-            ItemStack chest = player.inventory.armorInventory[2];
-            if (chest != null && chest.getItem() instanceof ItemArmor) {
-                boolean allowFirstPerson3DWithArmor = SkinLayers3DConfig.showFirstPerson3DLayersWithArmor
-                    && SkinLayers3DConfig.enabled3D
-                    && SkinLayers3DConfig.enableRightSleeve3D
-                    && state != null
-                    && state.initialized
-                    && state.rightSleeveMesh != null
-                    && state.rightSleeveMesh.isCompiled();
-                if (!allowFirstPerson3DWithArmor) {
-                    ext.getRightArmWear().showModel = false;
-                }
-            }
         }
 
     }
