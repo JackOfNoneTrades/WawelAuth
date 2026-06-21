@@ -27,9 +27,9 @@ public class GuiSkinCustomization extends GuiScreen {
             int partID = part.getPartId();
             this.buttonList.add(
                 new GuiCustomToggleButton(
-                    partID,
-                    this.width / 2 - 155 + ((partID - 1) % 2) * 160,
-                    this.height / 6 + 24 * ((partID - 1) >> 1),
+                    partID + 1,
+                    this.width / 2 - 155 + ((partID) % 2) * 160,
+                    this.height / 6 + 24 * ((partID) >> 1),
                     150,
                     20,
                     I18n.format(part.getPartName()),

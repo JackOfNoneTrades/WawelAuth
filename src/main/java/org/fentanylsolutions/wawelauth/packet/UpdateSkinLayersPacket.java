@@ -39,7 +39,7 @@ public class UpdateSkinLayersPacket implements IMessage {
             if (player == null) {
                 return null;
             }
-            byte mask = (byte) (message.mask & SkinLayersHelper.ALL_PARTS_MASK);
+            byte mask = (byte) (message.mask & 127);
             ServerTaskScheduler.schedule(() -> {
                 if (!player.isDead) {
                     player.getDataWatcher()

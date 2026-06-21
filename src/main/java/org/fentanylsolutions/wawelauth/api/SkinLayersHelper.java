@@ -8,28 +8,25 @@ import net.minecraft.entity.player.EntityPlayer;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersConfig;
 
 public class SkinLayersHelper {
-
-    /*
-     * Vanilla 1.7.10 : [1] - cape
-     * Vanilla 1.8+ : [0-7], 8th bit unused
-     * WawelAuth : [1-8], 0th bit unused
-     * Keep 1.7.10 cape's ID same
+    
+    /**
+     * Uses 1.8+ ids to avoid signed byte overflow
      */
     public enum EnumPlayerModelParts {
 
-        CAPE(1, "wawelauth.gui.skincustomization.cape", () -> !SkinLayersConfig.enableCape,
+        CAPE(0, "wawelauth.gui.skincustomization.cape", () -> !SkinLayersConfig.enableCape,
             v -> SkinLayersConfig.enableCape = !v),
-        JACKET(2, "wawelauth.gui.skincustomization.jacket", () -> !SkinLayersConfig.enableJacket,
+        JACKET(1, "wawelauth.gui.skincustomization.jacket", () -> !SkinLayersConfig.enableJacket,
             v -> SkinLayersConfig.enableJacket = !v),
-        LEFT_SLEEVE(3, "wawelauth.gui.skincustomization.left_sleeve", () -> !SkinLayersConfig.enableLeftSleeve,
+        LEFT_SLEEVE(2, "wawelauth.gui.skincustomization.left_sleeve", () -> !SkinLayersConfig.enableLeftSleeve,
             v -> SkinLayersConfig.enableLeftSleeve = !v),
-        RIGHT_SLEEVE(4, "wawelauth.gui.skincustomization.right_sleeve", () -> !SkinLayersConfig.enableRightSleeve,
+        RIGHT_SLEEVE(3, "wawelauth.gui.skincustomization.right_sleeve", () -> !SkinLayersConfig.enableRightSleeve,
             v -> SkinLayersConfig.enableRightSleeve = !v),
-        LEFT_PANTS(5, "wawelauth.gui.skincustomization.left_pants", () -> !SkinLayersConfig.enableLeftPants,
+        LEFT_PANTS(4, "wawelauth.gui.skincustomization.left_pants", () -> !SkinLayersConfig.enableLeftPants,
             v -> SkinLayersConfig.enableLeftPants = !v),
-        RIGHT_PANTS(6, "wawelauth.gui.skincustomization.right_pants", () -> !SkinLayersConfig.enableRightPants,
+        RIGHT_PANTS(5, "wawelauth.gui.skincustomization.right_pants", () -> !SkinLayersConfig.enableRightPants,
             v -> SkinLayersConfig.enableRightPants = !v),
-        HAT(7, "wawelauth.gui.skincustomization.hat", () -> !SkinLayersConfig.enableHat,
+        HAT(6, "wawelauth.gui.skincustomization.hat", () -> !SkinLayersConfig.enableHat,
             v -> SkinLayersConfig.enableHat = !v);
 
         private final int partId;
@@ -73,17 +70,7 @@ public class SkinLayersHelper {
             return null;
         }
     }
-
-    public static final byte ALL_PARTS_MASK;
-
-    static {
-        byte mask = 0;
-        for (EnumPlayerModelParts part : EnumPlayerModelParts.values()) {
-            mask |= part.getPartMask();
-        }
-        ALL_PARTS_MASK = mask;
-    }
-
+    
     public static boolean isSkinLayerHidden(EntityPlayer player, EnumPlayerModelParts part) {
         return (player.getDataWatcher()
             .getWatchableObjectByte(16) & part.getPartMask()) != 0;
@@ -97,7 +84,7 @@ public class SkinLayersHelper {
                 .updateObject(16, (byte) (mask | part.getPartMask()));
         } else {
             player.getDataWatcher()
-                .updateObject(16, (byte) (mask & ~part.getPartMask()));
+                .updateObject(16, (byte) (mask & (~part.getPartMask() & 127)));
         }
     }
 
