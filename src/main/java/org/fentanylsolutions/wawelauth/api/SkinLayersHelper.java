@@ -8,7 +8,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersConfig;
 
 public class SkinLayersHelper {
-    
+
     /**
      * Uses 1.8+ ids to avoid signed byte overflow
      */
@@ -70,7 +70,7 @@ public class SkinLayersHelper {
             return null;
         }
     }
-    
+
     public static boolean isSkinLayerHidden(EntityPlayer player, EnumPlayerModelParts part) {
         return (player.getDataWatcher()
             .getWatchableObjectByte(16) & part.getPartMask()) != 0;

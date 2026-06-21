@@ -2,7 +2,6 @@ package org.fentanylsolutions.wawelauth.packet;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 
-import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.common.ServerTaskScheduler;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
