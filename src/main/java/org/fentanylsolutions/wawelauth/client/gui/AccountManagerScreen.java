@@ -98,6 +98,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final int DETAIL_SECONDARY_TEXT_COLOR = WawelAuthStyle.TEXT_SECONDARY;
     private static final int PREVIEW_PANEL_BACKGROUND_COLOR = WawelAuthStyle.PANEL_INSET;
     private static final int PANORAMA_DIM_COLOR = 0x55000000;
+    private static final int PREVIEW_PANEL_HEIGHT = 101;
     private static final int ACCOUNT_ACTION_BUTTON_SIZE = 16;
     private static final int ACCOUNT_ACTION_ICON_SIZE = 12;
     private static final int ACCOUNT_ACTION_ROW_LEADING_SPACE = 2;
@@ -110,6 +111,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final int PREVIEW_MODE_BUTTON_SIZE = 22;
     private static final int PREVIEW_MODE_ICON_SIZE = 18;
     private static final int PREVIEW_MODE_BUTTON_EDGE_MARGIN = 3;
+    private static final int PREVIEW_ENTITY_ROW_HEIGHT = PREVIEW_PANEL_HEIGHT - PREVIEW_MODE_BUTTON_SIZE
+        - PREVIEW_MODE_BUTTON_EDGE_MARGIN;
+    private static final int PREVIEW_ENTITY_VERTICAL_OFFSET = 13;
     private static final ColorType ACCOUNT_ACTION_ICON_COLOR_TYPE = new ColorType(
         "wawelauth:account_action_icon",
         theme -> ACCOUNT_ACTION_ICON_IDLE_COLOR);
@@ -414,15 +418,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
         rightPanel.child(
             new Column().widthRel(1.0f)
-                .height(101)
+                .height(PREVIEW_PANEL_HEIGHT)
                 .margin(0, 2)
                 .background(WawelAuthStyle.rect(PREVIEW_PANEL_BACKGROUND_COLOR))
                 .disableHoverThemeBackground(true)
-                .child(new Widget<>().size(1, 9))
                 .child(
                     new Row().widthRel(1.0f)
-                        .height(67)
+                        .height(PREVIEW_ENTITY_ROW_HEIGHT)
                         .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                        .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                         .child(new EntityDisplayWidget(() -> previewFrontEntity) {
 
                             @Override
@@ -430,7 +434,13 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                                 WidgetTheme widgetTheme) {
                                 PreviewEntityRenderContext.isRenderingInGui = true;
                                 try {
-                                    super.draw(context, x, y, width, height, widgetTheme);
+                                    super.draw(
+                                        context,
+                                        x,
+                                        y + PREVIEW_ENTITY_VERTICAL_OFFSET,
+                                        width,
+                                        height,
+                                        widgetTheme);
                                 } finally {
                                     PreviewEntityRenderContext.isRenderingInGui = false;
                                 }
@@ -449,7 +459,13 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                                 WidgetTheme widgetTheme) {
                                 PreviewEntityRenderContext.isRenderingInGui = true;
                                 try {
-                                    super.draw(context, x, y, width, height, widgetTheme);
+                                    super.draw(
+                                        context,
+                                        x,
+                                        y + PREVIEW_ENTITY_VERTICAL_OFFSET,
+                                        width,
+                                        height,
+                                        widgetTheme);
                                 } finally {
                                     PreviewEntityRenderContext.isRenderingInGui = false;
                                 }
