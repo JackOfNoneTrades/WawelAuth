@@ -100,6 +100,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final int PANORAMA_DIM_COLOR = 0x55000000;
     private static final int VISIBLE_PROVIDER_ROWS = 5;
     private static final int VISIBLE_ACCOUNT_ROWS = 6;
+    private static final int ACCOUNT_SECTION_TOP_SPACE = 4;
     private static final int PREVIEW_PANEL_HEIGHT = 101;
     private static final int ACCOUNT_ACTION_BUTTON_SIZE = 16;
     private static final int ACCOUNT_ACTION_ICON_SIZE = 12;
@@ -217,6 +218,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     @Override
     protected boolean drawCustomBackdrop() {
+        if (Minecraft.getMinecraft().theWorld != null) {
+            return false;
+        }
+
         boolean drewPanorama = panoramaBackdrop.draw(getContext().getPartialTicks());
         if (drewPanorama) {
             drawPanoramaDim();
@@ -336,8 +341,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         });
         loginDialog = LoginDialog.attach(mainPanel, account -> {
             if (account != null) {
-                rebuildAccountList();
                 selectAccount(account);
+                rebuildAccountList();
             }
         });
         registerDialog = RegisterDialog.attach(mainPanel, success -> {
@@ -696,6 +701,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         addProviderDialog.open();
                         return true;
                     }));
+        leftSidebar.child(new Widget<>().size(1, ACCOUNT_SECTION_TOP_SPACE));
         appendSharedAccountSection(leftSidebar, accountListFrame);
     }
 
@@ -923,7 +929,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     @Override
     public void onUpdate() {
         super.onUpdate();
-        panoramaBackdrop.update();
+        if (Minecraft.getMinecraft().theWorld == null) {
+            panoramaBackdrop.update();
+        }
 
         if (providerListPanel != null) {
             providerListPanel.applyPendingScroll();

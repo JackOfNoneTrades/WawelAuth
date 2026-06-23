@@ -73,6 +73,7 @@ public final class LoginDialog {
             String initMsg = this.initialMessage;
             String[] errorText = { initMsg != null ? initMsg : "" };
             boolean[] isError = { initMsg == null };
+            boolean[] isNeutralStatus = { false };
             boolean[] busy = { false };
             String[] oauthDeviceCode = { null };
 
@@ -95,6 +96,7 @@ public final class LoginDialog {
             Runnable doLogin = () -> {
                 if (busy[0]) return;
                 isError[0] = true;
+                isNeutralStatus[0] = false;
                 oauthDeviceCode[0] = null;
 
                 if (provider.isEmpty()) {
@@ -116,6 +118,8 @@ public final class LoginDialog {
                 }
 
                 busy[0] = true;
+                isError[0] = false;
+                isNeutralStatus[0] = true;
                 errorText[0] = GuiText.tr(
                     offlineAccountLogin ? "wawelauth.gui.login.status.creating_offline"
                         : "wawelauth.gui.login.status.authenticating");
@@ -128,8 +132,10 @@ public final class LoginDialog {
                             .func_152344_a(() -> { // Minecraft.addScheduledTask
                                 if (cancelled[0]) return;
                                 busy[0] = false;
+                                isNeutralStatus[0] = false;
                                 if (err != null) {
                                     Throwable cause = err.getCause() != null ? err.getCause() : err;
+                                    isError[0] = true;
                                     errorText[0] = cause.getMessage();
                                     WawelAuth.debug("Login failed: " + cause.getMessage());
                                 } else {
@@ -153,10 +159,12 @@ public final class LoginDialog {
             startOauthLogin[0] = () -> {
                 if (busy[0]) return;
                 isError[0] = false;
+                isNeutralStatus[0] = true;
                 oauthDeviceCode[0] = null;
 
                 if (!supportsOauthLogin) {
                     isError[0] = true;
+                    isNeutralStatus[0] = false;
                     errorText[0] = GuiText.tr("wawelauth.gui.login.error.oauth_only");
                     return;
                 }
@@ -174,6 +182,7 @@ public final class LoginDialog {
                             status -> Minecraft.getMinecraft()
                                 .func_152344_a(() -> {
                                     isError[0] = false;
+                                    isNeutralStatus[0] = true;
                                     errorText[0] = status;
                                 }))
                         .whenComplete((account, err) -> {
@@ -181,6 +190,7 @@ public final class LoginDialog {
                                 .func_152344_a(() -> {
                                     if (cancelled[0]) return;
                                     busy[0] = false;
+                                    isNeutralStatus[0] = false;
                                     if (err != null) {
                                         Throwable cause = err.getCause() != null ? err.getCause() : err;
                                         isError[0] = true;
@@ -201,6 +211,7 @@ public final class LoginDialog {
                             status -> Minecraft.getMinecraft()
                                 .func_152344_a(() -> {
                                     isError[0] = false;
+                                    isNeutralStatus[0] = true;
                                     errorText[0] = status;
                                 }),
                             deviceCode -> Minecraft.getMinecraft()
@@ -214,6 +225,7 @@ public final class LoginDialog {
                                 .func_152344_a(() -> {
                                     if (cancelled[0]) return;
                                     busy[0] = false;
+                                    isNeutralStatus[0] = false;
                                     oauthDeviceCode[0] = err != null ? null : oauthDeviceCode[0];
                                     if (err != null) {
                                         Throwable cause = err.getCause() != null ? err.getCause() : err;
@@ -234,6 +246,8 @@ public final class LoginDialog {
                     if (busy[0]) return true;
 
                     if (!supportsOauthLogin) {
+                        isError[0] = true;
+                        isNeutralStatus[0] = false;
                         errorText[0] = GuiText.tr("wawelauth.gui.login.error.oauth_only");
                         return true;
                     }
@@ -346,7 +360,9 @@ public final class LoginDialog {
                                     }
                                 })
                                 .tooltipAutoUpdate(true)
-                                .color(() -> isError[0] ? WawelAuthStyle.DANGER : WawelAuthStyle.SUCCESS)
+                                .color(
+                                    () -> isNeutralStatus[0] ? WawelAuthStyle.TEXT_SECONDARY
+                                        : isError[0] ? WawelAuthStyle.DANGER : WawelAuthStyle.SUCCESS)
                                 .widthRel(1.0f)
                                 .height(12))
                 .child(new Widget<>().size(1, 10))

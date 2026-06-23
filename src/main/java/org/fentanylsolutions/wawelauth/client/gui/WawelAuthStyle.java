@@ -195,8 +195,12 @@ final class WawelAuthStyle {
     }
 
     static ButtonWidget<?> rowButton(ButtonWidget<?> button, BooleanSupplier selected) {
-        button.background(selectableRow(ROW_IDLE, selected, WawelAuthStyle::accent))
-            .hoverBackground(selectableRow(ROW_HOVER, selected, WawelAuthStyle::accent));
+        return rowButton(button, selected, WawelAuthStyle::accent);
+    }
+
+    static ButtonWidget<?> rowButton(ButtonWidget<?> button, BooleanSupplier selected, IntSupplier accentColor) {
+        button.background(selectableRow(ROW_IDLE, selected, accentColor))
+            .hoverBackground(selectableRow(ROW_HOVER, selected, accentColor));
         return button;
     }
 

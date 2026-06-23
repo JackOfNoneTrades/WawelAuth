@@ -88,6 +88,7 @@ final class AccountManagerProviderListPanel {
     private static final int SHOW_LOCAL_BUTTON_HEIGHT = 10;
     static final int PROVIDER_ROW_HEIGHT = 14;
     private static final int PROVIDER_TEXT_HOVER_COLOR = WawelAuthStyle.THEME_LIGHTER;
+    private static final int CONNECTED_PROVIDER_COLOR = 0xFFFFFF55;
     private static final int BUILTIN_PROVIDER_BADGE_SLOT_SIZE = 12;
     private static final int BUILTIN_PROVIDER_BADGE_DRAW_SIZE = 10;
     private static final String[] BUILTIN_PROVIDER_BADGE_MASK = { "..........", "..........", "..........",
@@ -287,11 +288,14 @@ final class AccountManagerProviderListPanel {
         boolean builtInProvider = BuiltinProviders.isBuiltinProvider(providerName);
 
         ButtonWidget<?> selectButton = new ButtonWidget<>();
-        WawelAuthStyle.rowButton(selectButton, () -> isSelected);
+        IntSupplier activeColor = connectedHighlight ? () -> CONNECTED_PROVIDER_COLOR : WawelAuthStyle::accent;
+        WawelAuthStyle.rowButton(selectButton, () -> isSelected, activeColor);
         selectButton.expanded()
             .heightRel(1.0f);
-        int providerTextColor = isSelected ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY;
-        int providerHoverTextColor = isSelected ? WawelAuthStyle.THEME_LIGHTER : PROVIDER_TEXT_HOVER_COLOR;
+        int activeTextColor = connectedHighlight ? CONNECTED_PROVIDER_COLOR : WawelAuthStyle.THEME_LIGHTER;
+        int providerTextColor = isSelected ? activeTextColor : WawelAuthStyle.TEXT_SECONDARY;
+        int providerHoverTextColor = isSelected ? activeTextColor
+            : connectedHighlight ? CONNECTED_PROVIDER_COLOR : PROVIDER_TEXT_HOVER_COLOR;
 
         Row selectContent = new Row() {
 
