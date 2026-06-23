@@ -107,6 +107,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final int ACCOUNT_ACTION_BUTTON_IDLE_BACKGROUND = WawelAuthStyle.BUTTON_IDLE;
     private static final int ACCOUNT_ACTION_ICON_IDLE_COLOR = 0xFFE0E0E0;
     private static final int ACCOUNT_ACTION_ICON_HOVER_COLOR = 0xFFFFFFFF;
+    private static final int PREVIEW_MODE_BUTTON_SIZE = 22;
+    private static final int PREVIEW_MODE_ICON_SIZE = 18;
+    private static final int PREVIEW_MODE_BUTTON_EDGE_MARGIN = 3;
     private static final ColorType ACCOUNT_ACTION_ICON_COLOR_TYPE = new ColorType(
         "wawelauth:account_action_icon",
         theme -> ACCOUNT_ACTION_ICON_IDLE_COLOR);
@@ -143,6 +146,24 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final IDrawable ACCOUNT_ACTION_REMOVE_ICON_HOVER = centeredIcon(
         actionIcon(4, "remove_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
         ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable PREVIEW_MODE_NONE_ICON = centeredIcon(
+        previewModeTexture("none", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        PREVIEW_MODE_ICON_SIZE);
+    private static final IDrawable PREVIEW_MODE_NONE_ICON_HOVER = centeredIcon(
+        previewModeTexture("none", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        PREVIEW_MODE_ICON_SIZE);
+    private static final IDrawable PREVIEW_MODE_CAPE_ICON = centeredIcon(
+        previewModeTexture("cape", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        PREVIEW_MODE_ICON_SIZE);
+    private static final IDrawable PREVIEW_MODE_CAPE_ICON_HOVER = centeredIcon(
+        previewModeTexture("cape", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        PREVIEW_MODE_ICON_SIZE);
+    private static final IDrawable PREVIEW_MODE_ELYTRA_ICON = centeredIcon(
+        previewModeTexture("elytra", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        PREVIEW_MODE_ICON_SIZE);
+    private static final IDrawable PREVIEW_MODE_ELYTRA_ICON_HOVER = centeredIcon(
+        previewModeTexture("elytra", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        PREVIEW_MODE_ICON_SIZE);
 
     private static ServerData pendingFocusedServerData;
     private static ServerCapabilities pendingFocusedCapabilities;
@@ -389,7 +410,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 .child(new Widget<>().size(1, 9))
                 .child(
                     new Row().widthRel(1.0f)
-                        .height(77)
+                        .height(67)
                         .mainAxisAlignment(Alignment.MainAxis.CENTER)
                         .child(new EntityDisplayWidget(() -> previewFrontEntity) {
 
@@ -407,9 +428,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             .preDraw(entity -> { prepareEntityPreview((PlayerPreviewEntity) entity, false); })
                             .postDraw(entity -> { postEntityPreview(); })
                             .asWidget()
-                            .size(72, 76)
+                            .size(72, 66)
                             .invisible())
-                        .child(new Widget<>().size(6, 76))
+                        .child(new Widget<>().size(6, 66))
                         .child(new EntityDisplayWidget(() -> previewBackEntity) {
 
                             @Override
@@ -426,24 +447,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             .preDraw(entity -> { prepareEntityPreview((PlayerPreviewEntity) entity, true); })
                             .postDraw(entity -> { postEntityPreview(); })
                             .asWidget()
-                            .size(72, 76)
+                            .size(72, 66)
                             .invisible())
-                        .child(new Widget<>().size(40, 76)))
+                        .child(new Widget<>().size(40, 66)))
                 .child(
                     new Row().widthRel(1.0f)
-                        .height(12)
+                        .height(PREVIEW_MODE_BUTTON_SIZE)
                         .mainAxisAlignment(Alignment.MainAxis.END)
-                        .child(
-                            WawelAuthStyle.button(new ButtonWidget<>())
-                                .size(64, 12)
-                                .margin(3, 0)
-                                .overlay(IKey.dynamic(() -> GuiText.tr(capePreviewMode.translationKey())))
-                                .onMousePressed(mouseButton -> {
-                                    capePreviewMode = normalizeCapePreviewMode(capePreviewMode)
-                                        .next(EtFuturumCompat.isPreviewElytraAvailable());
-                                    applyCapePreviewMode();
-                                    return true;
-                                }))))
+                        .child(previewModeButton()))
+                .child(new Widget<>().size(1, PREVIEW_MODE_BUTTON_EDGE_MARGIN)))
             .child(new TextWidget<>(IKey.dynamic(() -> {
                 if (state.selectedAccount == null) return GuiText.tr("wawelauth.gui.common.no_account_selected");
                 String name = state.selectedAccount.getProfileName();
@@ -757,6 +769,45 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         return button;
     }
 
+    private ButtonWidget<?> previewModeButton() {
+        ButtonWidget<?> button = new ButtonWidget<>();
+        WawelAuthStyle.iconButton(button);
+        button.size(PREVIEW_MODE_BUTTON_SIZE, PREVIEW_MODE_BUTTON_SIZE)
+            .margin(PREVIEW_MODE_BUTTON_EDGE_MARGIN, 0)
+            .background(WawelAuthStyle.rect(ACCOUNT_ACTION_BUTTON_IDLE_BACKGROUND))
+            .hoverBackground(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_HOVER))
+            .overlay(dynamicPreviewModeIcon(false))
+            .hoverOverlay(dynamicPreviewModeIcon(true))
+            .tooltip(
+                tooltip -> tooltip.addLine(
+                    IKey.dynamic(() -> GuiText.tr(normalizeCapePreviewMode(capePreviewMode).translationKey()))))
+            .onMousePressed(mouseButton -> {
+                capePreviewMode = normalizeCapePreviewMode(capePreviewMode)
+                    .next(EtFuturumCompat.isPreviewElytraAvailable());
+                applyCapePreviewMode();
+                return true;
+            });
+        return button;
+    }
+
+    private IDrawable dynamicPreviewModeIcon(boolean hover) {
+        return (context, x, y, width, height,
+            widgetTheme) -> previewModeIcon(normalizeCapePreviewMode(capePreviewMode), hover)
+                .draw(context, x, y, width, height, widgetTheme);
+    }
+
+    private static IDrawable previewModeIcon(PreviewBackMode mode, boolean hover) {
+        switch (mode) {
+            case CAPE:
+                return hover ? PREVIEW_MODE_CAPE_ICON_HOVER : PREVIEW_MODE_CAPE_ICON;
+            case ELYTRA:
+                return hover ? PREVIEW_MODE_ELYTRA_ICON_HOVER : PREVIEW_MODE_ELYTRA_ICON;
+            case NONE:
+            default:
+                return hover ? PREVIEW_MODE_NONE_ICON_HOVER : PREVIEW_MODE_NONE_ICON;
+        }
+    }
+
     private static Widget<?> actionGap() {
         return new Widget<>().size(ACCOUNT_ACTION_BUTTON_GAP, ACCOUNT_ACTION_BUTTON_SIZE);
     }
@@ -773,6 +824,17 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 ACCOUNT_ACTION_ICON_SOURCE_SIZE)
             .nonOpaque()
             .name("wawelauth:account_action_" + name)
+            .build();
+    }
+
+    private static IDrawable previewModeTexture(String mode, ColorType colorType) {
+        return UITexture.builder()
+            .location("wawelauth", "icon_player_" + mode)
+            .fullImage()
+            .colorType(colorType)
+            .nonOpaque()
+            .name(
+                "wawelauth:preview_mode_" + mode + (colorType == ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE ? "_hover" : ""))
             .build();
     }
 
