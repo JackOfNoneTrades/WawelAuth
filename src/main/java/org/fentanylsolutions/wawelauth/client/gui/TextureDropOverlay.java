@@ -239,7 +239,8 @@ public final class TextureDropOverlay {
                 .mainAxisAlignment(Alignment.MainAxis.CENTER)
                 .child(
                     new TextWidget<>(GuiText.key(labelKey))
-                        .color(() -> hoveredZone == zone ? WawelAuthStyle.TEXT_PRIMARY : WawelAuthStyle.TEXT_BUTTON_IDLE)
+                        .color(
+                            () -> hoveredZone == zone ? WawelAuthStyle.TEXT_PRIMARY : WawelAuthStyle.TEXT_BUTTON_IDLE)
                         .alignment(Alignment.Center)
                         .widthRel(1.0f)
                         .height(14));

@@ -298,10 +298,10 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         ButtonWidget<?> manageAccountsBtn = new ButtonWidget<>();
         manageAccountsBtn.widthRel(1.0f)
             .height(18)
-                .onMousePressed(mouseButton -> {
-                    GuiTransitionScheduler.transition(panel, () -> ClientGUI.open(new AccountManagerScreen()));
-                    return true;
-                });
+            .onMousePressed(mouseButton -> {
+                GuiTransitionScheduler.transition(panel, () -> ClientGUI.open(new AccountManagerScreen()));
+                return true;
+            });
         WawelAuthStyle.textButton(manageAccountsBtn, 180, "wawelauth.gui.common.manage_accounts");
         content.child(manageAccountsBtn);
         if (showLocalAuthControls) {
@@ -378,14 +378,21 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             CompletableFuture.supplyAsync(
                 () -> client.getLocalAuthProviderResolver()
                     .resolveOrCreate(capabilities))
-                .whenComplete((provider, err) -> Minecraft.getMinecraft()
-                    .func_152344_a(() -> {
-                        if (err != null || provider == null) {
-                            GuiTransitionScheduler.transition(panel, () -> AccountManagerScreen.openForLocalAuth(targetServerData));
-                            return;
-                        }
-                        openLocalAuthDialog(provider.getName(), trustedLocalProviderName, loginDialog, registerDialog, register);
-                    }));
+                .whenComplete(
+                    (provider, err) -> Minecraft.getMinecraft()
+                        .func_152344_a(() -> {
+                            if (err != null || provider == null) {
+                                GuiTransitionScheduler
+                                    .transition(panel, () -> AccountManagerScreen.openForLocalAuth(targetServerData));
+                                return;
+                            }
+                            openLocalAuthDialog(
+                                provider.getName(),
+                                trustedLocalProviderName,
+                                loginDialog,
+                                registerDialog,
+                                register);
+                        }));
             return;
         }
 
@@ -534,8 +541,9 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         };
         label.expanded()
             .heightRel(1.0f)
-            .color(() -> isSelected ? WawelAuthStyle.THEME_LIGHTER
-                : selectButton.isHovering() ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY);
+            .color(
+                () -> isSelected ? WawelAuthStyle.THEME_LIGHTER
+                    : selectButton.isHovering() ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY);
         label.addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.tooltip.account", fullLabel));
         label.addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.tooltip.provider", providerName));
 
@@ -599,8 +607,9 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         TextWidget<?> label = new TextWidget<>(GuiText.key("wawelauth.gui.common.no_account_selected"));
         label.widthRel(1.0f)
             .heightRel(1.0f)
-            .color(() -> isSelected ? WawelAuthStyle.THEME_LIGHTER
-                : entry.isHovering() ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY)
+            .color(
+                () -> isSelected ? WawelAuthStyle.THEME_LIGHTER
+                    : entry.isHovering() ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY)
             .margin(2, 0, 0, 0);
 
         Row row = new Row();

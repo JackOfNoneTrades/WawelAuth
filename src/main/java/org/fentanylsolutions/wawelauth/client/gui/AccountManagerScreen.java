@@ -19,11 +19,11 @@ import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.fentlib.util.FileUtil;
 import org.fentanylsolutions.fentlib.util.GuiText;
-import org.fentanylsolutions.wawelauth.api.SkinImageUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.api.SkinImageUtil;
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
-import org.fentanylsolutions.wawelauth.client.compat.EtFuturumCompat;
 import org.fentanylsolutions.wawelauth.client.ClipboardHelper;
+import org.fentanylsolutions.wawelauth.client.compat.EtFuturumCompat;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyEntityClientPlayerMP;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyWorldClient;
 import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
@@ -42,8 +42,8 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.fentanylsolutions.wawelauth.wawelcore.data.TextureType;
 import org.lwjgl.opengl.GL11;
 
-import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.IMuiScreen;
+import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.drawable.ColorType;
@@ -525,7 +525,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         credentialDeleteDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> credentialDialogs.buildCredentialDeleteDialog(), true);
         texturePathDialogHandler = IPanelHandler.simple(mainPanel, (parent, player) -> buildTexturePathDialog(), true);
-        textureUploadDialogHandler = IPanelHandler.simple(mainPanel, (parent, player) -> buildTextureUploadDialog(), true);
+        textureUploadDialogHandler = IPanelHandler
+            .simple(mainPanel, (parent, player) -> buildTextureUploadDialog(), true);
         textureResetDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> buildTextureResetDialog(), true);
 
@@ -667,53 +668,52 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             TEXTURE_SKIN_ICON_HOVER,
                             "wawelauth.gui.account_manager.upload_skin_title")
                                 .setEnabledIf(widget -> isSkinUploadEnabledForSelectedAccount())
-                            .onMousePressed(mouseButton -> {
-                                chooseTextureFile(true);
-                                return true;
-                            }))
-                    .child(textureActionGap().setEnabledIf(widget -> isSkinUploadEnabledForSelectedAccount()
-                        && (isCapeUploadEnabledForSelectedAccount()
-                            || isSkinResetEnabledForSelectedAccount()
-                            || isCapeResetEnabledForSelectedAccount())))
+                                .onMousePressed(mouseButton -> {
+                                    chooseTextureFile(true);
+                                    return true;
+                                }))
+                    .child(
+                        textureActionGap().setEnabledIf(
+                            widget -> isSkinUploadEnabledForSelectedAccount()
+                                && (isCapeUploadEnabledForSelectedAccount() || isSkinResetEnabledForSelectedAccount()
+                                    || isCapeResetEnabledForSelectedAccount())))
                     .child(
                         textureActionButton(
                             TEXTURE_CAPE_ICON,
                             TEXTURE_CAPE_ICON_HOVER,
                             "wawelauth.gui.account_manager.upload_cape_title")
                                 .setEnabledIf(widget -> isCapeUploadEnabledForSelectedAccount())
-                            .onMousePressed(mouseButton -> {
-                                chooseTextureFile(false);
-                                return true;
-                            }))
+                                .onMousePressed(mouseButton -> {
+                                    chooseTextureFile(false);
+                                    return true;
+                                }))
                     .child(
-                        textureActionGap()
-                            .setEnabledIf(widget -> isCapeUploadEnabledForSelectedAccount()
-                                && (isSkinResetEnabledForSelectedAccount()
-                                    || isCapeResetEnabledForSelectedAccount())))
+                        textureActionGap().setEnabledIf(
+                            widget -> isCapeUploadEnabledForSelectedAccount()
+                                && (isSkinResetEnabledForSelectedAccount() || isCapeResetEnabledForSelectedAccount())))
                     .child(
                         textureActionButton(
                             TEXTURE_SKIN_RESET_ICON,
                             TEXTURE_SKIN_RESET_ICON_HOVER,
                             "wawelauth.gui.account_manager.reset_skin")
                                 .setEnabledIf(widget -> isSkinResetEnabledForSelectedAccount())
-                            .onMousePressed(mouseButton -> {
-                                attemptTextureReset(TextureType.SKIN);
-                                return true;
-                            }))
+                                .onMousePressed(mouseButton -> {
+                                    attemptTextureReset(TextureType.SKIN);
+                                    return true;
+                                }))
                     .child(
-                        textureActionGap()
-                            .setEnabledIf(widget -> isSkinResetEnabledForSelectedAccount()
-                                && isCapeResetEnabledForSelectedAccount()))
+                        textureActionGap().setEnabledIf(
+                            widget -> isSkinResetEnabledForSelectedAccount() && isCapeResetEnabledForSelectedAccount()))
                     .child(
                         textureActionButton(
                             TEXTURE_CAPE_RESET_ICON,
                             TEXTURE_CAPE_RESET_ICON_HOVER,
                             "wawelauth.gui.account_manager.remove_cape")
                                 .setEnabledIf(widget -> isCapeResetEnabledForSelectedAccount())
-                            .onMousePressed(mouseButton -> {
-                                attemptTextureReset(TextureType.CAPE);
-                                return true;
-                            })))
+                                .onMousePressed(mouseButton -> {
+                                    attemptTextureReset(TextureType.CAPE);
+                                    return true;
+                                })))
             .child(
                 new TextWidget<>(
                     IKey.dynamic(
@@ -729,8 +729,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             .widthRel(1.0f)
                             .height(10)
                             .margin(0, 1)
-                            .setEnabledIf(
-                                widget -> isAnyTextureManagementEnabledForSelectedAccount()))
+                            .setEnabledIf(widget -> isAnyTextureManagementEnabledForSelectedAccount()))
             .child(
                 new Widget<>().widthRel(1.0f)
                     .expanded())
@@ -845,8 +844,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 accountActionButton(
                     ACCOUNT_ACTION_REGISTER_ICON,
                     ACCOUNT_ACTION_REGISTER_ICON_HOVER,
-                    "wawelauth.gui.common.register")
-                        .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider())
+                    "wawelauth.gui.common.register").setEnabledIf(widget -> isRegisterVisibleForSelectedProvider())
                         .onMousePressed(mouseButton -> {
                             handlePrimaryRegisterAction();
                             return true;
@@ -856,11 +854,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 accountActionButton(
                     ACCOUNT_ACTION_REAUTH_ICON,
                     ACCOUNT_ACTION_REAUTH_ICON_HOVER,
-                    "wawelauth.gui.account_manager.reauth")
-                        .setEnabledIf(widget -> isReauthVisibleForSelectedAccount())
+                    "wawelauth.gui.account_manager.reauth").setEnabledIf(widget -> isReauthVisibleForSelectedAccount())
                         .onMousePressed(mouseButton -> {
                             if (state.selectedAccount == null) return true;
-                            openLoginDialog(state.selectedAccount.getProviderName(), state.selectedAccount.getProfileName());
+                            openLoginDialog(
+                                state.selectedAccount.getProviderName(),
+                                state.selectedAccount.getProfileName());
                             return true;
                         }))
             .child(actionGap().setEnabledIf(widget -> isReauthVisibleForSelectedAccount()))
@@ -1074,8 +1073,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .fullImage()
             .colorType(colorType)
             .nonOpaque()
-            .name("wawelauth:texture_action_" + name + (colorType == TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE ? "_hover"
-                : ""))
+            .name(
+                "wawelauth:texture_action_" + name
+                    + (colorType == TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE ? "_hover" : ""))
             .build();
     }
 
@@ -1153,8 +1153,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private ClientProvider selectedLocalAuthProvider() {
         ClientProvider provider = resolveProvider(state.selectedProvider);
-        if (provider == null
-            || provider.getType() != ProviderType.CUSTOM
+        if (provider == null || provider.getType() != ProviderType.CUSTOM
             || provider.isManualEntry()
             || !LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
             return null;
@@ -1189,8 +1188,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         if (!isSelectedProfileUuidCopyable()) {
             return;
         }
-        ClipboardHelper.copyToClipboard(state.selectedAccount.getProfileUuid()
-            .toString(), "");
+        ClipboardHelper.copyToClipboard(
+            state.selectedAccount.getProfileUuid()
+                .toString(),
+            "");
         state.profileUuidCopiedUntilMs = System.currentTimeMillis() + 2000L;
     }
 
@@ -1768,29 +1769,27 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .background(IDrawable.EMPTY)
             .disableHoverBackground()
             .child(
-                new TextWidget<>(GuiText.key(titleKey))
-                    .widthRel(1.0f)
+                new TextWidget<>(GuiText.key(titleKey)).widthRel(1.0f)
                     .height(14)
                     .color(WawelAuthStyle.THEME_LIGHTER))
             .child(new Widget<>().size(1, 5))
             .child(textureUploadPreviewPanel(frontEntity, backEntity, dialogPreviewMode))
             .child(new Widget<>().size(1, 8))
             .child(
-                new TextWidget<>(
-                    IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(statusText[0], maxTextWidthPx)))
-                        .tooltipDynamic(tooltip -> {
-                            if (!isBlank(statusText[0])) {
-                                tooltip.addLine(IKey.str(statusText[0]));
-                            }
-                            if (!isBlank(previewWarning[0])) {
-                                tooltip.addLine(IKey.str(previewWarning[0]));
-                            }
-                        })
-                        .tooltipAutoUpdate(true)
-                        .widthRel(1.0f)
-                        .height(10)
-                        .scale(0.8f)
-                        .color(DETAIL_SECONDARY_TEXT_COLOR));
+                new TextWidget<>(IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(statusText[0], maxTextWidthPx)))
+                    .tooltipDynamic(tooltip -> {
+                        if (!isBlank(statusText[0])) {
+                            tooltip.addLine(IKey.str(statusText[0]));
+                        }
+                        if (!isBlank(previewWarning[0])) {
+                            tooltip.addLine(IKey.str(previewWarning[0]));
+                        }
+                    })
+                    .tooltipAutoUpdate(true)
+                    .widthRel(1.0f)
+                    .height(10)
+                    .scale(0.8f)
+                    .color(DETAIL_SECONDARY_TEXT_COLOR));
 
         if (skin) {
             root.child(new Widget<>().size(1, 6))
@@ -1801,20 +1800,20 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                         .child(
                             new TextWidget<>(
-                                IKey.dynamic(
-                                    () -> GuiText.tr("wawelauth.gui.account_manager.skin_model") + ":"))
-                                .width(58)
-                                .height(12)
-                                .scale(0.8f)
-                                .color(DETAIL_SECONDARY_TEXT_COLOR))
+                                IKey.dynamic(() -> GuiText.tr("wawelauth.gui.account_manager.skin_model") + ":"))
+                                    .width(58)
+                                    .height(12)
+                                    .scale(0.8f)
+                                    .color(DETAIL_SECONDARY_TEXT_COLOR))
                         .child(new Widget<>().size(6, TEXTURE_ACTION_BUTTON_HEIGHT))
                         .child(textureModelButton(true, frontEntity, backEntity))
                         .child(textureActionGap())
                         .child(textureModelButton(false, frontEntity, backEntity)));
         }
 
-        root.child(new Widget<>().widthRel(1.0f)
-            .expanded())
+        root.child(
+            new Widget<>().widthRel(1.0f)
+                .expanded())
             .child(
                 new Row().widthRel(1.0f)
                     .height(18)
@@ -1851,23 +1850,25 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .child(new Widget<>().size(1, PREVIEW_MODE_BUTTON_EDGE_MARGIN));
     }
 
-    private ButtonWidget<?> textureUploadPreviewModeButton(PlayerPreviewEntity frontEntity, PlayerPreviewEntity backEntity,
-        PreviewBackMode[] previewMode) {
+    private ButtonWidget<?> textureUploadPreviewModeButton(PlayerPreviewEntity frontEntity,
+        PlayerPreviewEntity backEntity, PreviewBackMode[] previewMode) {
         ButtonWidget<?> button = new ButtonWidget<>();
         WawelAuthStyle.iconButton(button);
         button.size(PREVIEW_MODE_BUTTON_SIZE, PREVIEW_MODE_BUTTON_SIZE)
             .margin(PREVIEW_MODE_BUTTON_EDGE_MARGIN, 0)
             .background(WawelAuthStyle.underlined(ACCOUNT_ACTION_BUTTON_IDLE_BACKGROUND))
             .hoverBackground(WawelAuthStyle.underlined(WawelAuthStyle.BUTTON_HOVER))
-            .overlay((context, x, y, width, height, widgetTheme) -> previewModeIcon(
-                normalizeCapePreviewMode(previewMode[0]),
-                false).draw(context, x, y, width, height, widgetTheme))
-            .hoverOverlay((context, x, y, width, height, widgetTheme) -> previewModeIcon(
-                normalizeCapePreviewMode(previewMode[0]),
-                true).draw(context, x, y, width, height, widgetTheme))
+            .overlay(
+                (context, x, y, width, height,
+                    widgetTheme) -> previewModeIcon(normalizeCapePreviewMode(previewMode[0]), false)
+                        .draw(context, x, y, width, height, widgetTheme))
+            .hoverOverlay(
+                (context, x, y, width, height,
+                    widgetTheme) -> previewModeIcon(normalizeCapePreviewMode(previewMode[0]), true)
+                        .draw(context, x, y, width, height, widgetTheme))
             .tooltip(
-                tooltip -> tooltip.addLine(
-                    IKey.dynamic(() -> GuiText.tr(normalizeCapePreviewMode(previewMode[0]).translationKey()))))
+                tooltip -> tooltip
+                    .addLine(IKey.dynamic(() -> GuiText.tr(normalizeCapePreviewMode(previewMode[0]).translationKey()))))
             .onMousePressed(mouseButton -> {
                 previewMode[0] = normalizeCapePreviewMode(previewMode[0])
                     .next(EtFuturumCompat.isPreviewElytraAvailable());
@@ -1926,7 +1927,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         return button;
     }
 
-    private PlayerPreviewEntity createTextureUploadPreviewEntity(TextureType textureType, ResourceLocation previewTexture) {
+    private PlayerPreviewEntity createTextureUploadPreviewEntity(TextureType textureType,
+        ResourceLocation previewTexture) {
         ClientAccount account = state.selectedAccount;
         UUID profileId = account != null && account.getProfileUuid() != null ? account.getProfileUuid()
             : new UUID(0L, 0L);
@@ -2012,22 +2014,23 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
         client.getAccountManager()
             .uploadTexture(accountId, textureType, file, skinSlim)
-            .whenComplete((result, err) -> Minecraft.getMinecraft()
-                .func_152344_a(() -> {
-                    dialog.closeIfOpen();
-                    state.pendingTextureUploadFile = null;
-                    if (err != null) {
-                        Throwable cause = err.getCause() != null ? err.getCause() : err;
-                        state.textureUploadStatus = GuiText
-                            .tr("wawelauth.gui.common.failed_message", cause.getMessage());
-                        WawelAuth.debug("Texture upload failed: " + cause.getMessage());
-                        if (state.selectedAccount != null && state.selectedAccount.getId() == accountId) {
-                            loadSkinForAccount(state.selectedAccount);
+            .whenComplete(
+                (result, err) -> Minecraft.getMinecraft()
+                    .func_152344_a(() -> {
+                        dialog.closeIfOpen();
+                        state.pendingTextureUploadFile = null;
+                        if (err != null) {
+                            Throwable cause = err.getCause() != null ? err.getCause() : err;
+                            state.textureUploadStatus = GuiText
+                                .tr("wawelauth.gui.common.failed_message", cause.getMessage());
+                            WawelAuth.debug("Texture upload failed: " + cause.getMessage());
+                            if (state.selectedAccount != null && state.selectedAccount.getId() == accountId) {
+                                loadSkinForAccount(state.selectedAccount);
+                            }
+                            return;
                         }
-                        return;
-                    }
-                    handleTextureActionSuccess(client, accountId, result);
-                }));
+                        handleTextureActionSuccess(client, accountId, result);
+                    }));
     }
 
     private void closeTextureUploadDialog(Dialog<Boolean> dialog, String message) {
@@ -2269,8 +2272,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         if (ProviderDisplayName.isOfflineProvider(provider.getName())) {
             return false;
         }
-        return ClientConfig
-            .isTextureResetDisabled(provider.getName(), provider.getApiRoot());
+        return ClientConfig.isTextureResetDisabled(provider.getName(), provider.getApiRoot());
     }
 
     private boolean isTextureResetEnabledForSelectedProvider() {
@@ -2298,8 +2300,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private boolean isAnyTextureManagementEnabledForSelectedAccount() {
-        return isSkinUploadEnabledForSelectedAccount()
-            || isCapeUploadEnabledForSelectedAccount()
+        return isSkinUploadEnabledForSelectedAccount() || isCapeUploadEnabledForSelectedAccount()
             || isSkinResetEnabledForSelectedAccount()
             || isCapeResetEnabledForSelectedAccount();
     }

@@ -102,8 +102,7 @@ final class AccountManagerProviderListPanel {
     private final Consumer<ClientProvider> openProviderSettingsDialog;
 
     AccountManagerProviderListPanel(AccountManagerScreenState state, Consumer<ClientProvider> selectProvider,
-        Runnable clearPreview,
-        Consumer<ClientProvider> openProviderSettingsDialog) {
+        Runnable clearPreview, Consumer<ClientProvider> openProviderSettingsDialog) {
         this.state = state;
         this.selectProvider = selectProvider;
         this.clearPreview = clearPreview;

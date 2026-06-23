@@ -43,8 +43,8 @@ public final class RegisterDialog {
     private static final int PASTE_ICON_SOURCE_SIZE = 24;
     private static final int PASTE_ICON_SIZE = 12;
     private static final int INVITE_FIELD_WIDTH = DIALOG_WIDTH - ROOT_PADDING * 2 - PASTE_BUTTON_SIZE - 4;
-    private static final Pattern GENERATED_INVITE_TOKEN_PATTERN = Pattern.compile(
-        "\\b[A-Za-z0-9_-]{5}(?:-[A-Za-z0-9_-]{5}){3}\\b");
+    private static final Pattern GENERATED_INVITE_TOKEN_PATTERN = Pattern
+        .compile("\\b[A-Za-z0-9_-]{5}(?:-[A-Za-z0-9_-]{5}){3}\\b");
     private static final Pattern SIMPLE_INVITE_TOKEN_PATTERN = Pattern.compile("^[A-Za-z0-9_-]{16,128}$");
     private static final ColorType PASTE_ICON_COLOR_TYPE = new ColorType(
         "wawelauth:clipboard_note_icon",

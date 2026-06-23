@@ -58,8 +58,7 @@ public final class LoginDialog {
             boolean offlineAccountLogin = ProviderDisplayName.isOfflineProvider(provider);
             boolean directMicrosoftLogin = supportsMicrosoftLogin && this.forceMicrosoftLogin;
             boolean focusPassword = this.initialUsername != null && !this.initialUsername.trim()
-                .isEmpty()
-                && !offlineAccountLogin;
+                .isEmpty() && !offlineAccountLogin;
             boolean[] cancelled = { false };
             Dialog<ClientAccount> dialog = new Dialog<>("wawelauth_login", this.onResult);
             dialog.setCloseOnOutOfBoundsClick(false);
@@ -324,8 +323,8 @@ public final class LoginDialog {
                 new TextWidget<>(
                     offlineAccountLogin ? GuiText.key("wawelauth.gui.login.offline_title")
                         : GuiText.key("wawelauth.gui.login.title", providerLabel)).widthRel(1.0f)
-                    .height(14)
-                    .color(WawelAuthStyle.THEME_LIGHTER));
+                            .height(14)
+                            .color(WawelAuthStyle.THEME_LIGHTER));
 
             if (!directMicrosoftLogin) {
                 root.child(new Widget<>().size(1, 8));
