@@ -35,8 +35,8 @@
  */
 dependencies {
     // Pure runtime
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.164:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.104-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.165:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.105-GTNH:dev")
     // Disabled: client.core.MixinMinecraft @Redirect on displayWorkingScreen clashes with Et Futurum's MixinMinecraft_LoadingBridge
     //runtimeOnlyNonPublishable("curse.maven:archaicfix-677782:6785842")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:7695645")) // 1.0.2-1.7.10
@@ -46,9 +46,9 @@ dependencies {
 
     // Compile + runtime
     devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.11.19:dev")
-    devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:wawelauth-dnd-api-test-20260623-1:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.75-1.7.10:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.3.1:dev")
+    devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:0.0.51:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.78-1.7.10:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.4.1:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.8.72-GTNH:dev")
     devOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.43-GTNH:dev")
 
@@ -57,7 +57,7 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.25:dev")
     compileOnly("org.lwjgl:lwjgl-sdl:3.4.1")
     compileOnly("com.github.GTNewHorizons:GTNH-Web-Map:0.3.46:dev")
-    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.34:dev")
+    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.35:dev")
     compileOnly("com.github.GTNewHorizons:Botania:1.13.25-GTNH:dev")
 
     // Shadow
