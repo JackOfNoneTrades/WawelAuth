@@ -31,6 +31,7 @@ import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
+import com.cleanroommc.modularui.drawable.ColorType;
 import com.cleanroommc.modularui.drawable.Rectangle;
 import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.factory.ClientGUI;
@@ -50,9 +51,18 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class ServerAccountPickerScreen extends ParentAwareModularScreen {
 
-    private static final UITexture MANAGE_PROVIDER_TEXTURE = UITexture.fullImage("wawelauth", "unauthed");
-    private static final IDrawable MANAGE_PROVIDER_ICON = (context, x, y, width, height,
-        widgetTheme) -> MANAGE_PROVIDER_TEXTURE.draw(context, x + 1, y, width, height, widgetTheme);
+    private static final ColorType MANAGE_PROVIDER_ICON_COLOR_TYPE = new ColorType(
+        "wawelauth:server_picker_manage_provider_icon",
+        theme -> WawelAuthStyle.TEXT_SECONDARY);
+    private static final ColorType MANAGE_PROVIDER_ICON_HOVER_COLOR_TYPE = new ColorType(
+        "wawelauth:server_picker_manage_provider_icon_hover",
+        theme -> WawelAuthStyle.TEXT_PRIMARY);
+    private static final IDrawable MANAGE_PROVIDER_ICON = manageProviderIcon(
+        "wawelauth:server_picker_manage_provider_icon",
+        MANAGE_PROVIDER_ICON_COLOR_TYPE);
+    private static final IDrawable MANAGE_PROVIDER_ICON_HOVER = manageProviderIcon(
+        "wawelauth:server_picker_manage_provider_icon_hover",
+        MANAGE_PROVIDER_ICON_HOVER_COLOR_TYPE);
     private static final int ACCOUNT_LABEL_MAX_WIDTH_PX = 153;
     private static final int ACCOUNT_ENTRY_HEIGHT = 16;
     private static final int ACCOUNT_LIST_TOP_MARGIN = 4;
@@ -578,6 +588,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             .background(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_IDLE))
             .hoverBackground(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_HOVER))
             .overlay(MANAGE_PROVIDER_ICON)
+            .hoverOverlay(MANAGE_PROVIDER_ICON_HOVER)
             .addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.manage_account"))
             .onMousePressed(mouseButton -> {
                 GuiTransitionScheduler.transition(
@@ -594,6 +605,18 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             .child(manageButton);
 
         return entryRow;
+    }
+
+    private static IDrawable manageProviderIcon(String name, ColorType colorType) {
+        UITexture texture = UITexture.builder()
+            .location("wawelauth", "unauthed")
+            .fullImage()
+            .colorType(colorType)
+            .nonOpaque()
+            .name(name)
+            .build();
+        return (context, x, y, width, height, widgetTheme) -> texture
+            .draw(context, x + 1, y, width, height, widgetTheme);
     }
 
     private ButtonWidget<?> buildSingleplayerClearEntry(long selectedAccountId, ModularPanel panel) {
