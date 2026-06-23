@@ -7,6 +7,7 @@ import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
 import org.lwjgl.input.Keyboard;
 
 import com.cleanroommc.modularui.api.IMuiScreen;
+import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.screen.CustomModularScreen;
 import com.cleanroommc.modularui.screen.ModularPanel;
 
@@ -30,6 +31,12 @@ public abstract class ParentAwareModularScreen extends CustomModularScreen {
     }
 
     @Override
+    public void onFrameUpdate() {
+        super.onFrameUpdate();
+        suppressMainPanelHoverWhenCovered();
+    }
+
+    @Override
     public void onUpdate() {
         super.onUpdate();
         GuiScreen parent = getContext().getParentScreen();
@@ -47,6 +54,38 @@ public abstract class ParentAwareModularScreen extends CustomModularScreen {
             return;
         }
         parent.setWorldAndResolution(Minecraft.getMinecraft(), width, height);
+    }
+
+    private void suppressMainPanelHoverWhenCovered() {
+        if (!isMainPanelCoveredByBlockingPanel()) {
+            return;
+        }
+        clearHoverState(getPanelManager().getMainPanel());
+    }
+
+    private boolean isMainPanelCoveredByBlockingPanel() {
+        ModularPanel mainPanel = getPanelManager().getMainPanel();
+        for (ModularPanel panel : getPanelManager().getOpenPanels()) {
+            if (panel == mainPanel) {
+                return false;
+            }
+            if (panel.disablePanelsBelow()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void clearHoverState(IWidget widget) {
+        if (widget.isHovering()) {
+            widget.onMouseEndHover();
+        }
+        if (widget.isBelowMouse()) {
+            widget.onMouseLeaveArea();
+        }
+        for (IWidget child : widget.getChildren()) {
+            clearHoverState(child);
+        }
     }
 
     @Override
