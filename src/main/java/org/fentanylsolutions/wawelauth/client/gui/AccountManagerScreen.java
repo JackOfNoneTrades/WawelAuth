@@ -475,15 +475,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .child(new TextWidget<>(IKey.dynamic(() -> {
                 if (state.selectedAccount == null) return "";
                 return GuiText.tr(
-                    "wawelauth.gui.account_manager.provider_line",
-                    ProviderDisplayName.displayName(state.selectedAccount.getProviderName()));
-            })).color(DETAIL_SECONDARY_TEXT_COLOR)
-                .scale(0.8f)
-                .widthRel(1.0f)
-                .height(10))
-            .child(new TextWidget<>(IKey.dynamic(() -> {
-                if (state.selectedAccount == null) return "";
-                return GuiText.tr(
                     "wawelauth.gui.account_manager.status_line",
                     StatusColors.getLabel(getLiveStatus(state.selectedAccount)));
             })).color(
@@ -720,14 +711,16 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         accountActionButton(
                             ACCOUNT_ACTION_REAUTH_ICON,
                             ACCOUNT_ACTION_REAUTH_ICON_HOVER,
-                            "wawelauth.gui.account_manager.reauth").onMousePressed(mouseButton -> {
-                                if (state.selectedAccount == null) return true;
-                                openLoginDialog(
-                                    state.selectedAccount.getProviderName(),
-                                    state.selectedAccount.getProfileName());
-                                return true;
-                            }))
-                    .child(actionGap())
+                            "wawelauth.gui.account_manager.reauth")
+                                .setEnabledIf(widget -> isReauthVisibleForSelectedAccount())
+                                .onMousePressed(mouseButton -> {
+                                    if (state.selectedAccount == null) return true;
+                                    openLoginDialog(
+                                        state.selectedAccount.getProviderName(),
+                                        state.selectedAccount.getProfileName());
+                                    return true;
+                                }))
+                    .child(actionGap().setEnabledIf(widget -> isReauthVisibleForSelectedAccount()))
                     .child(
                         accountActionButton(
                             ACCOUNT_ACTION_CREDENTIALS_ICON,
@@ -1772,6 +1765,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         ClientProvider provider = client.getProviderRegistry()
             .getProvider(state.selectedAccount.getProviderName());
         return isCredentialManagementSupported(provider);
+    }
+
+    private boolean isReauthVisibleForSelectedAccount() {
+        return state.selectedAccount == null
+            || !ProviderDisplayName.isOfflineProvider(state.selectedAccount.getProviderName());
     }
 
     private boolean isCredentialManagementSupported(ClientProvider provider) {
