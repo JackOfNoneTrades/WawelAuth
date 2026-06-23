@@ -67,7 +67,7 @@ public abstract class ParentAwareModularScreen extends CustomModularScreen {
             return true;
         }
 
-        return closeFromEscape(keyCode);
+        return closeFromEscape(keyCode, true);
     }
 
     @Optional.Method(modid = LWJGL3IFY_MOD_ID)
@@ -107,7 +107,7 @@ public abstract class ParentAwareModularScreen extends CustomModularScreen {
         return false;
     }
 
-    private boolean closeFromEscape(int keyCode) {
+    private boolean closeFromEscape(int keyCode, boolean deferSecondaryPanelClose) {
         Minecraft mc = Minecraft.getMinecraft();
         if (keyCode != Keyboard.KEY_ESCAPE || mc.theWorld != null || !isActive()) {
             return false;
@@ -115,6 +115,13 @@ public abstract class ParentAwareModularScreen extends CustomModularScreen {
 
         if (getContext().hasDraggable()) {
             getContext().dropDraggable(true);
+        } else if (getPanelManager().getTopMostPanel() != getPanelManager().getMainPanel()) {
+            // ModularUI handles Escape again in its late input phase. Let that
+            // close the secondary panel, so the main panel is not closed twice.
+            if (!deferSecondaryPanelClose) {
+                getPanelManager().closeTopPanel();
+            }
+            return true;
         } else {
             getPanelManager().closeTopPanel();
         }
@@ -126,6 +133,6 @@ public abstract class ParentAwareModularScreen extends CustomModularScreen {
         if (keyCode != Keyboard.KEY_ESCAPE) {
             return;
         }
-        GuiTransitionScheduler.nextTick(() -> closeFromEscape(keyCode));
+        GuiTransitionScheduler.nextTick(() -> closeFromEscape(keyCode, false));
     }
 }

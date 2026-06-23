@@ -12,6 +12,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.oauth.ProviderOAuthClients;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
+import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.utils.Alignment;
@@ -29,7 +30,12 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class LoginDialog {
 
-    private static final int STATUS_MAX_WIDTH_PX = 214;
+    private static final int DIALOG_WIDTH = 260;
+    private static final int ROOT_PADDING = 10;
+    private static final int FIELD_HEIGHT = 18;
+    private static final int BUTTON_HEIGHT = 18;
+    private static final int BUTTON_TEXT_MAX_WIDTH = 56;
+    private static final int STATUS_MAX_WIDTH_PX = DIALOG_WIDTH - ROOT_PADDING * 2 - 4;
 
     private final Consumer<ClientAccount> onResult;
     private final IPanelHandler panelHandler;
@@ -48,20 +54,23 @@ public final class LoginDialog {
             boolean supportsOauthLogin = supportsMicrosoftLogin || supportsProviderOAuth;
             boolean offlineAccountLogin = ProviderDisplayName.isOfflineProvider(provider);
             boolean directMicrosoftLogin = supportsMicrosoftLogin && this.forceMicrosoftLogin;
+            boolean[] cancelled = { false };
             Dialog<ClientAccount> dialog = new Dialog<>("wawelauth_login", this.onResult);
             dialog.setCloseOnOutOfBoundsClick(false);
+            dialog.onCloseAction(() -> cancelled[0] = true);
 
             TabTextFieldWidget usernameField = new TabTextFieldWidget();
             usernameField.hintText(GuiText.tr("wawelauth.gui.common.username"));
             usernameField.value(new StringValue(this.initialUsername != null ? this.initialUsername : ""));
+            WawelAuthStyle.textField(usernameField);
             PasswordInputWidget passwordField = new PasswordInputWidget()
-                .hintText(GuiText.tr("wawelauth.gui.common.password"));
+                .hintText(GuiText.tr("wawelauth.gui.common.password"))
+                .applyWawelAuthStyle();
 
             String initMsg = this.initialMessage;
             String[] errorText = { initMsg != null ? initMsg : "" };
             boolean[] isError = { initMsg == null };
             boolean[] busy = { false };
-            boolean[] cancelled = { false };
             String[] oauthDeviceCode = { null };
 
             ButtonWidget<?> loginBtn = new ButtonWidget<>();
@@ -70,7 +79,7 @@ public final class LoginDialog {
             ButtonWidget<?> copyBtn = new ButtonWidget<>();
             Runnable[] startOauthLogin = new Runnable[1];
 
-            cancelBtn.size(56, 18)
+            cancelBtn.size(64, BUTTON_HEIGHT)
                 .onMousePressed(mouseButton -> {
                     // Disarm any in-flight auth completion so a late success
                     // cannot fire the result consumer of a dismissed dialog.
@@ -78,7 +87,7 @@ public final class LoginDialog {
                     dialog.closeWith(null);
                     return true;
                 });
-            GuiText.fitButtonLabel(cancelBtn, 56, "wawelauth.gui.common.cancel");
+            WawelAuthStyle.textButton(cancelBtn, BUTTON_TEXT_MAX_WIDTH, "wawelauth.gui.common.cancel");
 
             Runnable doLogin = () -> {
                 if (busy[0]) return;
@@ -130,13 +139,13 @@ public final class LoginDialog {
             usernameField.onEnterPressed(doLogin);
             passwordField.onEnterPressed(doLogin);
 
-            loginBtn.size(56, 18)
+            loginBtn.size(64, BUTTON_HEIGHT)
                 .setEnabledIf(widget -> !busy[0])
                 .onMousePressed(mouseButton -> {
                     doLogin.run();
                     return true;
                 });
-            GuiText.fitButtonLabel(loginBtn, 56, "wawelauth.gui.common.login");
+            WawelAuthStyle.textButton(loginBtn, BUTTON_TEXT_MAX_WIDTH, "wawelauth.gui.common.login");
 
             startOauthLogin[0] = () -> {
                 if (busy[0]) return;
@@ -216,7 +225,7 @@ public final class LoginDialog {
                 }
             };
 
-            oauthBtn.size(70, 18)
+            oauthBtn.size(76, BUTTON_HEIGHT)
                 .setEnabledIf(widget -> !busy[0])
                 .onMousePressed(mouseButton -> {
                     if (busy[0]) return true;
@@ -228,12 +237,12 @@ public final class LoginDialog {
                     startOauthLogin[0].run();
                     return true;
                 });
-            GuiText.fitButtonLabel(
+            WawelAuthStyle.textButton(
                 oauthBtn,
-                70,
+                68,
                 supportsMicrosoftLogin ? "wawelauth.gui.common.microsoft" : "wawelauth.gui.common.oauth");
 
-            copyBtn.size(50, 18)
+            copyBtn.size(56, BUTTON_HEIGHT)
                 .setEnabledIf(widget -> oauthDeviceCode[0] != null)
                 .onMousePressed(mouseButton -> {
                     if (oauthDeviceCode[0] == null) {
@@ -244,7 +253,7 @@ public final class LoginDialog {
                         GuiText.tr("wawelauth.gui.login.status.oauth_code_copied"));
                     return true;
                 });
-            GuiText.fitButtonLabel(copyBtn, 50, "wawelauth.gui.common.copy");
+            WawelAuthStyle.textButton(copyBtn, 48, "wawelauth.gui.common.copy");
             copyBtn.tooltipDynamic(tooltip -> {
                 if (oauthDeviceCode[0] != null) {
                     tooltip.addLine(IKey.str(oauthDeviceCode[0]));
@@ -254,25 +263,25 @@ public final class LoginDialog {
 
             Row buttonRow = new Row();
             buttonRow.widthRel(1.0f)
-                .height(20)
+                .height(BUTTON_HEIGHT)
                 .mainAxisAlignment(Alignment.MainAxis.CENTER)
                 .collapseDisabledChild();
             buttonRow.child(cancelBtn);
             if (!directMicrosoftLogin) {
                 buttonRow.child(
-                    new Widget<>().size(6, 18)
+                    new Widget<>().size(8, BUTTON_HEIGHT)
                         .setEnabledIf(widget -> !busy[0]))
                     .child(loginBtn);
             }
             if (supportsOauthLogin && !directMicrosoftLogin) {
                 buttonRow.child(
-                    new Widget<>().size(6, 18)
+                    new Widget<>().size(8, BUTTON_HEIGHT)
                         .setEnabledIf(widget -> !busy[0]))
                     .child(oauthBtn);
             }
             if (supportsProviderOAuth && !directMicrosoftLogin) {
                 buttonRow.child(
-                    new Widget<>().size(6, 18)
+                    new Widget<>().size(8, BUTTON_HEIGHT)
                         .setEnabledIf(widget -> oauthDeviceCode[0] != null))
                     .child(copyBtn);
             }
@@ -280,40 +289,46 @@ public final class LoginDialog {
             Column root = new Column();
             root.widthRel(1.0f)
                 .heightRel(1.0f)
-                .padding(8);
+                .padding(ROOT_PADDING)
+                .background(IDrawable.EMPTY)
+                .disableHoverBackground();
             root.child(
                 new TextWidget<>(GuiText.key("wawelauth.gui.login.title", providerLabel)).widthRel(1.0f)
-                    .height(12));
+                    .height(14)
+                    .color(WawelAuthStyle.THEME_LIGHTER));
 
             if (!directMicrosoftLogin) {
+                root.child(new Widget<>().size(1, 8));
                 if (offlineAccountLogin) {
                     root.child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.login.offline_notice")).color(0xFFAAAAAA)
+                        new TextWidget<>(GuiText.key("wawelauth.gui.login.offline_notice"))
+                            .color(WawelAuthStyle.TEXT_SECONDARY)
                             .scale(0.8f)
                             .widthRel(1.0f)
-                            .height(20)
-                            .margin(0, 4));
+                            .height(18));
+                    root.child(new Widget<>().size(1, 6));
                 }
                 root.child(
                     usernameField.widthRel(1.0f)
-                        .height(18)
-                        .setMaxLength(offlineAccountLogin ? 16 : 64)
-                        .margin(0, 3));
+                        .height(FIELD_HEIGHT)
+                        .setMaxLength(offlineAccountLogin ? 16 : 64));
                 if (!offlineAccountLogin) {
+                    root.child(new Widget<>().size(1, 7));
                     root.child(
                         passwordField.widthRel(1.0f)
-                            .height(18)
-                            .setMaxLength(128)
-                            .margin(0, 3));
+                            .height(FIELD_HEIGHT)
+                            .setMaxLength(128));
                 }
             } else {
+                root.child(new Widget<>().size(1, 10));
                 root.child(
-                    new TextWidget<>(GuiText.key("wawelauth.gui.login.status.microsoft_starting")).color(0xFFAAAAAA)
+                    new TextWidget<>(GuiText.key("wawelauth.gui.login.status.microsoft_starting"))
+                        .color(WawelAuthStyle.TEXT_SECONDARY)
                         .widthRel(1.0f)
-                        .height(12)
-                        .margin(0, 8));
+                        .height(12));
             }
 
+            root.child(new Widget<>().size(1, 8));
             root.child(
                 new TextWidget<>(
                     IKey.dynamic(
@@ -328,14 +343,14 @@ public final class LoginDialog {
                                     }
                                 })
                                 .tooltipAutoUpdate(true)
-                                .color(() -> isError[0] ? 0xFFFF5555 : 0xFF55FF55)
+                                .color(() -> isError[0] ? WawelAuthStyle.DANGER : WawelAuthStyle.SUCCESS)
                                 .widthRel(1.0f)
-                                .height(12)
-                                .margin(0, 2))
-                .child(new Widget<>().size(1, 4))
+                                .height(12))
+                .child(new Widget<>().size(1, 10))
                 .child(buttonRow);
 
-            dialog.size(236, directMicrosoftLogin ? 112 : (offlineAccountLogin ? 142 : 150))
+            WawelAuthStyle.dialog(dialog);
+            dialog.size(DIALOG_WIDTH, directMicrosoftLogin ? 108 : (offlineAccountLogin ? 142 : 156))
                 .child(root);
 
             if (directMicrosoftLogin) {

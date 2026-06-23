@@ -6,9 +6,12 @@ import java.util.function.IntSupplier;
 import net.minecraft.client.gui.Gui;
 
 import org.fentanylsolutions.fentlib.gui.sodiumgui.SodiumGuiTheme;
+import org.fentanylsolutions.fentlib.util.GuiText;
 
 import com.cleanroommc.modularui.api.drawable.IDrawable;
+import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.drawable.Rectangle;
+import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.viewport.GuiContext;
 import com.cleanroommc.modularui.theme.WidgetTheme;
 import com.cleanroommc.modularui.utils.Alignment;
@@ -30,6 +33,7 @@ final class WawelAuthStyle {
     static final int THEME_LIGHTER = 0xFFCCFDEE;
     static final int THEME_DARKER = 0xFF7A9E9E;
     static final int TEXT_PRIMARY = 0xFFFFFFFF;
+    static final int TEXT_BUTTON_IDLE = 0xFFE0E0E0;
     static final int TEXT_SECONDARY = 0xFFAAAAAA;
     static final int TEXT_MUTED = THEME_DARKER;
 
@@ -37,6 +41,8 @@ final class WawelAuthStyle {
     static final int BACKGROUND_MEDIUM = 0x50000000;
     static final int BACKGROUND_HOVER = 0xE0000000;
     static final int BACKGROUND_OVERLAY = 0xEA000000;
+    static final int BACKGROUND_DIALOG_TOP = 0xE8000000;
+    static final int BACKGROUND_DIALOG_BOTTOM = 0xF2000000;
     static final int BACKGROUND_DEFAULT = 0x78000000;
     static final int BACKGROUND_DARKER = 0xB0000000;
     static final int BACKGROUND_HIGHLIGHT = 0x08FFFFFF;
@@ -82,6 +88,10 @@ final class WawelAuthStyle {
         return verticalGradient(BACKGROUND_LIGHT, BACKGROUND_DEFAULT);
     }
 
+    static IDrawable dialogBackground() {
+        return verticalGradient(BACKGROUND_DIALOG_TOP, BACKGROUND_DIALOG_BOTTOM);
+    }
+
     static IDrawable listBackground() {
         return verticalGradient(BACKGROUND_LIGHT, BACKGROUND_DEFAULT);
     }
@@ -96,6 +106,13 @@ final class WawelAuthStyle {
             if (selected != null && selected.getAsBoolean()) {
                 Gui.drawRect(x, y + height - 1, x + width, y + height, accentColor.getAsInt());
             }
+        };
+    }
+
+    static IDrawable underlined(int color) {
+        return (context, x, y, width, height, widgetTheme) -> {
+            Gui.drawRect(x, y, x + width, y + height, color);
+            Gui.drawRect(x, y + height - 1, x + width, y + height, accent());
         };
     }
 
@@ -125,6 +142,15 @@ final class WawelAuthStyle {
         return button;
     }
 
+    static ButtonWidget<?> textButton(ButtonWidget<?> button, int maxTextWidthPx, String translationKey) {
+        button.background(underlined(BUTTON_IDLE))
+            .hoverBackground(underlined(BUTTON_HOVER));
+        button.overlay(
+            IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(GuiText.tr(translationKey), maxTextWidthPx))
+                .color(() -> button.isBelowMouse() ? TEXT_PRIMARY : TEXT_BUTTON_IDLE));
+        return button;
+    }
+
     static ButtonWidget<?> button(ButtonWidget<?> button, BooleanSupplier selected) {
         button.background(flat(BUTTON_IDLE, selected))
             .hoverBackground(flat(BUTTON_HOVER, selected));
@@ -143,9 +169,15 @@ final class WawelAuthStyle {
         return button;
     }
 
+    static <T extends ModularPanel> T dialog(T dialog) {
+        dialog.background(dialogBackground())
+            .disableHoverBackground();
+        return dialog;
+    }
+
     static TextFieldWidget textField(TextFieldWidget field) {
-        field.background(rect(FIELD))
-            .hoverBackground(rect(FIELD_HOVER))
+        field.background(underlined(FIELD))
+            .hoverBackground(underlined(FIELD_HOVER))
             .setTextColor(TEXT_PRIMARY)
             .hintColor(TEXT_SECONDARY)
             .setMarkedColor(accent());
