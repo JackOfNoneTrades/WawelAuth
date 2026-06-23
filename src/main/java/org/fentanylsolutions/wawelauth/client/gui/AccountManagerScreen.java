@@ -100,8 +100,16 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final int PANORAMA_DIM_COLOR = 0x55000000;
     private static final int VISIBLE_PROVIDER_ROWS = 5;
     private static final int VISIBLE_ACCOUNT_ROWS = 6;
-    private static final int ACCOUNT_SECTION_TOP_SPACE = 4;
-    private static final int PREVIEW_PANEL_HEIGHT = 101;
+    private static final int ACCOUNT_SECTION_TOP_SPACE = 6;
+    private static final int PROVIDER_LABEL_HEIGHT = 12;
+    private static final int PROVIDER_LIST_FRAME_VERTICAL_MARGIN = 2;
+    private static final int ADD_PROVIDER_BUTTON_HEIGHT = 16;
+    private static final int PREVIEW_PANEL_TOP_MARGIN = 2;
+    private static final int PREVIEW_PANEL_HEIGHT = PROVIDER_LABEL_HEIGHT
+        + AccountManagerProviderListPanel.PROVIDER_ROW_HEIGHT * VISIBLE_PROVIDER_ROWS
+        + PROVIDER_LIST_FRAME_VERTICAL_MARGIN * 2
+        + ADD_PROVIDER_BUTTON_HEIGHT
+        - PREVIEW_PANEL_TOP_MARGIN;
     private static final int ACCOUNT_ACTION_BUTTON_SIZE = 16;
     private static final int ACCOUNT_ACTION_ICON_SIZE = 12;
     private static final int ACCOUNT_ACTION_ROW_LEADING_SPACE = 2;
@@ -398,7 +406,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         Column providerListFrame = new Column();
         providerListFrame.widthRel(1.0f)
             .height(AccountManagerProviderListPanel.PROVIDER_ROW_HEIGHT * VISIBLE_PROVIDER_ROWS)
-            .margin(0, 2)
+            .margin(0, PROVIDER_LIST_FRAME_VERTICAL_MARGIN)
             .background(WawelAuthStyle.listBackground())
             .disableHoverThemeBackground(true)
             .child(providerListPanel.widget());
@@ -426,7 +434,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         rightPanel.child(
             new Column().widthRel(1.0f)
                 .height(PREVIEW_PANEL_HEIGHT)
-                .margin(0, 2)
+                .margin(0, PREVIEW_PANEL_TOP_MARGIN)
                 .background(WawelAuthStyle.rect(PREVIEW_PANEL_BACKGROUND_COLOR))
                 .disableHoverThemeBackground(true)
                 .child(
@@ -482,8 +490,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             .postDraw(entity -> { postEntityPreview(); })
                             .asWidget()
                             .size(72, 66)
-                            .invisible())
-                        .child(new Widget<>().size(40, 66)))
+                            .invisible()))
                 .child(
                     new Row().widthRel(1.0f)
                         .height(PREVIEW_MODE_BUTTON_SIZE)
@@ -689,13 +696,13 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private void populateGeneralSidebar(Column leftSidebar, Column providerListFrame, Column accountListFrame) {
         leftSidebar.child(
             new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.providers")).widthRel(1.0f)
-                .height(12)
+                .height(PROVIDER_LABEL_HEIGHT)
                 .color(WawelAuthStyle.THEME_LIGHTER))
             .child(providerListFrame)
             .child(
                 textButton(
                     new ButtonWidget<>().widthRel(1.0f)
-                        .height(16),
+                        .height(ADD_PROVIDER_BUTTON_HEIGHT),
                     104,
                     "wawelauth.gui.add_provider.title").onMousePressed(mouseButton -> {
                         addProviderDialog.open();
