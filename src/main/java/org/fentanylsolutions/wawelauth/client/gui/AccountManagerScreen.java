@@ -666,7 +666,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         textureActionButton(
                             TEXTURE_SKIN_ICON,
                             TEXTURE_SKIN_ICON_HOVER,
-                            "wawelauth.gui.account_manager.upload_skin_title")
+                            () -> textureUploadTitleKey(true))
                                 .setEnabledIf(widget -> isSkinUploadEnabledForSelectedAccount())
                                 .onMousePressed(mouseButton -> {
                                     chooseTextureFile(true);
@@ -681,7 +681,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         textureActionButton(
                             TEXTURE_CAPE_ICON,
                             TEXTURE_CAPE_ICON_HOVER,
-                            "wawelauth.gui.account_manager.upload_cape_title")
+                            () -> textureUploadTitleKey(false))
                                 .setEnabledIf(widget -> isCapeUploadEnabledForSelectedAccount())
                                 .onMousePressed(mouseButton -> {
                                     chooseTextureFile(false);
@@ -975,6 +975,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private static ButtonWidget<?> textureActionButton(IDrawable icon, IDrawable hoverIcon, String tooltipKey) {
+        return textureActionButton(icon, hoverIcon, () -> tooltipKey);
+    }
+
+    private static ButtonWidget<?> textureActionButton(IDrawable icon, IDrawable hoverIcon,
+        java.util.function.Supplier<String> tooltipKey) {
         ButtonWidget<?> button = new ButtonWidget<>();
         WawelAuthStyle.iconButton(button);
         button.size(TEXTURE_ACTION_BUTTON_WIDTH, TEXTURE_ACTION_BUTTON_HEIGHT)
@@ -982,7 +987,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .hoverBackground(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_HOVER))
             .overlay(icon)
             .hoverOverlay(hoverIcon)
-            .addTooltipLine(GuiText.tr(tooltipKey));
+            .tooltip(tooltip -> tooltip.addLine(IKey.dynamic(() -> GuiText.tr(tooltipKey.get()))))
+            .tooltipAutoUpdate(true);
         return button;
     }
 
@@ -1632,23 +1638,28 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .isEmpty();
     }
 
-    private boolean isOfflineTextureAction() {
-        if (state.selectedAccount != null
-            && ProviderDisplayName.isOfflineProvider(state.selectedAccount.getProviderName())) {
-            return true;
-        }
-        return state.selectedProvider != null
-            && ProviderDisplayName.isOfflineProvider(state.selectedProvider.getName());
-    }
-
     private boolean isSelectedAccountOffline() {
         return state.selectedAccount != null
             && ProviderDisplayName.isOfflineProvider(state.selectedAccount.getProviderName());
     }
 
     private String getTextureActionInProgressKey() {
-        return isOfflineTextureAction() ? "wawelauth.gui.account_manager.applying"
+        return isSelectedAccountOffline() ? "wawelauth.gui.account_manager.applying"
             : "wawelauth.gui.account_manager.uploading";
+    }
+
+    private String textureUploadTitleKey(boolean skin) {
+        if (isSelectedAccountOffline()) {
+            return skin ? "wawelauth.gui.account_manager.offline_set_skin_title"
+                : "wawelauth.gui.account_manager.offline_set_cape_title";
+        }
+        return skin ? "wawelauth.gui.account_manager.upload_skin_title"
+            : "wawelauth.gui.account_manager.upload_cape_title";
+    }
+
+    private String textureUploadConfirmKey() {
+        return isSelectedAccountOffline() ? "wawelauth.gui.account_manager.apply"
+            : "wawelauth.gui.account_manager.upload";
     }
 
     private void chooseTextureFile(boolean skin) {
@@ -1715,8 +1726,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         final boolean skin = state.pendingTextureUploadSkin;
         final TextureType textureType = skin ? TextureType.SKIN : TextureType.CAPE;
         final File file = state.pendingTextureUploadFile;
-        final String titleKey = skin ? "wawelauth.gui.account_manager.upload_skin_title"
-            : "wawelauth.gui.account_manager.upload_cape_title";
+        final String titleKey = textureUploadTitleKey(skin);
         final String path = file != null ? file.getAbsolutePath() : "";
         final String[] statusText = { GuiText.tr("wawelauth.gui.account_manager.file_path", path) };
         final String[] previewWarning = { "" };
@@ -1756,7 +1766,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             });
 
         ButtonWidget<?> uploadBtn = new ButtonWidget<>();
-        WawelAuthStyle.textButton(uploadBtn.size(64, 18), 56, "wawelauth.gui.account_manager.apply")
+        WawelAuthStyle.textButton(uploadBtn.size(64, 18), 56, textureUploadConfirmKey())
             .onMousePressed(btn -> {
                 attemptPendingTextureUpload(dialog, statusText);
                 return true;
