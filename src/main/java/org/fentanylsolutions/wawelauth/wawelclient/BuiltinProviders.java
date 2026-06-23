@@ -27,4 +27,10 @@ public final class BuiltinProviders {
     public static boolean isElyByProvider(String providerName) {
         return ELY_BY_PROVIDER_NAME.equals(providerName);
     }
+
+    public static boolean isBuiltinProvider(String providerName) {
+        return isMojangProvider(providerName) || isOfflineProvider(providerName)
+            || isLittleSkinProvider(providerName)
+            || isElyByProvider(providerName);
+    }
 }

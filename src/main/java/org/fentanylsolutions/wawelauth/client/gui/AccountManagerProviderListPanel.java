@@ -5,12 +5,15 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
+import net.minecraft.client.gui.Gui;
 import net.minecraft.util.EnumChatFormatting;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.fentlib.util.NetworkAddressUtil;
+import org.fentanylsolutions.wawelauth.wawelclient.BuiltinProviders;
 import org.fentanylsolutions.wawelauth.wawelclient.LocalAuthProviderResolver;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
@@ -23,12 +26,15 @@ import com.cleanroommc.modularui.api.layout.IViewportStack;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.ColorType;
 import com.cleanroommc.modularui.drawable.UITexture;
+import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
+import com.cleanroommc.modularui.theme.WidgetThemeEntry;
 import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.utils.HoveredWidgetList;
 import com.cleanroommc.modularui.widget.Widget;
 import com.cleanroommc.modularui.widget.WidgetTree;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ListWidget;
+import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Row;
 
 final class AccountManagerProviderListPanel {
@@ -68,6 +74,10 @@ final class AccountManagerProviderListPanel {
     private static final int SHOW_LOCAL_BUTTON_HEIGHT = 10;
     private static final int PROVIDER_ROW_HEIGHT = 14;
     private static final int PROVIDER_TEXT_HOVER_COLOR = WawelAuthStyle.THEME_LIGHTER;
+    private static final int BUILTIN_PROVIDER_BADGE_SLOT_SIZE = 12;
+    private static final int BUILTIN_PROVIDER_BADGE_DRAW_SIZE = 10;
+    private static final String[] BUILTIN_PROVIDER_BADGE_MASK = { "..........", "..........", "..........",
+        "......#...", "...#.##...", "...###....", "....#.....", "..........", "..........", ".........." };
 
     private final ListWidget<IWidget, ?> providerList;
     private final AccountManagerScreenState state;
@@ -260,6 +270,7 @@ final class AccountManagerProviderListPanel {
         String providerDisplayName = ProviderDisplayName.displayName(providerName);
         String displayProviderName = GuiText.ellipsizeToPixelWidth(providerDisplayName, PROVIDER_NAME_MAX_WIDTH_PX);
         boolean isSelected = currentSelected != null && providerName.equals(currentSelected.getName());
+        boolean builtInProvider = BuiltinProviders.isBuiltinProvider(providerName);
 
         ButtonWidget<?> selectButton = new ButtonWidget<>();
         WawelAuthStyle.rowButton(selectButton, () -> isSelected);
@@ -267,22 +278,34 @@ final class AccountManagerProviderListPanel {
             .heightRel(1.0f);
         int providerTextColor = isSelected ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY;
         int providerHoverTextColor = isSelected ? WawelAuthStyle.THEME_LIGHTER : PROVIDER_TEXT_HOVER_COLOR;
-        if (connectedHighlight) {
-            selectButton.overlay(
-                IKey.str(displayProviderName)
-                    .color(providerTextColor));
-            selectButton.hoverOverlay(
-                IKey.str(displayProviderName)
-                    .color(providerHoverTextColor));
-        } else {
-            selectButton.overlay(
-                IKey.str(displayProviderName)
-                    .color(providerTextColor));
-            selectButton.hoverOverlay(
-                IKey.str(displayProviderName)
-                    .color(providerHoverTextColor));
+
+        Row selectContent = new Row() {
+
+            @Override
+            public boolean canHover() {
+                return false;
+            }
+        };
+        selectContent.widthRel(1.0f)
+            .heightRel(1.0f)
+            .mainAxisAlignment(Alignment.MainAxis.CENTER)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER);
+
+        IntSupplier providerCurrentTextColor = () -> selectButton.isBelowMouse() ? providerHoverTextColor
+            : providerTextColor;
+        TextWidget<?> providerLabel = new TextWidget<>(IKey.str(displayProviderName));
+        providerLabel.color(providerCurrentTextColor);
+        selectContent.child(providerLabel);
+
+        if (builtInProvider) {
+            selectContent.child(nonHoverable(1, PROVIDER_ROW_HEIGHT))
+                .child(builtInProviderBadge(providerCurrentTextColor));
         }
-        addProviderTooltip(selectButton, provider, providerDisplayName, displayProviderName);
+        selectButton.child(selectContent);
+
+        if (!builtInProvider) {
+            addProviderTooltip(selectButton, provider, providerDisplayName, displayProviderName);
+        }
         selectButton.onMousePressed(mouseButton -> {
             selectProvider.accept(provider);
             rebuild();
@@ -401,6 +424,30 @@ final class AccountManagerProviderListPanel {
         return w;
     }
 
+    private static Widget<?> builtInProviderBadge(IntSupplier color) {
+        HoverThroughIconWidget w = new HoverThroughIconWidget(
+            centeredIcon(checkmarkIcon(color), BUILTIN_PROVIDER_BADGE_DRAW_SIZE));
+        w.size(BUILTIN_PROVIDER_BADGE_SLOT_SIZE, BUILTIN_PROVIDER_BADGE_SLOT_SIZE)
+            .addTooltipLine(GuiText.tr("wawelauth.gui.account_manager.provider_builtin_badge"));
+        return w;
+    }
+
+    private static IDrawable checkmarkIcon(IntSupplier color) {
+        return (context, x, y, width, height, widgetTheme) -> {
+            for (int row = 0; row < BUILTIN_PROVIDER_BADGE_MASK.length; row++) {
+                String maskRow = BUILTIN_PROVIDER_BADGE_MASK[row];
+                for (int col = 0; col < maskRow.length(); col++) {
+                    if (maskRow.charAt(col) != '#') continue;
+                    int left = x + col * width / BUILTIN_PROVIDER_BADGE_DRAW_SIZE;
+                    int top = y + row * height / BUILTIN_PROVIDER_BADGE_DRAW_SIZE;
+                    int right = x + (col + 1) * width / BUILTIN_PROVIDER_BADGE_DRAW_SIZE;
+                    int bottom = y + (row + 1) * height / BUILTIN_PROVIDER_BADGE_DRAW_SIZE;
+                    Gui.drawRect(left, top, right, bottom, color.getAsInt());
+                }
+            }
+        };
+    }
+
     private static IDrawable centeredIcon(IDrawable icon, int drawSize) {
         return (context, x, y, width, height, widgetTheme) -> {
             int size = Math.min(drawSize, Math.min(width, height));
@@ -415,6 +462,25 @@ final class AccountManagerProviderListPanel {
         @Override
         public boolean canHover() {
             return false;
+        }
+    }
+
+    private static class HoverThroughIconWidget extends Widget<HoverThroughIconWidget> {
+
+        private final IDrawable icon;
+
+        private HoverThroughIconWidget(IDrawable icon) {
+            this.icon = icon;
+        }
+
+        @Override
+        public void draw(ModularGuiContext context, WidgetThemeEntry<?> widgetTheme) {
+            this.icon.drawAtZero(context, getArea(), getActiveWidgetTheme(widgetTheme, isHovering()));
+        }
+
+        @Override
+        public boolean canHoverThrough() {
+            return true;
         }
     }
 
