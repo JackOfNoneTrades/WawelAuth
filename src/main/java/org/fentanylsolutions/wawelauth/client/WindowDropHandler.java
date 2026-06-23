@@ -49,7 +49,9 @@ public final class WindowDropHandler implements DropListener {
     @Override
     public void onDragBegin() {
         dragMode = DragMode.NONE;
+        TextureDropOverlay.dismiss();
         if (isOnTextureScreen()) {
+            dragMode = DragMode.TEXTURE;
             TextureDropOverlay.show();
         } else if (isOnServerAddScreen()) {
             ServerDropScreen.showHint();
@@ -63,9 +65,9 @@ public final class WindowDropHandler implements DropListener {
 
     @Override
     public void onDropFile(String filePath, float sdlX, float sdlY) {
-        if (dragMode == DragMode.NONE) dragMode = DragMode.TEXTURE;
-        TextureDropOverlay.setDroppedFile(filePath);
         WawelAuth.LOG.info("[WindowDropHandler] DROP_FILE x={} y={} file={}", sdlX, sdlY, filePath);
+        TextureDropOverlay.updateDropPosition(sdlX, sdlY);
+        TextureDropOverlay.setDroppedFile(filePath);
     }
 
     @Override
@@ -78,8 +80,8 @@ public final class WindowDropHandler implements DropListener {
         DragMode mode = dragMode;
         dragMode = DragMode.NONE;
 
-        if (mode == DragMode.TEXTURE || isOnTextureScreen()) {
-            TextureDropOverlay.complete();
+        if (mode == DragMode.TEXTURE || TextureDropOverlay.isOpen()) {
+            TextureDropOverlay.complete(result.getFilePath(), result.getSdlX(), result.getSdlY());
             ServerDropScreen.dismissHint();
             return;
         }
@@ -119,7 +121,7 @@ public final class WindowDropHandler implements DropListener {
 
     private static boolean isOnTextureScreen() {
         AccountManagerScreen ams = TextureDropOverlay.findAccountManagerScreen(Minecraft.getMinecraft());
-        return ams != null && ams.isTexturePreviewActive();
+        return ams != null && ams.canAcceptTextureDrop();
     }
 
     // -- URI parsing --

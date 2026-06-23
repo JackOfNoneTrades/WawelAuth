@@ -29,6 +29,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.oauth.ProviderOAuthClients;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientAccountDAO;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientProviderDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
+import org.fentanylsolutions.wawelauth.wawelcore.data.TextureType;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
 
 import com.google.gson.JsonArray;
@@ -347,6 +348,26 @@ public class AccountManager {
     }
 
     /**
+     * Delete (reset) one texture type for an account profile.
+     */
+    public CompletableFuture<String> deleteTexture(long accountId, TextureType textureType) {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        scheduler.submit(() -> {
+            try {
+                ClientAccount account = accountDAO.findById(accountId);
+                if (account == null) {
+                    throw new IllegalArgumentException("Account not found: " + accountId);
+                }
+                String result = doDeleteTexture(account, textureType);
+                future.complete(result);
+            } catch (Exception e) {
+                future.completeExceptionally(e);
+            }
+        });
+        return future;
+    }
+
+    /**
      * Upload skin/cape files for an account profile.
      *
      * @param skinSlim whether skin should be uploaded as slim model (ignored if no skin is uploaded)
@@ -360,6 +381,29 @@ public class AccountManager {
                     throw new IllegalArgumentException("Account not found: " + accountId);
                 }
                 String result = doUploadTextures(account, skinFile, capeFile, skinSlim);
+                future.complete(result);
+            } catch (Exception e) {
+                future.completeExceptionally(e);
+            }
+        });
+        return future;
+    }
+
+    /**
+     * Upload one texture type for an account profile.
+     *
+     * @param skinSlim whether skin should be uploaded as slim model (ignored for non-skin uploads)
+     */
+    public CompletableFuture<String> uploadTexture(long accountId, TextureType textureType, File file,
+        boolean skinSlim) {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        scheduler.submit(() -> {
+            try {
+                ClientAccount account = accountDAO.findById(accountId);
+                if (account == null) {
+                    throw new IllegalArgumentException("Account not found: " + accountId);
+                }
+                String result = doUploadTexture(account, textureType, file, skinSlim);
                 future.complete(result);
             } catch (Exception e) {
                 future.completeExceptionally(e);
@@ -1560,6 +1604,53 @@ public class AccountManager {
         return result;
     }
 
+    private String doDeleteTexture(ClientAccount account, TextureType textureType)
+        throws IOException, YggdrasilRequestException {
+        if (textureType == null) {
+            throw new IllegalArgumentException("Texture type is required.");
+        }
+        if (textureType != TextureType.SKIN && textureType != TextureType.CAPE) {
+            throw new IllegalArgumentException("Only skin and cape reset are supported.");
+        }
+        if (account.getProfileUuid() == null) {
+            throw new IllegalArgumentException("Selected account has no bound profile UUID.");
+        }
+
+        ClientProvider provider = providerDAO.findByName(account.getProviderName());
+        if (provider == null) {
+            throw new IllegalArgumentException("Provider not found: " + account.getProviderName());
+        }
+        if (BuiltinProviders.isOfflineProvider(provider.getName())) {
+            return doDeleteOfflineTexture(account, textureType);
+        }
+        if (BuiltinProviders.isMojangProvider(provider.getName())) {
+            if (textureType == TextureType.CAPE) {
+                throw new IllegalArgumentException("Microsoft accounts do not support cape removal.");
+            }
+            return doDeleteTexturesMicrosoft(account, provider);
+        }
+
+        AccountStatus status = doValidateOrRefresh(account);
+        if (status == AccountStatus.EXPIRED) {
+            throw new IllegalArgumentException("Account token expired. Please re-authenticate first.");
+        }
+        if (status == AccountStatus.UNVERIFIED) {
+            throw new IOException("Account token could not be verified (provider unreachable).");
+        }
+
+        String accessToken = account.getAccessToken();
+        String baseUrl = resolveServicesBase(provider);
+        String profileId = UuidUtil.toUnsigned(account.getProfileUuid());
+        httpClient.deleteWithAuth(
+            provider,
+            baseUrl + "/api/user/profile/" + profileId + "/" + textureType.getApiName(),
+            accessToken);
+
+        String result = textureType == TextureType.SKIN ? "Skin reset." : "Cape removed.";
+        WawelAuth.debug("Texture delete completed for account " + account.getId() + ": " + result);
+        return result;
+    }
+
     private String doDeleteTexturesMicrosoft(ClientAccount account, ClientProvider provider)
         throws IOException, YggdrasilRequestException {
         // Validate/refresh Microsoft token.
@@ -1586,6 +1677,21 @@ public class AccountManager {
         account.setLocalCapePath(null);
         accountDAO.update(account);
         return "Cleared local offline skin and cape.";
+    }
+
+    private String doDeleteOfflineTexture(ClientAccount account, TextureType textureType) {
+        if (textureType == TextureType.SKIN) {
+            account.setLocalSkinPath(null);
+            account.setLocalSkinModel(null);
+            accountDAO.update(account);
+            return "Cleared local offline skin.";
+        }
+        if (textureType == TextureType.CAPE) {
+            account.setLocalCapePath(null);
+            accountDAO.update(account);
+            return "Cleared local offline cape.";
+        }
+        throw new IllegalArgumentException("Only skin and cape reset are supported.");
     }
 
     private static String resolveServicesBase(ClientProvider provider) {
@@ -1810,6 +1916,20 @@ public class AccountManager {
         }
         WawelAuth.debug("Texture upload completed for account " + account.getId() + ": " + result);
         return result;
+    }
+
+    private String doUploadTexture(ClientAccount account, TextureType textureType, File file, boolean skinSlim)
+        throws IOException, YggdrasilRequestException {
+        if (textureType == null) {
+            throw new IllegalArgumentException("Texture type is required.");
+        }
+        if (textureType == TextureType.SKIN) {
+            return doUploadTextures(account, file, null, skinSlim);
+        }
+        if (textureType == TextureType.CAPE) {
+            return doUploadTextures(account, null, file, false);
+        }
+        throw new IllegalArgumentException("Only skin and cape upload are supported.");
     }
 
     private String doUploadOfflineTextures(ClientAccount account, File skinFile, File capeFile, boolean skinSlim)

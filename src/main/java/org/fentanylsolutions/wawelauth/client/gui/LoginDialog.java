@@ -154,7 +154,10 @@ public final class LoginDialog {
                     doLogin.run();
                     return true;
                 });
-            WawelAuthStyle.textButton(loginBtn, BUTTON_TEXT_MAX_WIDTH, "wawelauth.gui.common.login");
+            WawelAuthStyle.textButton(
+                loginBtn,
+                BUTTON_TEXT_MAX_WIDTH,
+                offlineAccountLogin ? "wawelauth.gui.common.add" : "wawelauth.gui.common.login");
 
             startOauthLogin[0] = () -> {
                 if (busy[0]) return;
@@ -310,7 +313,9 @@ public final class LoginDialog {
                 .background(IDrawable.EMPTY)
                 .disableHoverBackground();
             root.child(
-                new TextWidget<>(GuiText.key("wawelauth.gui.login.title", providerLabel)).widthRel(1.0f)
+                new TextWidget<>(
+                    offlineAccountLogin ? GuiText.key("wawelauth.gui.login.offline_title")
+                        : GuiText.key("wawelauth.gui.login.title", providerLabel)).widthRel(1.0f)
                     .height(14)
                     .color(WawelAuthStyle.THEME_LIGHTER));
 

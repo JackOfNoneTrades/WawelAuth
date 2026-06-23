@@ -3,18 +3,19 @@ package org.fentanylsolutions.wawelauth.client.gui;
 import java.io.File;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.ScaledResolution;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
 import org.fentanylsolutions.fentlib.util.drop.WindowDropTarget;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.lwjgl.input.Mouse;
 
-import com.cleanroommc.modularui.drawable.Rectangle;
+import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
-import com.cleanroommc.modularui.screen.viewport.GuiContext;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
-import com.cleanroommc.modularui.theme.WidgetTheme;
 import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.widget.Widget;
 import com.cleanroommc.modularui.widget.sizer.Area;
@@ -37,9 +38,12 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class TextureDropOverlay {
 
     private static final String PANEL_NAME = "wawelauth_texture_drop";
-
-    private static final int COLOR_ZONE_NORMAL = 0x44AAAAAA;
-    private static final int COLOR_ZONE_HOVER = 0xAA55FF55;
+    private static final int PANEL_WIDTH = 240;
+    private static final int PANEL_HEIGHT = 90;
+    private static final int ZONE_WIDTH = 100;
+    private static final int ZONE_HEIGHT = 50;
+    private static final int ZONE_GAP = 8;
+    private static final int ZONE_Y_OFFSET = 30;
 
     private static volatile boolean overlayOpen;
     private static volatile String pendingFilePath;
@@ -64,8 +68,14 @@ public final class TextureDropOverlay {
         ClientGUI.open(new OverlayScreen());
     }
 
+    public static boolean isOpen() {
+        return overlayOpen;
+    }
+
     public static void dismiss() {
         overlayOpen = false;
+        pendingFilePath = null;
+        hoveredZone = 0;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.currentScreen instanceof com.cleanroommc.modularui.api.IMuiScreen muiScreen) {
             ModularPanel mainPanel = muiScreen.getScreen()
@@ -87,11 +97,17 @@ public final class TextureDropOverlay {
         pendingFilePath = path;
     }
 
-    public static void complete() {
+    public static void complete(String filePath, float dropSdlX, float dropSdlY) {
         overlayOpen = false;
-        String filePath = pendingFilePath;
+        if (filePath == null || filePath.isEmpty()) {
+            filePath = pendingFilePath;
+        }
         pendingFilePath = null;
-        int zone = hoveredZone;
+        int zone = resolveDropZone(dropSdlX, dropSdlY);
+        if (zone == 0) {
+            zone = hoveredZone;
+        }
+        hoveredZone = 0;
 
         dismiss();
 
@@ -111,6 +127,9 @@ public final class TextureDropOverlay {
                 WawelAuth.LOG.warn("[TextureDropOverlay] AccountManagerScreen not found after drop");
                 return;
             }
+            if (!ams.canAcceptTextureDrop()) {
+                return;
+            }
 
             ams.acceptDroppedTextureFile(file, isSkin);
             WawelAuth.LOG.info("[TextureDropOverlay] Dropped {} as {}", file.getName(), isSkin ? "skin" : "cape");
@@ -119,6 +138,29 @@ public final class TextureDropOverlay {
 
     private static boolean isInsideArea(Area area, float guiX, float guiY) {
         return guiX >= area.x && guiX < area.ex() && guiY >= area.y && guiY < area.ey();
+    }
+
+    private static int resolveDropZone(float dropSdlX, float dropSdlY) {
+        float[] gui = WindowDropTarget.sdlToGuiCoords(dropSdlX, dropSdlY);
+        Minecraft mc = Minecraft.getMinecraft();
+        ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+        int panelX = (sr.getScaledWidth() - PANEL_WIDTH) / 2;
+        int panelY = (sr.getScaledHeight() - PANEL_HEIGHT) / 2;
+        int skinX = panelX + (PANEL_WIDTH - ZONE_WIDTH * 2 - ZONE_GAP) / 2;
+        int capeX = skinX + ZONE_WIDTH + ZONE_GAP;
+        int zoneY = panelY + ZONE_Y_OFFSET;
+
+        if (isInsideRect(gui[0], gui[1], skinX, zoneY, ZONE_WIDTH, ZONE_HEIGHT)) {
+            return 1;
+        }
+        if (isInsideRect(gui[0], gui[1], capeX, zoneY, ZONE_WIDTH, ZONE_HEIGHT)) {
+            return 2;
+        }
+        return 0;
+    }
+
+    private static boolean isInsideRect(float x, float y, int rectX, int rectY, int width, int height) {
+        return x >= rectX && x < rectX + width && y >= rectY && y < rectY + height;
     }
 
     public static AccountManagerScreen findAccountManagerScreen(Minecraft mc) {
@@ -153,45 +195,12 @@ public final class TextureDropOverlay {
         @Override
         public ModularPanel buildUI(ModularGuiContext context) {
             ModularPanel panel = ModularPanel.defaultPanel(PANEL_NAME)
-                .size(240, 90)
+                .size(PANEL_WIDTH, PANEL_HEIGHT)
                 .align(Alignment.Center);
+            WawelAuthStyle.dialog(panel);
 
-            Rectangle skinBg = new Rectangle() {
-
-                @Override
-                public void draw(GuiContext ctx, int x, int y, int width, int height, WidgetTheme widgetTheme) {
-                    setColor(hoveredZone == 1 ? COLOR_ZONE_HOVER : COLOR_ZONE_NORMAL);
-                    super.draw(ctx, x, y, width, height, widgetTheme);
-                }
-            };
-            Rectangle capeBg = new Rectangle() {
-
-                @Override
-                public void draw(GuiContext ctx, int x, int y, int width, int height, WidgetTheme widgetTheme) {
-                    setColor(hoveredZone == 2 ? COLOR_ZONE_HOVER : COLOR_ZONE_NORMAL);
-                    super.draw(ctx, x, y, width, height, widgetTheme);
-                }
-            };
-
-            skinZoneWidget = new Column().size(100, 50)
-                .background(skinBg)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                .child(
-                    new TextWidget<>(GuiText.key("wawelauth.gui.drop.zone_skin")).color(0xFFFFFFFF)
-                        .alignment(Alignment.Center)
-                        .widthRel(1.0f)
-                        .height(14));
-
-            capeZoneWidget = new Column().size(100, 50)
-                .background(capeBg)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                .child(
-                    new TextWidget<>(GuiText.key("wawelauth.gui.drop.zone_cape")).color(0xFFFFFFFF)
-                        .alignment(Alignment.Center)
-                        .widthRel(1.0f)
-                        .height(14));
+            skinZoneWidget = dropZone(1, "wawelauth.gui.drop.zone_skin");
+            capeZoneWidget = dropZone(2, "wawelauth.gui.drop.zone_cape");
 
             panel.child(
                 new Column().widthRel(1.0f)
@@ -202,17 +211,42 @@ public final class TextureDropOverlay {
                     .child(
                         new TextWidget<>(GuiText.key("wawelauth.gui.drop.texture_title")).widthRel(1.0f)
                             .height(14)
-                            .alignment(Alignment.Center))
-                    .child(new Widget<>().size(1, 4))
+                            .alignment(Alignment.Center)
+                            .color(WawelAuthStyle.THEME_LIGHTER))
+                    .child(new Widget<>().size(1, 6))
                     .child(
                         new Row().widthRel(1.0f)
-                            .height(50)
+                            .height(ZONE_HEIGHT)
                             .mainAxisAlignment(Alignment.MainAxis.CENTER)
                             .child(skinZoneWidget)
-                            .child(new Widget<>().size(8, 50))
+                            .child(new Widget<>().size(ZONE_GAP, ZONE_HEIGHT))
                             .child(capeZoneWidget)));
 
             return panel;
+        }
+
+        private Widget<?> dropZone(int zone, String labelKey) {
+            IDrawable background = (ctx, x, y, width, height, widgetTheme) -> {
+                int accent = WawelAuthStyle.accent();
+                int color = hoveredZone == zone ? withAlpha(accent, 0x66) : withAlpha(accent, 0x22);
+                Gui.drawRect(x, y, x + width, y + height, color);
+                Gui.drawRect(x, y + height - 1, x + width, y + height, accent);
+            };
+            return new Column().size(ZONE_WIDTH, ZONE_HEIGHT)
+                .background(background)
+                .disableHoverThemeBackground(true)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                .child(
+                    new TextWidget<>(GuiText.key(labelKey))
+                        .color(() -> hoveredZone == zone ? WawelAuthStyle.TEXT_PRIMARY : WawelAuthStyle.TEXT_BUTTON_IDLE)
+                        .alignment(Alignment.Center)
+                        .widthRel(1.0f)
+                        .height(14));
+        }
+
+        private static int withAlpha(int color, int alpha) {
+            return (color & 0x00FFFFFF) | (alpha << 24);
         }
 
         @Override
@@ -220,6 +254,10 @@ public final class TextureDropOverlay {
             super.onUpdate();
             if (!overlayOpen) {
                 getMainPanel().closeIfOpen();
+                return;
+            }
+            if (!Mouse.isInsideWindow()) {
+                dismiss();
                 return;
             }
 

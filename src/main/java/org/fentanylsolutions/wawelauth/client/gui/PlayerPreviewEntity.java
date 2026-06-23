@@ -37,6 +37,7 @@ public class PlayerPreviewEntity extends EntityOtherPlayerMP implements ISkinMod
     @Override
     public boolean func_152122_n() { // AbstractClientPlayer.hasCape
         if (!capeVisible) return false;
+        if (forcedCape != null) return true;
         return super.func_152122_n(); // hasCape
     }
 
@@ -46,6 +47,14 @@ public class PlayerPreviewEntity extends EntityOtherPlayerMP implements ISkinMod
     public void prepareTextureUpload() {
         forcedSkin = null;
         forcedCape = null;
+    }
+
+    public void setForcedSkin(ResourceLocation forcedSkin) {
+        this.forcedSkin = forcedSkin;
+    }
+
+    public void setForcedCape(ResourceLocation forcedCape) {
+        this.forcedCape = forcedCape;
     }
 
     public void clearTextures() {

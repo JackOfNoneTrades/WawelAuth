@@ -11,6 +11,7 @@ import net.minecraft.client.multiplayer.ServerData;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
+import org.fentanylsolutions.wawelauth.wawelcore.data.TextureType;
 
 final class AccountManagerScreenState {
 
@@ -36,9 +37,11 @@ final class AccountManagerScreenState {
     String texturePathDialogInitialPath;
     File selectedSkinFile;
     File selectedCapeFile;
-    boolean skinUploadSlim;
-    String textureSelectionStatus = "";
     String textureUploadStatus = "";
+    boolean pendingTextureUploadSkin;
+    File pendingTextureUploadFile;
+    boolean pendingTextureUploadSlim;
+    TextureType pendingTextureResetType;
 
     Map<String, Boolean> registerCapabilityByProvider = new HashMap<>();
     Set<String> registerCapabilityProbeInFlight = new HashSet<>();
@@ -61,9 +64,11 @@ final class AccountManagerScreenState {
         this.texturePathDialogInitialPath = null;
         this.selectedSkinFile = null;
         this.selectedCapeFile = null;
-        this.skinUploadSlim = false;
-        this.textureSelectionStatus = "";
         this.textureUploadStatus = "";
+        this.pendingTextureUploadSkin = true;
+        this.pendingTextureUploadFile = null;
+        this.pendingTextureUploadSlim = true;
+        this.pendingTextureResetType = null;
         this.registerCapabilityByProvider = new HashMap<>();
         this.registerCapabilityProbeInFlight = new HashSet<>();
         this.nextStatusUiRefreshAtMs = 0L;
