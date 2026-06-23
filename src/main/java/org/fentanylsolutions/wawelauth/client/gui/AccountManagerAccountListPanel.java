@@ -26,6 +26,8 @@ import com.cleanroommc.modularui.widgets.layout.Row;
 
 final class AccountManagerAccountListPanel {
 
+    static final int ACCOUNT_ROW_HEIGHT = 14;
+
     private static final int ACCOUNT_NAME_MAX_WIDTH_PX = 90;
 
     private final ListWidget<IWidget, ?> accountList;
@@ -123,7 +125,7 @@ final class AccountManagerAccountListPanel {
             ButtonWidget<?> entry = new ButtonWidget<>();
             WawelAuthStyle.rowButton(entry, () -> isSelected);
             entry.widthRel(1.0f)
-                .height(14);
+                .height(ACCOUNT_ROW_HEIGHT);
 
             Row dot = new Row() {
 
@@ -165,13 +167,13 @@ final class AccountManagerAccountListPanel {
             };
             row.widthRel(1.0f)
                 .heightRel(1.0f);
-            row.child(nonHoverable(2, 14));
+            row.child(nonHoverable(2, ACCOUNT_ROW_HEIGHT));
             if (account.getProfileUuid() != null) {
                 row.child(createAccountFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
-                row.child(nonHoverable(2, 14));
+                row.child(nonHoverable(2, ACCOUNT_ROW_HEIGHT));
             }
             row.child(dot);
-            row.child(nonHoverable(2, 14));
+            row.child(nonHoverable(2, ACCOUNT_ROW_HEIGHT));
             row.child(nameLabel);
 
             entry.child(row);

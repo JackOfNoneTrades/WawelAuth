@@ -98,6 +98,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final int DETAIL_SECONDARY_TEXT_COLOR = WawelAuthStyle.TEXT_SECONDARY;
     private static final int PREVIEW_PANEL_BACKGROUND_COLOR = WawelAuthStyle.PANEL_INSET;
     private static final int PANORAMA_DIM_COLOR = 0x55000000;
+    private static final int VISIBLE_PROVIDER_ROWS = 5;
+    private static final int VISIBLE_ACCOUNT_ROWS = 6;
     private static final int PREVIEW_PANEL_HEIGHT = 101;
     private static final int ACCOUNT_ACTION_BUTTON_SIZE = 16;
     private static final int ACCOUNT_ACTION_ICON_SIZE = 12;
@@ -390,7 +392,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
         Column providerListFrame = new Column();
         providerListFrame.widthRel(1.0f)
-            .height(62)
+            .height(AccountManagerProviderListPanel.PROVIDER_ROW_HEIGHT * VISIBLE_PROVIDER_ROWS)
             .margin(0, 2)
             .background(WawelAuthStyle.listBackground())
             .disableHoverThemeBackground(true)
@@ -398,7 +400,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
         Column accountListFrame = new Column();
         accountListFrame.widthRel(1.0f)
-            .expanded()
+            .height(AccountManagerAccountListPanel.ACCOUNT_ROW_HEIGHT * VISIBLE_ACCOUNT_ROWS)
             .margin(0, 2)
             .background(WawelAuthStyle.listBackground())
             .disableHoverThemeBackground(true)
@@ -705,9 +707,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         leftSidebar.child(
             new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.accounts")).widthRel(1.0f)
                 .height(12)
-                .margin(0, 4)
                 .color(WawelAuthStyle.THEME_LIGHTER))
             .child(accountListFrame)
+            .child(new Widget<>().widthRel(1.0f)
+                .expanded())
             .child(
                 new Row().widthRel(1.0f)
                     .height(17)

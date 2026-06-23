@@ -44,12 +44,16 @@ final class AccountManagerProviderListPanel {
     private static final int PROVIDER_SETTINGS_ICON_DRAW_SIZE = 10;
     private static final int PROVIDER_SETTINGS_ICON_COLOR = 0xFFE0E0E0;
     private static final int PROVIDER_SETTINGS_ICON_HOVER_COLOR = 0xFFFFFFFF;
+    private static final int PROVIDER_SETTINGS_ICON_DISABLED_COLOR = 0xFF777777;
     private static final ColorType PROVIDER_SETTINGS_ICON_COLOR_TYPE = new ColorType(
         "wawelauth:provider_settings_icon",
         theme -> PROVIDER_SETTINGS_ICON_COLOR);
     private static final ColorType PROVIDER_SETTINGS_ICON_HOVER_COLOR_TYPE = new ColorType(
         "wawelauth:provider_settings_icon_hover",
         theme -> PROVIDER_SETTINGS_ICON_HOVER_COLOR);
+    private static final ColorType PROVIDER_SETTINGS_ICON_DISABLED_COLOR_TYPE = new ColorType(
+        "wawelauth:provider_settings_icon_disabled",
+        theme -> PROVIDER_SETTINGS_ICON_DISABLED_COLOR);
     private static final IDrawable PROVIDER_SETTINGS_ICON_TEXTURE = UITexture.builder()
         .location("wawelauth", "gui/gears-sodium")
         .imageSize(PROVIDER_SETTINGS_ICON_SOURCE_SIZE, PROVIDER_SETTINGS_ICON_SOURCE_SIZE)
@@ -64,15 +68,25 @@ final class AccountManagerProviderListPanel {
         .nonOpaque()
         .name("wawelauth:provider_settings_icon_hover")
         .build();
+    private static final IDrawable PROVIDER_SETTINGS_ICON_DISABLED_TEXTURE = UITexture.builder()
+        .location("wawelauth", "gui/gears-sodium")
+        .imageSize(PROVIDER_SETTINGS_ICON_SOURCE_SIZE, PROVIDER_SETTINGS_ICON_SOURCE_SIZE)
+        .colorType(PROVIDER_SETTINGS_ICON_DISABLED_COLOR_TYPE)
+        .nonOpaque()
+        .name("wawelauth:provider_settings_icon_disabled")
+        .build();
     private static final IDrawable PROVIDER_SETTINGS_ICON = centeredIcon(
         PROVIDER_SETTINGS_ICON_TEXTURE,
         PROVIDER_SETTINGS_ICON_DRAW_SIZE);
     private static final IDrawable PROVIDER_SETTINGS_ICON_HOVER = centeredIcon(
         PROVIDER_SETTINGS_ICON_HOVER_TEXTURE,
         PROVIDER_SETTINGS_ICON_DRAW_SIZE);
+    private static final IDrawable PROVIDER_SETTINGS_ICON_DISABLED = centeredIcon(
+        PROVIDER_SETTINGS_ICON_DISABLED_TEXTURE,
+        PROVIDER_SETTINGS_ICON_DRAW_SIZE);
     private static final int PROVIDER_SETTINGS_HOVER_BACKGROUND = 0x90000000;
     private static final int SHOW_LOCAL_BUTTON_HEIGHT = 10;
-    private static final int PROVIDER_ROW_HEIGHT = 14;
+    static final int PROVIDER_ROW_HEIGHT = 14;
     private static final int PROVIDER_TEXT_HOVER_COLOR = WawelAuthStyle.THEME_LIGHTER;
     private static final int BUILTIN_PROVIDER_BADGE_SLOT_SIZE = 12;
     private static final int BUILTIN_PROVIDER_BADGE_DRAW_SIZE = 10;
@@ -312,18 +326,22 @@ final class AccountManagerProviderListPanel {
             return true;
         });
 
+        boolean offlineProvider = BuiltinProviders.isOfflineProvider(provider.getName());
         ButtonWidget<?> settingsButton = new ButtonWidget<>();
         WawelAuthStyle.iconButton(settingsButton);
         settingsButton.size(14, 14)
             .background(IDrawable.EMPTY)
-            .hoverBackground(WawelAuthStyle.rect(PROVIDER_SETTINGS_HOVER_BACKGROUND))
-            .overlay(PROVIDER_SETTINGS_ICON)
-            .hoverOverlay(PROVIDER_SETTINGS_ICON_HOVER)
-            .addTooltipLine(GuiText.tr("wawelauth.gui.account_manager.provider_settings"))
-            .onMousePressed(mouseButton -> {
-                openProviderSettingsDialog.accept(provider);
-                return true;
-            });
+            .hoverBackground(
+                offlineProvider ? IDrawable.EMPTY : WawelAuthStyle.rect(PROVIDER_SETTINGS_HOVER_BACKGROUND))
+            .overlay(offlineProvider ? PROVIDER_SETTINGS_ICON_DISABLED : PROVIDER_SETTINGS_ICON)
+            .hoverOverlay(offlineProvider ? PROVIDER_SETTINGS_ICON_DISABLED : PROVIDER_SETTINGS_ICON_HOVER);
+        if (!offlineProvider) {
+            settingsButton.addTooltipLine(GuiText.tr("wawelauth.gui.account_manager.provider_settings"))
+                .onMousePressed(mouseButton -> {
+                    openProviderSettingsDialog.accept(provider);
+                    return true;
+                });
+        }
 
         Row providerRow = new Row() {
 
