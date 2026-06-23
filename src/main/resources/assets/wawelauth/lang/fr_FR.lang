@@ -189,6 +189,7 @@ wawelauth.gui.account_manager.path_hint=Chemin absolu vers %s (.png ou .gif)
 wawelauth.gui.account_manager.path_required=Le chemin de %s est requis.
 wawelauth.gui.account_manager.provider_builtin_badge=Fournisseur intégré
 wawelauth.gui.account_manager.provider_builtin_locked=Le fournisseur intégré ne peut pas être renommé ni supprimé.
+wawelauth.gui.account_manager.provider_builtin_config_note=Les fournisseurs intégrés peuvent être modifiés via json dans la config du mod
 wawelauth.gui.account_manager.provider_builtin_remove_forbidden=Le fournisseur intégré ne peut pas être supprimé.
 wawelauth.gui.account_manager.provider_builtin_rename_forbidden=Le fournisseur intégré ne peut pas être renommé.
 wawelauth.gui.account_manager.provider_managed_locked=Le fournisseur géré ne peut pas être renommé ni supprimé ici.

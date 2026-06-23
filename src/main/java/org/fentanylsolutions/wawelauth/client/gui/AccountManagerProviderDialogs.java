@@ -27,6 +27,7 @@ final class AccountManagerProviderDialogs {
 
     private static final int DIALOG_WIDTH = 286;
     private static final int PROVIDER_SETTINGS_DIALOG_HEIGHT = 164;
+    private static final int MANAGED_PROVIDER_SETTINGS_DIALOG_HEIGHT = 96;
     private static final int PROVIDER_DELETE_DIALOG_WIDTH = 260;
     private static final int PROVIDER_DELETE_DIALOG_HEIGHT = 106;
     private static final int ROOT_PADDING = 10;
@@ -76,8 +77,7 @@ final class AccountManagerProviderDialogs {
 
         final String[] persistedName = { provider.getName() };
         final boolean managedProvider = provider.getType() != ProviderType.CUSTOM;
-        final String[] statusText = {
-            managedProvider ? GuiText.tr("wawelauth.gui.account_manager.provider_managed_locked") : "" };
+        final String[] statusText = { "" };
 
         TabTextFieldWidget nameField = new TabTextFieldWidget();
         nameField.hintText(GuiText.tr("wawelauth.gui.account_manager.provider_name"));
@@ -213,32 +213,43 @@ final class AccountManagerProviderDialogs {
                             ProviderDisplayName.displayName(persistedName[0])))).color(WawelAuthStyle.TEXT_SECONDARY)
                                 .scale(0.8f)
                                 .widthRel(1.0f)
-                                .height(10))
-            .child(new Widget<>().size(1, 8))
-            .child(nameField)
-            .child(new Widget<>().size(1, 8))
-            .child(statusText(statusText))
-            .child(new Widget<>().size(1, 10))
-            .child(
-                new Row().widthRel(1.0f)
-                    .height(BUTTON_HEIGHT)
-                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                    .child(deleteProviderBtn)
-                    .child(new Widget<>().size(8, BUTTON_HEIGHT))
-                    .child(proxySettingsBtn))
-            .child(new Widget<>().size(1, 8))
-            .child(
-                new Row().widthRel(1.0f)
-                    .height(BUTTON_HEIGHT)
-                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                    .child(applyBtn)
-                    .child(new Widget<>().size(8, BUTTON_HEIGHT))
-                    .child(resetBtn)
-                    .child(new Widget<>().size(8, BUTTON_HEIGHT))
-                    .child(doneBtn));
+                                .height(10));
+        if (managedProvider) {
+            root.child(new Widget<>().size(1, 3))
+                .child(
+                    new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.provider_builtin_config_note"))
+                        .color(WawelAuthStyle.TEXT_SECONDARY)
+                        .scale(0.8f)
+                        .widthRel(1.0f)
+                        .height(10))
+                .child(new Widget<>().size(1, 14))
+                .child(
+                    managedProviderSettingsActionRow(
+                        proxySettingsBtn,
+                        doneBtn,
+                        !BuiltinProviders.isOfflineProvider(persistedName[0])));
+        } else {
+            root.child(new Widget<>().size(1, 8))
+                .child(nameField)
+                .child(new Widget<>().size(1, 8))
+                .child(statusText(statusText))
+                .child(new Widget<>().size(1, 10))
+                .child(
+                    new Row().widthRel(1.0f)
+                        .height(BUTTON_HEIGHT)
+                        .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                        .child(deleteProviderBtn)
+                        .child(new Widget<>().size(8, BUTTON_HEIGHT))
+                        .child(proxySettingsBtn))
+                .child(new Widget<>().size(1, 8))
+                .child(providerSettingsActionRow(applyBtn, resetBtn, doneBtn));
+        }
 
         WawelAuthStyle.dialog(dialog);
-        dialog.size(DIALOG_WIDTH, PROVIDER_SETTINGS_DIALOG_HEIGHT)
+        dialog
+            .size(
+                DIALOG_WIDTH,
+                managedProvider ? MANAGED_PROVIDER_SETTINGS_DIALOG_HEIGHT : PROVIDER_SETTINGS_DIALOG_HEIGHT)
             .child(root);
 
         return dialog;
@@ -451,6 +462,34 @@ final class AccountManagerProviderDialogs {
                     .color(WawelAuthStyle.WARNING)
                     .widthRel(1.0f)
                     .height(12);
+    }
+
+    private static Row providerSettingsActionRow(ButtonWidget<?> applyBtn, ButtonWidget<?> resetBtn,
+        ButtonWidget<?> doneBtn) {
+        Row row = new Row();
+        row.widthRel(1.0f)
+            .height(BUTTON_HEIGHT)
+            .mainAxisAlignment(Alignment.MainAxis.CENTER);
+        row.child(applyBtn)
+            .child(new Widget<>().size(8, BUTTON_HEIGHT))
+            .child(resetBtn)
+            .child(new Widget<>().size(8, BUTTON_HEIGHT))
+            .child(doneBtn);
+        return row;
+    }
+
+    private static Row managedProviderSettingsActionRow(ButtonWidget<?> proxySettingsBtn, ButtonWidget<?> doneBtn,
+        boolean showProxySettings) {
+        Row row = new Row();
+        row.widthRel(1.0f)
+            .height(BUTTON_HEIGHT)
+            .mainAxisAlignment(Alignment.MainAxis.END);
+        if (showProxySettings) {
+            row.child(proxySettingsBtn)
+                .child(new Widget<>().size(8, BUTTON_HEIGHT));
+        }
+        row.child(doneBtn);
+        return row;
     }
 
     private static boolean isProviderNameDirty(TabTextFieldWidget nameField, String persistedName) {

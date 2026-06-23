@@ -193,6 +193,7 @@ wawelauth.gui.account_manager.path_hint=Absolute path to %s (.png or .gif)
 wawelauth.gui.account_manager.path_required=%s path is required.
 wawelauth.gui.account_manager.provider_builtin_badge=Built-in provider
 wawelauth.gui.account_manager.provider_builtin_locked=Built-in provider cannot be renamed or deleted.
+wawelauth.gui.account_manager.provider_builtin_config_note=Built-in providers can be edited via json in the mod config
 wawelauth.gui.account_manager.provider_builtin_remove_forbidden=Built-in provider cannot be removed.
 wawelauth.gui.account_manager.provider_builtin_rename_forbidden=Built-in provider cannot be renamed.
 wawelauth.gui.account_manager.provider_managed_locked=Managed provider cannot be renamed or deleted here.
