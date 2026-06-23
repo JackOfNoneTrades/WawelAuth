@@ -31,6 +31,9 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class LoginDialog {
 
     private static final int DIALOG_WIDTH = 260;
+    private static final int DIRECT_MICROSOFT_DIALOG_HEIGHT = 108;
+    private static final int OFFLINE_DIALOG_HEIGHT = 136;
+    private static final int PASSWORD_DIALOG_HEIGHT = 150;
     private static final int ROOT_PADDING = 10;
     private static final int FIELD_HEIGHT = 18;
     private static final int BUTTON_HEIGHT = 18;
@@ -350,7 +353,11 @@ public final class LoginDialog {
                 .child(buttonRow);
 
             WawelAuthStyle.dialog(dialog);
-            dialog.size(DIALOG_WIDTH, directMicrosoftLogin ? 108 : (offlineAccountLogin ? 142 : 156))
+            dialog
+                .size(
+                    DIALOG_WIDTH,
+                    directMicrosoftLogin ? DIRECT_MICROSOFT_DIALOG_HEIGHT
+                        : (offlineAccountLogin ? OFFLINE_DIALOG_HEIGHT : PASSWORD_DIALOG_HEIGHT))
                 .child(root);
 
             if (directMicrosoftLogin) {

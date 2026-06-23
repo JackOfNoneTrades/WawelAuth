@@ -11,6 +11,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 
+import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.widget.Widget;
@@ -21,6 +22,16 @@ import com.cleanroommc.modularui.widgets.layout.Column;
 import com.cleanroommc.modularui.widgets.layout.Row;
 
 final class AccountManagerCredentialDialogs {
+
+    private static final int DIALOG_WIDTH = 280;
+    private static final int UNAVAILABLE_DIALOG_HEIGHT = 98;
+    private static final int CREDENTIAL_DIALOG_HEIGHT = 210;
+    private static final int DELETE_DIALOG_HEIGHT = 114;
+    private static final int ROOT_PADDING = 10;
+    private static final int FIELD_HEIGHT = 18;
+    private static final int BUTTON_HEIGHT = 18;
+    private static final int BUTTON_TEXT_MAX_WIDTH = 92;
+    private static final int STATUS_MAX_WIDTH_PX = DIALOG_WIDTH - ROOT_PADDING * 2 - 4;
 
     private final AccountManagerScreenState state;
     private final Predicate<ClientProvider> credentialManagementSupported;
@@ -56,47 +67,51 @@ final class AccountManagerCredentialDialogs {
         if (account == null || client == null || !credentialSupported) {
             String reason = account == null ? GuiText.tr("wawelauth.gui.common.no_account_selected")
                 : GuiText.tr("wawelauth.gui.account_manager.credentials_unavailable");
-            dialog.size(258, 96)
+            ButtonWidget<?> closeBtn = new ButtonWidget<>();
+            closeBtn.size(70, BUTTON_HEIGHT)
+                .onMousePressed(btn -> {
+                    dialog.closeIfOpen();
+                    return true;
+                });
+            WawelAuthStyle.textButton(closeBtn, 62, "wawelauth.gui.common.close");
+
+            Column root = dialogRoot();
+            root.child(
+                new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.credentials")).widthRel(1.0f)
+                    .height(14)
+                    .color(WawelAuthStyle.THEME_LIGHTER))
+                .child(new Widget<>().size(1, 8))
                 .child(
-                    new Column().widthRel(1.0f)
-                        .heightRel(1.0f)
-                        .padding(8)
-                        .child(
-                            new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.credentials")).widthRel(1.0f)
-                                .height(14))
-                        .child(
-                            new TextWidget<>(IKey.str(reason)).color(0xFFFFAA55)
-                                .widthRel(1.0f)
-                                .height(12)
-                                .margin(0, 8))
-                        .child(
-                            new Row().widthRel(1.0f)
-                                .height(20)
-                                .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                                .child(
-                                    GuiText
-                                        .fitButtonLabel(
-                                            new ButtonWidget<>().size(70, 18),
-                                            70,
-                                            "wawelauth.gui.common.close")
-                                        .onMousePressed(btn -> {
-                                            dialog.closeIfOpen();
-                                            return true;
-                                        }))));
+                    new TextWidget<>(IKey.str(reason)).color(WawelAuthStyle.DANGER)
+                        .widthRel(1.0f)
+                        .height(12))
+                .child(new Widget<>().size(1, 10))
+                .child(
+                    new Row().widthRel(1.0f)
+                        .height(BUTTON_HEIGHT)
+                        .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                        .child(closeBtn));
+
+            WawelAuthStyle.dialog(dialog);
+            dialog.size(DIALOG_WIDTH, UNAVAILABLE_DIALOG_HEIGHT)
+                .child(root);
             return dialog;
         }
 
         PasswordInputWidget currentPasswordField = new PasswordInputWidget()
-            .hintText(GuiText.tr("wawelauth.gui.credentials.current_password"));
+            .hintText(GuiText.tr("wawelauth.gui.credentials.current_password"))
+            .applyWawelAuthStyle();
         PasswordInputWidget newPasswordField = new PasswordInputWidget()
-            .hintText(GuiText.tr("wawelauth.gui.credentials.new_password"));
+            .hintText(GuiText.tr("wawelauth.gui.credentials.new_password"))
+            .applyWawelAuthStyle();
         PasswordInputWidget confirmPasswordField = new PasswordInputWidget()
-            .hintText(GuiText.tr("wawelauth.gui.credentials.confirm_new_password"));
+            .hintText(GuiText.tr("wawelauth.gui.credentials.confirm_new_password"))
+            .applyWawelAuthStyle();
         String[] statusText = { "" };
         boolean[] busy = { false };
 
         ButtonWidget<?> changePasswordBtn = new ButtonWidget<>();
-        changePasswordBtn.size(100, 18)
+        changePasswordBtn.size(100, BUTTON_HEIGHT)
             .onMousePressed(btn -> {
                 if (busy[0]) return true;
 
@@ -144,10 +159,11 @@ final class AccountManagerCredentialDialogs {
                     });
                 return true;
             });
-        GuiText.fitButtonLabel(changePasswordBtn, 100, "wawelauth.gui.credentials.change_password");
+        WawelAuthStyle
+            .textButton(changePasswordBtn, BUTTON_TEXT_MAX_WIDTH, "wawelauth.gui.credentials.change_password");
 
         ButtonWidget<?> deleteServerAccountBtn = new ButtonWidget<>();
-        deleteServerAccountBtn.size(106, 18)
+        deleteServerAccountBtn.size(106, BUTTON_HEIGHT)
             .onMousePressed(btn -> {
                 if (busy[0]) return true;
 
@@ -165,66 +181,71 @@ final class AccountManagerCredentialDialogs {
                 openCredentialDeleteDialog.run();
                 return true;
             });
-        GuiText.fitButtonLabel(deleteServerAccountBtn, 106, "wawelauth.gui.credentials.delete_account");
+        WawelAuthStyle.textButton(deleteServerAccountBtn, 98, "wawelauth.gui.credentials.delete_account");
 
         ButtonWidget<?> closeBtn = new ButtonWidget<>();
-        closeBtn.size(70, 18)
+        closeBtn.size(70, BUTTON_HEIGHT)
             .onMousePressed(btn -> {
                 dialog.closeIfOpen();
                 return true;
             });
-        GuiText.fitButtonLabel(closeBtn, 70, "wawelauth.gui.common.close");
+        WawelAuthStyle.textButton(closeBtn, 62, "wawelauth.gui.common.close");
 
-        dialog.size(266, 177)
+        String selectedText = GuiText
+            .tr("wawelauth.gui.credentials.selected", profileName, ProviderDisplayName.displayName(providerName));
+        Column root = dialogRoot();
+        root.child(
+            new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.credentials")).widthRel(1.0f)
+                .height(14)
+                .color(WawelAuthStyle.THEME_LIGHTER))
             .child(
-                new Column().widthRel(1.0f)
-                    .heightRel(1.0f)
-                    .padding(8)
-                    .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.credentials")).widthRel(1.0f)
-                            .height(14))
-                    .child(
-                        new TextWidget<>(
-                            GuiText.key(
-                                "wawelauth.gui.credentials.selected",
-                                profileName,
-                                ProviderDisplayName.displayName(providerName))).color(0xFFAAAAAA)
-                                    .scale(0.8f)
-                                    .widthRel(1.0f)
-                                    .height(10))
-                    .child(
-                        currentPasswordField.widthRel(1.0f)
-                            .height(18)
-                            .setMaxLength(128)
-                            .margin(0, 4))
-                    .child(
-                        newPasswordField.widthRel(1.0f)
-                            .height(18)
-                            .setMaxLength(128)
-                            .margin(0, 3))
-                    .child(
-                        confirmPasswordField.widthRel(1.0f)
-                            .height(18)
-                            .setMaxLength(128)
-                            .margin(0, 3))
-                    .child(
-                        new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(0xFFFFAA55)
-                            .widthRel(1.0f)
-                            .height(12)
-                            .margin(0, 2))
-                    .child(
-                        new Row().widthRel(1.0f)
-                            .height(20)
-                            .margin(0, 4)
-                            .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                            .child(changePasswordBtn)
-                            .child(new Widget<>().size(6, 18))
-                            .child(deleteServerAccountBtn))
-                    .child(
-                        new Row().widthRel(1.0f)
-                            .height(20)
-                            .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                            .child(closeBtn)));
+                new TextWidget<>(IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(selectedText, STATUS_MAX_WIDTH_PX)))
+                    .tooltipDynamic(tooltip -> {
+                        if (!GuiText.ellipsizeToPixelWidth(selectedText, STATUS_MAX_WIDTH_PX)
+                            .equals(selectedText)) {
+                            tooltip.addLine(IKey.str(selectedText));
+                        }
+                    })
+                    .tooltipAutoUpdate(true)
+                    .color(WawelAuthStyle.TEXT_SECONDARY)
+                    .scale(0.8f)
+                    .widthRel(1.0f)
+                    .height(10))
+            .child(new Widget<>().size(1, 8))
+            .child(
+                currentPasswordField.widthRel(1.0f)
+                    .height(FIELD_HEIGHT)
+                    .setMaxLength(128))
+            .child(new Widget<>().size(1, 7))
+            .child(
+                newPasswordField.widthRel(1.0f)
+                    .height(FIELD_HEIGHT)
+                    .setMaxLength(128))
+            .child(new Widget<>().size(1, 7))
+            .child(
+                confirmPasswordField.widthRel(1.0f)
+                    .height(FIELD_HEIGHT)
+                    .setMaxLength(128))
+            .child(new Widget<>().size(1, 8))
+            .child(statusText(statusText))
+            .child(new Widget<>().size(1, 10))
+            .child(
+                new Row().widthRel(1.0f)
+                    .height(BUTTON_HEIGHT)
+                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                    .child(changePasswordBtn)
+                    .child(new Widget<>().size(8, BUTTON_HEIGHT))
+                    .child(deleteServerAccountBtn))
+            .child(new Widget<>().size(1, 8))
+            .child(
+                new Row().widthRel(1.0f)
+                    .height(BUTTON_HEIGHT)
+                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                    .child(closeBtn));
+
+        WawelAuthStyle.dialog(dialog);
+        dialog.size(DIALOG_WIDTH, CREDENTIAL_DIALOG_HEIGHT)
+            .child(root);
         return dialog;
     }
 
@@ -242,17 +263,17 @@ final class AccountManagerCredentialDialogs {
         boolean[] busy = { false };
 
         ButtonWidget<?> cancelBtn = new ButtonWidget<>();
-        cancelBtn.size(62, 18)
+        cancelBtn.size(64, BUTTON_HEIGHT)
             .onMousePressed(btn -> {
                 if (busy[0]) return true;
                 clearPendingDeleteState();
                 dialog.closeIfOpen();
                 return true;
             });
-        GuiText.fitButtonLabel(cancelBtn, 62, "wawelauth.gui.common.cancel");
+        WawelAuthStyle.textButton(cancelBtn, 56, "wawelauth.gui.common.cancel");
 
         ButtonWidget<?> deleteBtn = new ButtonWidget<>();
-        deleteBtn.size(62, 18)
+        deleteBtn.size(64, BUTTON_HEIGHT)
             .onMousePressed(btn -> {
                 if (busy[0]) return true;
 
@@ -300,35 +321,62 @@ final class AccountManagerCredentialDialogs {
                     });
                 return true;
             });
-        GuiText.fitButtonLabel(deleteBtn, 62, "wawelauth.gui.common.delete");
+        WawelAuthStyle.textButton(deleteBtn, 56, "wawelauth.gui.common.delete");
 
-        dialog.size(270, 104)
+        Column root = dialogRoot();
+        root.child(
+            new TextWidget<>(GuiText.key("wawelauth.gui.credentials.delete_title", accountName)).widthRel(1.0f)
+                .height(14)
+                .color(WawelAuthStyle.THEME_LIGHTER))
+            .child(new Widget<>().size(1, 6))
             .child(
-                new Column().widthRel(1.0f)
-                    .heightRel(1.0f)
-                    .padding(8)
-                    .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.credentials.delete_title", accountName))
-                            .widthRel(1.0f)
-                            .height(14))
-                    .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.credentials.delete_warning")).color(0xFFAAAAAA)
-                            .scale(0.8f)
-                            .widthRel(1.0f)
-                            .height(10))
-                    .child(
-                        new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(0xFFFFAA55)
-                            .widthRel(1.0f)
-                            .height(12)
-                            .margin(0, 6))
-                    .child(
-                        new Row().widthRel(1.0f)
-                            .height(20)
-                            .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                            .child(cancelBtn)
-                            .child(new Widget<>().size(6, 18))
-                            .child(deleteBtn)));
+                new TextWidget<>(GuiText.key("wawelauth.gui.credentials.delete_warning"))
+                    .color(WawelAuthStyle.TEXT_SECONDARY)
+                    .scale(0.8f)
+                    .widthRel(1.0f)
+                    .height(10))
+            .child(new Widget<>().size(1, 8))
+            .child(statusText(statusText))
+            .child(new Widget<>().size(1, 10))
+            .child(
+                new Row().widthRel(1.0f)
+                    .height(BUTTON_HEIGHT)
+                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                    .child(cancelBtn)
+                    .child(new Widget<>().size(8, BUTTON_HEIGHT))
+                    .child(deleteBtn));
+
+        WawelAuthStyle.dialog(dialog);
+        dialog.size(DIALOG_WIDTH, DELETE_DIALOG_HEIGHT)
+            .child(root);
         return dialog;
+    }
+
+    private static Column dialogRoot() {
+        Column root = new Column();
+        root.widthRel(1.0f)
+            .heightRel(1.0f)
+            .padding(ROOT_PADDING)
+            .background(IDrawable.EMPTY)
+            .disableHoverBackground();
+        return root;
+    }
+
+    private static TextWidget<?> statusText(String[] statusText) {
+        return new TextWidget<>(
+            IKey.dynamic(
+                () -> GuiText.ellipsizeToPixelWidth(statusText[0] != null ? statusText[0] : "", STATUS_MAX_WIDTH_PX)))
+                    .tooltipDynamic(tooltip -> {
+                        String fullText = statusText[0];
+                        if (fullText != null && !GuiText.ellipsizeToPixelWidth(fullText, STATUS_MAX_WIDTH_PX)
+                            .equals(fullText)) {
+                            tooltip.addLine(IKey.str(fullText));
+                        }
+                    })
+                    .tooltipAutoUpdate(true)
+                    .color(WawelAuthStyle.DANGER)
+                    .widthRel(1.0f)
+                    .height(12);
     }
 
     boolean hasPendingDelete() {

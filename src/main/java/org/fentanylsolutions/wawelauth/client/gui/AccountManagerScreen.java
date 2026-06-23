@@ -1000,56 +1000,77 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         Dialog<Boolean> dialog = new Dialog<>("wawelauth_confirm_remove");
         dialog.setCloseOnOutOfBoundsClick(false);
 
+        int dialogWidth = 260;
+        int dialogHeight = 94;
+        int rootPadding = 10;
+        int buttonHeight = 18;
+        int titleMaxWidthPx = dialogWidth - rootPadding * 2 - 4;
         String name = state.pendingRemoveAccountName != null ? state.pendingRemoveAccountName
             : GuiText.tr("wawelauth.gui.account_manager.this_account");
         long accountId = state.pendingRemoveAccountId;
 
-        TextWidget<?> warningText = new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.remove_warning"));
-        warningText.color(0xFFAAAAAA)
-            .scale(0.8f)
-            .widthRel(1.0f)
-            .height(10)
-            .margin(0, 4);
+        ButtonWidget<?> cancelBtn = new ButtonWidget<>();
+        cancelBtn.size(64, buttonHeight)
+            .onMousePressed(btn -> {
+                state.pendingRemoveAccountId = -1L;
+                state.pendingRemoveAccountName = null;
+                dialog.closeIfOpen();
+                return true;
+            });
+        WawelAuthStyle.textButton(cancelBtn, 56, "wawelauth.gui.common.cancel");
 
-        dialog.size(230, 80)
+        ButtonWidget<?> removeBtn = new ButtonWidget<>();
+        removeBtn.size(64, buttonHeight)
+            .onMousePressed(btn -> {
+                state.pendingRemoveAccountId = -1L;
+                state.pendingRemoveAccountName = null;
+                dialog.closeIfOpen();
+                doRemoveAccount(accountId);
+                return true;
+            });
+        WawelAuthStyle.textButton(removeBtn, 56, "wawelauth.gui.common.remove");
+
+        Column root = new Column();
+        root.widthRel(1.0f)
+            .heightRel(1.0f)
+            .padding(rootPadding)
+            .background(IDrawable.EMPTY)
+            .disableHoverBackground();
+        root.child(
+            new TextWidget<>(
+                IKey.dynamic(
+                    () -> GuiText.ellipsizeToPixelWidth(
+                        GuiText.tr("wawelauth.gui.account_manager.remove_title", name),
+                        titleMaxWidthPx))).tooltipDynamic(tooltip -> {
+                            String title = GuiText.tr("wawelauth.gui.account_manager.remove_title", name);
+                            if (!GuiText.ellipsizeToPixelWidth(title, titleMaxWidthPx)
+                                .equals(title)) {
+                                tooltip.addLine(IKey.str(title));
+                            }
+                        })
+                            .tooltipAutoUpdate(true)
+                            .widthRel(1.0f)
+                            .height(14)
+                            .color(WawelAuthStyle.THEME_LIGHTER))
+            .child(new Widget<>().size(1, 6))
             .child(
-                new Column().widthRel(1.0f)
-                    .heightRel(1.0f)
-                    .padding(8)
-                    .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.remove_title", name)).widthRel(1.0f)
-                            .height(14))
-                    .child(warningText)
-                    .child(
-                        new Row().widthRel(1.0f)
-                            .height(20)
-                            .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                            .child(
-                                GuiText
-                                    .fitButtonLabel(
-                                        new ButtonWidget<>().size(60, 18),
-                                        60,
-                                        "wawelauth.gui.common.cancel")
-                                    .onMousePressed(btn -> {
-                                        state.pendingRemoveAccountId = -1L;
-                                        state.pendingRemoveAccountName = null;
-                                        dialog.closeIfOpen();
-                                        return true;
-                                    }))
-                            .child(new Widget<>().size(6, 18))
-                            .child(
-                                GuiText
-                                    .fitButtonLabel(
-                                        new ButtonWidget<>().size(60, 18),
-                                        60,
-                                        "wawelauth.gui.common.remove")
-                                    .onMousePressed(btn -> {
-                                        state.pendingRemoveAccountId = -1L;
-                                        state.pendingRemoveAccountName = null;
-                                        dialog.closeIfOpen();
-                                        doRemoveAccount(accountId);
-                                        return true;
-                                    }))));
+                new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.remove_warning"))
+                    .color(WawelAuthStyle.TEXT_SECONDARY)
+                    .scale(0.8f)
+                    .widthRel(1.0f)
+                    .height(10))
+            .child(new Widget<>().size(1, 10))
+            .child(
+                new Row().widthRel(1.0f)
+                    .height(buttonHeight)
+                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                    .child(cancelBtn)
+                    .child(new Widget<>().size(8, buttonHeight))
+                    .child(removeBtn));
+
+        WawelAuthStyle.dialog(dialog);
+        dialog.size(dialogWidth, dialogHeight)
+            .child(root);
         return dialog;
     }
 

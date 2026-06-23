@@ -9,6 +9,7 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
+import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.utils.Alignment;
@@ -25,6 +26,14 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class RegisterDialog {
 
+    private static final int DIALOG_WIDTH = 260;
+    private static final int DIALOG_HEIGHT = 198;
+    private static final int ROOT_PADDING = 10;
+    private static final int FIELD_HEIGHT = 18;
+    private static final int BUTTON_HEIGHT = 18;
+    private static final int BUTTON_TEXT_MAX_WIDTH = 56;
+    private static final int STATUS_MAX_WIDTH_PX = DIALOG_WIDTH - ROOT_PADDING * 2 - 4;
+
     private final Consumer<Boolean> onResult;
     private final IPanelHandler panelHandler;
     private String providerName;
@@ -39,19 +48,23 @@ public final class RegisterDialog {
 
             TabTextFieldWidget usernameField = new TabTextFieldWidget();
             usernameField.hintText(GuiText.tr("wawelauth.gui.common.username"));
+            WawelAuthStyle.textField(usernameField);
             PasswordInputWidget passwordField = new PasswordInputWidget()
-                .hintText(GuiText.tr("wawelauth.gui.common.password"));
+                .hintText(GuiText.tr("wawelauth.gui.common.password"))
+                .applyWawelAuthStyle();
             PasswordInputWidget confirmPasswordField = new PasswordInputWidget()
-                .hintText(GuiText.tr("wawelauth.gui.register.hint.confirm_password"));
+                .hintText(GuiText.tr("wawelauth.gui.register.hint.confirm_password"))
+                .applyWawelAuthStyle();
             TabTextFieldWidget inviteTokenField = new TabTextFieldWidget();
             inviteTokenField.hintText(GuiText.tr("wawelauth.gui.register.hint.invite_token"));
+            WawelAuthStyle.textField(inviteTokenField);
 
             String[] statusText = { "" };
             boolean[] busy = { false };
             boolean[] cancelled = { false };
 
             ButtonWidget<?> cancelBtn = new ButtonWidget<>();
-            cancelBtn.size(62, 18)
+            cancelBtn.size(64, BUTTON_HEIGHT)
                 .onMousePressed(mouseButton -> {
                     // Disarm any in-flight register completion so a late success
                     // cannot fire the result consumer of a dismissed dialog.
@@ -59,7 +72,7 @@ public final class RegisterDialog {
                     dialog.closeWith(Boolean.FALSE);
                     return true;
                 });
-            GuiText.fitButtonLabel(cancelBtn, 62, "wawelauth.gui.common.cancel");
+            WawelAuthStyle.textButton(cancelBtn, BUTTON_TEXT_MAX_WIDTH, "wawelauth.gui.common.cancel");
 
             Runnable doRegister = () -> {
                 if (busy[0]) return;
@@ -122,54 +135,73 @@ public final class RegisterDialog {
             inviteTokenField.onEnterPressed(doRegister);
 
             ButtonWidget<?> registerBtn = new ButtonWidget<>();
-            registerBtn.size(72, 18)
+            registerBtn.size(72, BUTTON_HEIGHT)
                 .onMousePressed(mouseButton -> {
                     doRegister.run();
                     return true;
                 });
-            GuiText.fitButtonLabel(registerBtn, 72, "wawelauth.gui.common.register");
+            WawelAuthStyle.textButton(registerBtn, 64, "wawelauth.gui.common.register");
 
-            dialog.size(236, 176)
+            Column root = new Column();
+            root.widthRel(1.0f)
+                .heightRel(1.0f)
+                .padding(ROOT_PADDING)
+                .background(IDrawable.EMPTY)
+                .disableHoverBackground();
+            root.child(
+                new TextWidget<>(GuiText.key("wawelauth.gui.register.title", providerLabel)).widthRel(1.0f)
+                    .height(14)
+                    .color(WawelAuthStyle.THEME_LIGHTER))
+                .child(new Widget<>().size(1, 8))
                 .child(
-                    new Column().widthRel(1.0f)
-                        .heightRel(1.0f)
-                        .padding(8)
-                        .child(
-                            new TextWidget<>(GuiText.key("wawelauth.gui.register.title", providerLabel)).widthRel(1.0f)
-                                .height(12))
-                        .child(
-                            usernameField.widthRel(1.0f)
-                                .height(18)
-                                .setMaxLength(64)
-                                .margin(0, 3))
-                        .child(
-                            passwordField.widthRel(1.0f)
-                                .height(18)
-                                .setMaxLength(128)
-                                .margin(0, 3))
-                        .child(
-                            confirmPasswordField.widthRel(1.0f)
-                                .height(18)
-                                .setMaxLength(128)
-                                .margin(0, 3))
-                        .child(
-                            inviteTokenField.widthRel(1.0f)
-                                .height(18)
-                                .setMaxLength(128)
-                                .margin(0, 3))
-                        .child(
-                            new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(0xFFFFAA55)
-                                .widthRel(1.0f)
-                                .height(12)
-                                .margin(0, 2))
-                        .child(new Widget<>().size(1, 4))
-                        .child(
-                            new Row().widthRel(1.0f)
-                                .height(20)
-                                .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                                .child(cancelBtn)
-                                .child(new Widget<>().size(6, 18))
-                                .child(registerBtn)));
+                    usernameField.widthRel(1.0f)
+                        .height(FIELD_HEIGHT)
+                        .setMaxLength(64))
+                .child(new Widget<>().size(1, 7))
+                .child(
+                    passwordField.widthRel(1.0f)
+                        .height(FIELD_HEIGHT)
+                        .setMaxLength(128))
+                .child(new Widget<>().size(1, 7))
+                .child(
+                    confirmPasswordField.widthRel(1.0f)
+                        .height(FIELD_HEIGHT)
+                        .setMaxLength(128))
+                .child(new Widget<>().size(1, 7))
+                .child(
+                    inviteTokenField.widthRel(1.0f)
+                        .height(FIELD_HEIGHT)
+                        .setMaxLength(128))
+                .child(new Widget<>().size(1, 8))
+                .child(
+                    new TextWidget<>(
+                        IKey.dynamic(
+                            () -> GuiText.ellipsizeToPixelWidth(
+                                statusText[0] != null ? statusText[0] : "",
+                                STATUS_MAX_WIDTH_PX))).tooltipDynamic(tooltip -> {
+                                    String fullText = statusText[0];
+                                    if (fullText != null
+                                        && !GuiText.ellipsizeToPixelWidth(fullText, STATUS_MAX_WIDTH_PX)
+                                            .equals(fullText)) {
+                                        tooltip.addLine(IKey.str(fullText));
+                                    }
+                                })
+                                    .tooltipAutoUpdate(true)
+                                    .color(WawelAuthStyle.DANGER)
+                                    .widthRel(1.0f)
+                                    .height(12))
+                .child(new Widget<>().size(1, 10))
+                .child(
+                    new Row().widthRel(1.0f)
+                        .height(BUTTON_HEIGHT)
+                        .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                        .child(cancelBtn)
+                        .child(new Widget<>().size(8, BUTTON_HEIGHT))
+                        .child(registerBtn));
+
+            WawelAuthStyle.dialog(dialog);
+            dialog.size(DIALOG_WIDTH, DIALOG_HEIGHT)
+                .child(root);
 
             return dialog;
         }, true);
