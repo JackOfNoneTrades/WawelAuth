@@ -20,7 +20,7 @@ import com.cleanroommc.modularui.widgets.layout.Column;
 
 final class FocusedLocalAuthPanel {
 
-    private static final int DETAIL_SECONDARY_TEXT_COLOR = 0xFF555555;
+    private static final int DETAIL_SECONDARY_TEXT_COLOR = WawelAuthStyle.TEXT_SECONDARY;
     private static final int SIDEBAR_TEXT_MAX_WIDTH_PX = 104;
 
     private final AccountManagerScreenState state;
@@ -91,7 +91,8 @@ final class FocusedLocalAuthPanel {
         String displayAddress = GuiText.ellipsizeToPixelWidth(serverAddress, SIDEBAR_TEXT_MAX_WIDTH_PX);
         TextWidget<?> addressText = new TextWidget<>(IKey.str(displayAddress));
         addressText.widthRel(1.0f)
-            .height(12);
+            .height(12)
+            .color(WawelAuthStyle.THEME_LIGHTER);
         if (!displayAddress.equals(serverAddress)) {
             addressText.addTooltipLine(serverAddress);
         }
@@ -135,7 +136,7 @@ final class FocusedLocalAuthPanel {
         String fingerprint = getFingerprint();
         String displayFingerprint = GuiText.ellipsizeToPixelWidth(fingerprint, SIDEBAR_TEXT_MAX_WIDTH_PX);
         TextWidget<?> fingerprintText = new TextWidget<>(IKey.str(displayFingerprint));
-        fingerprintText.color(0xFF55FFFF)
+        fingerprintText.color(WawelAuthStyle.FINGERPRINT)
             .scale(0.7f)
             .widthRel(1.0f)
             .height(10);
@@ -155,14 +156,15 @@ final class FocusedLocalAuthPanel {
                                 }
                             })
                             .tooltipAutoUpdate(true)
-                            .color(0xFFFFFF55)
+                            .color(WawelAuthStyle.WARNING)
                             .scale(0.8f)
                             .widthRel(1.0f)
                             .height(10)
                             .margin(0, 2))
             .child(
                 GuiText.fitButtonLabelMaxWidth(
-                    new ButtonWidget<>().widthRel(1.0f)
+                    WawelAuthStyle.button(new ButtonWidget<>())
+                        .widthRel(1.0f)
                         .height(16)
                         .setEnabledIf(widget -> hasMetadata()),
                     SIDEBAR_TEXT_MAX_WIDTH_PX,
@@ -173,7 +175,8 @@ final class FocusedLocalAuthPanel {
                     }))
             .child(
                 GuiText.fitButtonLabelMaxWidth(
-                    new ButtonWidget<>().widthRel(1.0f)
+                    WawelAuthStyle.button(new ButtonWidget<>())
+                        .widthRel(1.0f)
                         .height(16)
                         .margin(0, 2)
                         .setEnabledIf(widget -> hasMetadata()),
@@ -190,7 +193,8 @@ final class FocusedLocalAuthPanel {
                     }))
             .child(
                 GuiText.fitButtonLabelMaxWidth(
-                    new ButtonWidget<>().widthRel(1.0f)
+                    WawelAuthStyle.button(new ButtonWidget<>())
+                        .widthRel(1.0f)
                         .height(16)
                         .margin(0, 2)
                         .setEnabledIf(widget -> state.selectedProvider != null),

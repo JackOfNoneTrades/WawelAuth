@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -36,7 +38,6 @@ import org.lwjgl.opengl.GL11;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IKey;
-import com.cleanroommc.modularui.drawable.Rectangle;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.viewport.GuiContext;
@@ -90,10 +91,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private static final long STATUS_UI_REFRESH_INTERVAL_MS = 1000L;
     private static final int TEXTURE_STATUS_MAX_WIDTH_PX = 212;
-    private static final int DETAIL_PRIMARY_TEXT_COLOR = 0xFF000000;
-    private static final int DETAIL_SECONDARY_TEXT_COLOR = 0xFF555555;
-    private static final int PREVIEW_PANEL_BACKGROUND_COLOR = 0x22000000;
-    private static final int LIST_OUTLINE_COLOR = PREVIEW_PANEL_BACKGROUND_COLOR;
+    private static final int DETAIL_PRIMARY_TEXT_COLOR = WawelAuthStyle.TEXT_PRIMARY;
+    private static final int DETAIL_SECONDARY_TEXT_COLOR = WawelAuthStyle.TEXT_SECONDARY;
+    private static final int PREVIEW_PANEL_BACKGROUND_COLOR = WawelAuthStyle.PANEL_INSET;
+    private static final int PANORAMA_DIM_COLOR = 0x55000000;
 
     private static ServerData pendingFocusedServerData;
     private static ServerCapabilities pendingFocusedCapabilities;
@@ -125,10 +126,20 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private FocusedLocalAuthPanel focusedLocalPanel;
     private AccountManagerProviderListPanel providerListPanel;
     private AccountManagerAccountListPanel accountListPanel;
+    private final VanillaPanoramaBackdrop panoramaBackdrop = new VanillaPanoramaBackdrop();
 
     public AccountManagerScreen() {
         super("wawelauth");
         openParentOnClose(true);
+    }
+
+    @Override
+    protected boolean drawCustomBackdrop() {
+        boolean drewPanorama = panoramaBackdrop.draw(getContext().getPartialTicks());
+        if (drewPanorama) {
+            drawPanoramaDim();
+        }
+        return drewPanorama;
     }
 
     private AccountManagerScreenState state() {
@@ -194,6 +205,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     public ModularPanel buildUI(ModularGuiContext context) {
         AccountManagerScreenState state = state();
         mainPanel = ModularPanel.defaultPanel("wawelauth_account_manager", 360, 240);
+        mainPanel.background(WawelAuthStyle.panelBackground())
+            .disableHoverThemeBackground(true);
 
         ServerData focusedLocalServerData = null;
         ServerCapabilities focusedLocalCapabilities = null;
@@ -295,16 +308,16 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         providerListFrame.widthRel(1.0f)
             .height(62)
             .margin(0, 2)
-            .padding(1)
-            .background(new Rectangle().color(LIST_OUTLINE_COLOR))
+            .background(WawelAuthStyle.listBackground())
+            .disableHoverThemeBackground(true)
             .child(providerListPanel.widget());
 
         Column accountListFrame = new Column();
         accountListFrame.widthRel(1.0f)
             .expanded()
             .margin(0, 2)
-            .padding(1)
-            .background(new Rectangle().color(LIST_OUTLINE_COLOR))
+            .background(WawelAuthStyle.listBackground())
+            .disableHoverThemeBackground(true)
             .child(accountListPanel.widget());
 
         if (hasFocusedLocalContext()) {
@@ -323,7 +336,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             new Column().widthRel(1.0f)
                 .height(101)
                 .margin(0, 2)
-                .background(new Rectangle().color(PREVIEW_PANEL_BACKGROUND_COLOR))
+                .background(WawelAuthStyle.rect(PREVIEW_PANEL_BACKGROUND_COLOR))
+                .disableHoverThemeBackground(true)
                 .child(new Widget<>().size(1, 9))
                 .child(
                     new Row().widthRel(1.0f)
@@ -372,7 +386,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         .height(12)
                         .mainAxisAlignment(Alignment.MainAxis.END)
                         .child(
-                            new ButtonWidget<>().size(64, 12)
+                            WawelAuthStyle.button(new ButtonWidget<>())
+                                .size(64, 12)
                                 .margin(3, 0)
                                 .overlay(IKey.dynamic(() -> GuiText.tr(capePreviewMode.translationKey())))
                                 .onMousePressed(mouseButton -> {
@@ -446,7 +461,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             .size(44, 10))
                     .child(new Widget<>().size(4, 10))
                     .child(
-                        new ButtonWidget<>().size(64, 12)
+                        WawelAuthStyle.button(new ButtonWidget<>(), () -> state.skinUploadSlim)
+                            .size(64, 12)
                             .overlay(
                                 IKey.dynamic(
                                     () -> GuiText.tr(
@@ -464,7 +480,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .collapseDisabledChild()
                     .child(
                         GuiText.fitButtonLabel(
-                            new ButtonWidget<>().size(56, 16)
+                            WawelAuthStyle.button(new ButtonWidget<>())
+                                .size(56, 16)
                                 .setEnabledIf(widget -> !isSkinUploadDisabledForSelectedProvider()),
                             56,
                             "wawelauth.gui.account_manager.skin_pick")
@@ -475,7 +492,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .child(new Widget<>().size(4, 16))
                     .child(
                         GuiText.fitButtonLabel(
-                            new ButtonWidget<>().size(56, 16)
+                            WawelAuthStyle.button(new ButtonWidget<>())
+                                .size(56, 16)
                                 .setEnabledIf(widget -> !isCapeUploadDisabledForSelectedProvider()),
                             56,
                             "wawelauth.gui.account_manager.cape_pick")
@@ -487,7 +505,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         new Widget<>().size(4, 16)
                             .setEnabledIf(widget -> !isCapeUploadDisabledForSelectedProvider()))
                     .child(
-                        new ButtonWidget<>().size(64, 16)
+                        WawelAuthStyle.button(new ButtonWidget<>())
+                            .size(64, 16)
                             .overlay(
                                 IKey.dynamic(
                                     () -> GuiText.ellipsizeToPixelWidth(GuiText.tr(getTextureActionLabelKey()), 56)))
@@ -499,10 +518,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         new Widget<>().size(4, 16)
                             .setEnabledIf(widget -> isTextureResetEnabledForSelectedProvider()))
                     .child(
-                        new ButtonWidget<>().size(16, 16)
+                        WawelAuthStyle.button(new ButtonWidget<>())
+                            .size(16, 16)
                             .overlay(
                                 IKey.str("X")
-                                    .color(0xFFFF4444))
+                                    .color(WawelAuthStyle.DANGER))
                             .tooltip(
                                 tooltip -> tooltip.addLine(GuiText.key("wawelauth.gui.account_manager.reset_textures")))
                             .setEnabledIf(widget -> isTextureResetEnabledForSelectedProvider())
@@ -520,7 +540,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                                 }
                             })
                             .tooltipAutoUpdate(true)
-                            .color(0xFFFFAA55)
+                            .color(WawelAuthStyle.WARNING)
                             .scale(0.8f)
                             .widthRel(1.0f)
                             .height(10)
@@ -535,11 +555,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .height(18)
                     .margin(0, 1)
                     .child(
-                        GuiText
-                            .fitButtonLabel(
-                                new ButtonWidget<>().size(56, 16),
-                                56,
-                                "wawelauth.gui.account_manager.reauth")
+                        GuiText.fitButtonLabel(
+                            WawelAuthStyle.button(new ButtonWidget<>())
+                                .size(56, 16),
+                            56,
+                            "wawelauth.gui.account_manager.reauth")
                             .onMousePressed(mouseButton -> {
                                 if (state.selectedAccount == null) return true;
                                 openLoginDialog(
@@ -550,7 +570,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .child(new Widget<>().size(4, 16))
                     .child(
                         GuiText.fitButtonLabel(
-                            new ButtonWidget<>().size(74, 16)
+                            WawelAuthStyle.button(new ButtonWidget<>())
+                                .size(74, 16)
                                 .setEnabledIf(widget -> isCredentialManagementAvailableForSelectedAccount()),
                             74,
                             "wawelauth.gui.account_manager.credentials")
@@ -560,11 +581,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             }))
                     .child(new Widget<>().size(4, 16))
                     .child(
-                        GuiText
-                            .fitButtonLabel(
-                                new ButtonWidget<>().size(88, 16),
-                                88,
-                                "wawelauth.gui.account_manager.remove_account")
+                        GuiText.fitButtonLabel(
+                            WawelAuthStyle.button(new ButtonWidget<>())
+                                .size(88, 16),
+                            88,
+                            "wawelauth.gui.account_manager.remove_account")
                             .onMousePressed(mouseButton -> {
                                 confirmAndRemoveSelectedAccount();
                                 return true;
@@ -576,7 +597,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 .child(leftSidebar)
                 .child(rightPanel));
         mainPanel.child(
-            ButtonWidget.panelCloseButton()
+            WawelAuthStyle.iconButton(ButtonWidget.panelCloseButton())
                 .tooltip(tooltip -> tooltip.addLine(GuiText.key("wawelauth.gui.common.close"))));
 
         clearTextureSelection();
@@ -616,11 +637,13 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private void populateGeneralSidebar(Column leftSidebar, Column providerListFrame, Column accountListFrame) {
         leftSidebar.child(
             new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.providers")).widthRel(1.0f)
-                .height(12))
+                .height(12)
+                .color(WawelAuthStyle.THEME_LIGHTER))
             .child(providerListFrame)
             .child(
                 GuiText.fitButtonLabelMaxWidth(
-                    new ButtonWidget<>().widthRel(1.0f)
+                    WawelAuthStyle.button(new ButtonWidget<>())
+                        .widthRel(1.0f)
                         .height(16),
                     104,
                     "wawelauth.gui.add_provider.title")
@@ -639,7 +662,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         leftSidebar.child(
             new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.accounts")).widthRel(1.0f)
                 .height(12)
-                .margin(0, 4))
+                .margin(0, 4)
+                .color(WawelAuthStyle.THEME_LIGHTER))
             .child(accountListFrame)
             .child(
                 new Row().widthRel(1.0f)
@@ -648,7 +672,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .collapseDisabledChild()
                     .child(
                         GuiText.fitButtonLabel(
-                            new ButtonWidget<>().size(52, 16)
+                            WawelAuthStyle.button(new ButtonWidget<>())
+                                .size(52, 16)
                                 .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()),
                             52,
                             "wawelauth.gui.common.login")
@@ -658,7 +683,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             }))
                     .child(
                         GuiText.fitButtonLabel(
-                            new ButtonWidget<>().size(108, 16)
+                            WawelAuthStyle.button(new ButtonWidget<>())
+                                .size(108, 16)
                                 .setEnabledIf(widget -> !isRegisterVisibleForSelectedProvider()),
                             108,
                             "wawelauth.gui.common.login")
@@ -671,7 +697,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()))
                     .child(
                         GuiText.fitButtonLabel(
-                            new ButtonWidget<>().size(52, 16)
+                            WawelAuthStyle.button(new ButtonWidget<>())
+                                .size(52, 16)
                                 .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()),
                             52,
                             "wawelauth.gui.common.register")
@@ -734,6 +761,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     @Override
     public void onUpdate() {
         super.onUpdate();
+        panoramaBackdrop.update();
 
         if (providerListPanel != null) {
             providerListPanel.applyPendingScroll();
@@ -748,6 +776,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
         state.nextStatusUiRefreshAtMs = now + STATUS_UI_REFRESH_INTERVAL_MS;
         refreshVisibleStatuses();
+    }
+
+    private void drawPanoramaDim() {
+        Minecraft mc = Minecraft.getMinecraft();
+        ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+        Gui.drawRect(0, 0, resolution.getScaledWidth(), resolution.getScaledHeight(), PANORAMA_DIM_COLOR);
     }
 
     private void selectProvider(ClientProvider provider) {

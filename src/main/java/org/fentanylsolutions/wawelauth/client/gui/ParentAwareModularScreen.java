@@ -51,8 +51,14 @@ public abstract class ParentAwareModularScreen extends CustomModularScreen {
 
     @Override
     public void drawScreen() {
-        drawParentScreen();
+        if (!drawCustomBackdrop()) {
+            drawParentScreen();
+        }
         super.drawScreen();
+    }
+
+    protected boolean drawCustomBackdrop() {
+        return false;
     }
 
     @Override

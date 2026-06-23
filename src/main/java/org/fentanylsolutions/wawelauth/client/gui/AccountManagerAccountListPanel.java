@@ -28,7 +28,7 @@ final class AccountManagerAccountListPanel {
 
     private static final int ACCOUNT_NAME_MAX_WIDTH_PX = 90;
 
-    private final ListWidget<IWidget, ?> accountList = new ListWidget<>();
+    private final ListWidget<IWidget, ?> accountList;
     private final AccountManagerScreenState state;
     private final Function<ClientProvider, ClientProvider> resolveProvider;
     private final Consumer<ClientAccount> selectAccount;
@@ -45,6 +45,9 @@ final class AccountManagerAccountListPanel {
         this.resolveProvider = resolveProvider;
         this.selectAccount = selectAccount;
         this.clearPreview = clearPreview;
+        ListWidget<IWidget, ?> list = new ListWidget<>();
+        WawelAuthStyle.styleList(list);
+        this.accountList = list;
     }
 
     ListWidget<IWidget, ?> widget() {
@@ -118,11 +121,9 @@ final class AccountManagerAccountListPanel {
             }
 
             ButtonWidget<?> entry = new ButtonWidget<>();
+            WawelAuthStyle.rowButton(entry, () -> isSelected);
             entry.widthRel(1.0f)
                 .height(14);
-            if (isSelected) {
-                entry.background(new Rectangle().color(0x44FFFFFF));
-            }
 
             Row dot = new Row() {
 
@@ -131,7 +132,7 @@ final class AccountManagerAccountListPanel {
                     return false;
                 }
             };
-            Rectangle dotBorderRect = new Rectangle().color(0xFF2A2A2A);
+            Rectangle dotBorderRect = new Rectangle().color(WawelAuthStyle.BACKGROUND_DARKER);
             Rectangle dotFillRect = new Rectangle().color(statusColor);
             NonHoverableWidget dotFill = new NonHoverableWidget();
             dotFill.size(6, 6)
@@ -147,7 +148,10 @@ final class AccountManagerAccountListPanel {
 
             TextWidget<?> nameLabel = new TextWidget<>(IKey.str(displayProfileName));
             nameLabel.expanded()
-                .heightRel(1.0f);
+                .heightRel(1.0f)
+                .color(
+                    () -> isSelected ? WawelAuthStyle.THEME_LIGHTER
+                        : entry.isHovering() ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY);
             if (!displayProfileName.equals(profileName)) {
                 nameLabel.addTooltipLine(profileName);
             }

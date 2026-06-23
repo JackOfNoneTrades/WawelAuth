@@ -21,7 +21,7 @@ import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.layout.IViewport;
 import com.cleanroommc.modularui.api.layout.IViewportStack;
 import com.cleanroommc.modularui.api.widget.IWidget;
-import com.cleanroommc.modularui.drawable.Rectangle;
+import com.cleanroommc.modularui.drawable.ColorType;
 import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.utils.HoveredWidgetList;
@@ -33,15 +33,41 @@ import com.cleanroommc.modularui.widgets.layout.Row;
 
 final class AccountManagerProviderListPanel {
 
-    private static final UITexture PROVIDER_SETTINGS_TEXTURE = UITexture.fullImage("wawelauth", "gui/gears");
     private static final int PROVIDER_NAME_MAX_WIDTH_PX = 84;
-    private static final IDrawable PROVIDER_SETTINGS_ICON = PROVIDER_SETTINGS_TEXTURE
-        .getSubArea(0.0f, 0.0f, 0.5f, 1.0f);
-    private static final IDrawable PROVIDER_SETTINGS_ICON_HOVER = PROVIDER_SETTINGS_TEXTURE
-        .getSubArea(0.5f, 0.0f, 1.0f, 1.0f);
+    private static final int PROVIDER_SETTINGS_ICON_SOURCE_SIZE = 24;
+    private static final int PROVIDER_SETTINGS_ICON_DRAW_SIZE = 10;
+    private static final int PROVIDER_SETTINGS_ICON_COLOR = 0xC8FFFFFF;
+    private static final int PROVIDER_SETTINGS_ICON_HOVER_COLOR = 0xFFFFFFFF;
+    private static final ColorType PROVIDER_SETTINGS_ICON_COLOR_TYPE = new ColorType(
+        "wawelauth:provider_settings_icon",
+        theme -> PROVIDER_SETTINGS_ICON_COLOR);
+    private static final ColorType PROVIDER_SETTINGS_ICON_HOVER_COLOR_TYPE = new ColorType(
+        "wawelauth:provider_settings_icon_hover",
+        theme -> PROVIDER_SETTINGS_ICON_HOVER_COLOR);
+    private static final IDrawable PROVIDER_SETTINGS_ICON_TEXTURE = UITexture.builder()
+        .location("wawelauth", "gui/gears-sodium")
+        .imageSize(PROVIDER_SETTINGS_ICON_SOURCE_SIZE, PROVIDER_SETTINGS_ICON_SOURCE_SIZE)
+        .colorType(PROVIDER_SETTINGS_ICON_COLOR_TYPE)
+        .nonOpaque()
+        .name("wawelauth:provider_settings_icon")
+        .build();
+    private static final IDrawable PROVIDER_SETTINGS_ICON_HOVER_TEXTURE = UITexture.builder()
+        .location("wawelauth", "gui/gears-sodium")
+        .imageSize(PROVIDER_SETTINGS_ICON_SOURCE_SIZE, PROVIDER_SETTINGS_ICON_SOURCE_SIZE)
+        .colorType(PROVIDER_SETTINGS_ICON_HOVER_COLOR_TYPE)
+        .nonOpaque()
+        .name("wawelauth:provider_settings_icon_hover")
+        .build();
+    private static final IDrawable PROVIDER_SETTINGS_ICON = centeredIcon(
+        PROVIDER_SETTINGS_ICON_TEXTURE,
+        PROVIDER_SETTINGS_ICON_DRAW_SIZE);
+    private static final IDrawable PROVIDER_SETTINGS_ICON_HOVER = centeredIcon(
+        PROVIDER_SETTINGS_ICON_HOVER_TEXTURE,
+        PROVIDER_SETTINGS_ICON_DRAW_SIZE);
+    private static final int PROVIDER_SETTINGS_HOVER_BACKGROUND = 0x90000000;
     private static final int SHOW_LOCAL_BUTTON_HEIGHT = 10;
     private static final int PROVIDER_ROW_HEIGHT = 14;
-    private static final int CONNECTED_PROVIDER_TEXT_COLOR = 0xFFFFFF88;
+    private static final int PROVIDER_TEXT_HOVER_COLOR = WawelAuthStyle.THEME_LIGHTER;
 
     private final ListWidget<IWidget, ?> providerList;
     private final AccountManagerScreenState state;
@@ -62,7 +88,9 @@ final class AccountManagerProviderListPanel {
         this.selectProvider = selectProvider;
         this.clearPreview = clearPreview;
         this.openProviderSettingsDialog = openProviderSettingsDialog;
-        this.providerList = new ChildPassthroughListWidget();
+        ChildPassthroughListWidget list = new ChildPassthroughListWidget();
+        WawelAuthStyle.styleList(list);
+        this.providerList = list;
     }
 
     ListWidget<IWidget, ?> widget() {
@@ -150,18 +178,15 @@ final class AccountManagerProviderListPanel {
 
         if (!localProviders.isEmpty()) {
             ButtonWidget<?> toggleButton = new ButtonWidget<>();
+            WawelAuthStyle.button(toggleButton);
             toggleButton.widthRel(0.7f)
                 .height(SHOW_LOCAL_BUTTON_HEIGHT)
-                .background(
-                    IDrawable.of(
-                        new Rectangle().color(0x22000000),
-                        new Rectangle().color(0xFF000000)
-                            .hollow(1)))
                 .overlay(
                     IKey.dynamic(
                         () -> GuiText.tr(
                             showingLocal ? "wawelauth.gui.account_manager.hide_local"
                                 : "wawelauth.gui.account_manager.show_local"))
+                        .color(WawelAuthStyle.TEXT_PRIMARY)
                         .scale(0.8f))
                 .onMousePressed(mouseButton -> {
                     showingLocal = !showingLocal;
@@ -237,17 +262,25 @@ final class AccountManagerProviderListPanel {
         boolean isSelected = currentSelected != null && providerName.equals(currentSelected.getName());
 
         ButtonWidget<?> selectButton = new ButtonWidget<>();
+        WawelAuthStyle.rowButton(selectButton, () -> isSelected);
         selectButton.expanded()
             .heightRel(1.0f);
-        if (isSelected) {
-            selectButton.background(new Rectangle().color(0x44FFFFFF));
-        }
+        int providerTextColor = isSelected ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY;
+        int providerHoverTextColor = isSelected ? WawelAuthStyle.THEME_LIGHTER : PROVIDER_TEXT_HOVER_COLOR;
         if (connectedHighlight) {
             selectButton.overlay(
                 IKey.str(displayProviderName)
-                    .color(CONNECTED_PROVIDER_TEXT_COLOR));
+                    .color(providerTextColor));
+            selectButton.hoverOverlay(
+                IKey.str(displayProviderName)
+                    .color(providerHoverTextColor));
         } else {
-            selectButton.overlay(IKey.str(displayProviderName));
+            selectButton.overlay(
+                IKey.str(displayProviderName)
+                    .color(providerTextColor));
+            selectButton.hoverOverlay(
+                IKey.str(displayProviderName)
+                    .color(providerHoverTextColor));
         }
         addProviderTooltip(selectButton, provider, providerDisplayName, displayProviderName);
         selectButton.onMousePressed(mouseButton -> {
@@ -257,7 +290,10 @@ final class AccountManagerProviderListPanel {
         });
 
         ButtonWidget<?> settingsButton = new ButtonWidget<>();
+        WawelAuthStyle.iconButton(settingsButton);
         settingsButton.size(14, 14)
+            .background(IDrawable.EMPTY)
+            .hoverBackground(WawelAuthStyle.rect(PROVIDER_SETTINGS_HOVER_BACKGROUND))
             .overlay(PROVIDER_SETTINGS_ICON)
             .hoverOverlay(PROVIDER_SETTINGS_ICON_HOVER)
             .addTooltipLine(GuiText.tr("wawelauth.gui.account_manager.provider_settings"))
@@ -275,9 +311,9 @@ final class AccountManagerProviderListPanel {
         };
         providerRow.widthRel(1.0f)
             .height(14)
-            .child(selectButton)
+            .child(settingsButton)
             .child(nonHoverable(1, 14))
-            .child(settingsButton);
+            .child(selectButton);
 
         providerList.child(providerRow);
         return isSelected;
@@ -363,6 +399,15 @@ final class AccountManagerProviderListPanel {
         NonHoverableWidget w = new NonHoverableWidget();
         w.size(width, height);
         return w;
+    }
+
+    private static IDrawable centeredIcon(IDrawable icon, int drawSize) {
+        return (context, x, y, width, height, widgetTheme) -> {
+            int size = Math.min(drawSize, Math.min(width, height));
+            int iconX = x + (width - size) / 2;
+            int iconY = y + (height - size) / 2;
+            icon.draw(context, iconX, iconY, size, size, widgetTheme);
+        };
     }
 
     private static class NonHoverableWidget extends Widget<NonHoverableWidget> {
