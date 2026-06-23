@@ -204,7 +204,7 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
             String title = GuiText.tr("wawelauth.gui.multiplayer.remove_provider.title", orphan.getName());
             String subtitle = GuiText.tr("wawelauth.gui.multiplayer.remove_provider.subtitle");
             String hint = GuiText.tr("wawelauth.gui.multiplayer.remove_provider.hint");
-            this.mc.displayGuiScreen(new ConfirmRemoveProviderScreen(this, orphan.getName(), title, subtitle, hint));
+            ClientGUI.open(new ConfirmRemoveProviderScreen(this, orphan.getName(), title, subtitle, hint));
         } finally {
             wawelauth$pendingRemovedServerData = null;
             wawelauth$pendingEditedServerRetarget = false;

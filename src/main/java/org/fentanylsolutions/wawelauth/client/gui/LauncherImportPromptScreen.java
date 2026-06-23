@@ -5,6 +5,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
 import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge.LauncherImportCandidate;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
+import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
@@ -51,6 +52,7 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
         ModularPanel panel = ModularPanel.defaultPanel(PANEL_NAME)
             .size(280, 116)
             .align(Alignment.Center);
+        WawelAuthStyle.dialog(panel);
 
         ButtonWidget<?> yesBtn = new ButtonWidget<>();
         yesBtn.size(60, 18)
@@ -61,7 +63,7 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
                 panel.closeIfOpen();
                 return true;
             });
-        GuiText.fitButtonLabel(yesBtn, 60, "wawelauth.gui.launcher_import.import");
+        WawelAuthStyle.textButton(yesBtn, 52, "wawelauth.gui.launcher_import.import");
 
         ButtonWidget<?> noBtn = new ButtonWidget<>();
         noBtn.size(60, 18)
@@ -72,7 +74,7 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
                 panel.closeIfOpen();
                 return true;
             });
-        GuiText.fitButtonLabel(noBtn, 60, "wawelauth.gui.launcher_import.not_now");
+        WawelAuthStyle.textButton(noBtn, 52, "wawelauth.gui.launcher_import.not_now");
 
         ButtonWidget<?> dontAskBtn = new ButtonWidget<>();
         dontAskBtn.size(110, 18)
@@ -83,7 +85,7 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
                 panel.closeIfOpen();
                 return true;
             });
-        GuiText.fitButtonLabel(dontAskBtn, 110, "wawelauth.gui.launcher_import.dont_ask");
+        WawelAuthStyle.textButton(dontAskBtn, 102, "wawelauth.gui.launcher_import.dont_ask");
 
         Row detailRow = new Row();
         detailRow.widthRel(1.0f)
@@ -95,7 +97,8 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
             detailRow.child(new Widget<>().size(4, 18));
         }
         detailRow.child(
-            new TextWidget<>(GuiText.key("wawelauth.gui.launcher_import.detail", name, providerName)).color(0xFF777777)
+            new TextWidget<>(GuiText.key("wawelauth.gui.launcher_import.detail", name, providerName))
+                .color(WawelAuthStyle.TEXT_SECONDARY)
                 .scale(0.9f)
                 .expanded()
                 .height(48));
@@ -104,13 +107,17 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
             new Column().widthRel(1.0f)
                 .heightRel(1.0f)
                 .padding(8)
+                .background(IDrawable.EMPTY)
+                .disableHoverBackground()
                 .child(
                     new TextWidget<>(GuiText.key("wawelauth.gui.launcher_import.title")).widthRel(1.0f)
-                        .height(14))
+                        .height(14)
+                        .color(WawelAuthStyle.THEME_LIGHTER))
                 .child(detailRow)
                 .child(
                     new TextWidget<>(GuiText.key("wawelauth.gui.launcher_import.question")).widthRel(1.0f)
                         .height(12)
+                        .color(WawelAuthStyle.TEXT_PRIMARY)
                         .margin(0, 2))
                 .child(new Widget<>().size(1, 6))
                 .child(

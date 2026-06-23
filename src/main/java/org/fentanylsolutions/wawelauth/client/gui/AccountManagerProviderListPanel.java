@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
-import java.util.function.Supplier;
 
 import net.minecraft.client.gui.Gui;
 import net.minecraft.util.EnumChatFormatting;
@@ -98,18 +97,14 @@ final class AccountManagerProviderListPanel {
     private final AccountManagerScreenState state;
     private boolean showingLocal;
     private int pendingScrollOffset = -1;
-    private final Supplier<Boolean> hasFocusedLocalContext;
-    private final Runnable refreshFocusedLocalProviderState;
     private final Consumer<ClientProvider> selectProvider;
     private final Runnable clearPreview;
     private final Consumer<ClientProvider> openProviderSettingsDialog;
 
-    AccountManagerProviderListPanel(AccountManagerScreenState state, Supplier<Boolean> hasFocusedLocalContext,
-        Runnable refreshFocusedLocalProviderState, Consumer<ClientProvider> selectProvider, Runnable clearPreview,
+    AccountManagerProviderListPanel(AccountManagerScreenState state, Consumer<ClientProvider> selectProvider,
+        Runnable clearPreview,
         Consumer<ClientProvider> openProviderSettingsDialog) {
         this.state = state;
-        this.hasFocusedLocalContext = hasFocusedLocalContext;
-        this.refreshFocusedLocalProviderState = refreshFocusedLocalProviderState;
         this.selectProvider = selectProvider;
         this.clearPreview = clearPreview;
         this.openProviderSettingsDialog = openProviderSettingsDialog;
@@ -154,13 +149,6 @@ final class AccountManagerProviderListPanel {
         providerList.removeAll();
         WawelClient client = WawelClient.instance();
         if (client == null) return;
-
-        if (Boolean.TRUE.equals(hasFocusedLocalContext.get())) {
-            if (refreshFocusedLocalProviderState != null) {
-                refreshFocusedLocalProviderState.run();
-            }
-            return;
-        }
 
         ClientProvider connectedProvider = resolveConnectedProvider(client);
 

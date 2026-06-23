@@ -11,6 +11,7 @@ import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 
+import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
@@ -37,8 +38,10 @@ public final class ServerDropScreen {
 
     private static final String HINT_PANEL_NAME = "wawelauth_drop_hint";
     private static final String CONFIRM_PANEL_NAME = "wawelauth_drop_confirm";
+    private static final long HINT_STALE_AFTER_MS = 8000L;
 
     private static volatile boolean hintOpen;
+    private static volatile long lastDragPulseMs;
 
     private ServerDropScreen() {}
 
@@ -47,7 +50,12 @@ public final class ServerDropScreen {
     public static void showHint() {
         if (hintOpen) return;
         hintOpen = true;
+        lastDragPulseMs = System.currentTimeMillis();
         ClientGUI.open(new HintScreen());
+    }
+
+    public static void pulseDrag() {
+        lastDragPulseMs = System.currentTimeMillis();
     }
 
     public static void dismissHint() {
@@ -84,28 +92,34 @@ public final class ServerDropScreen {
 
         HintScreen() {
             super("wawelauth");
+            openParentOnClose(true);
         }
 
         @Override
         public ModularPanel buildUI(ModularGuiContext context) {
-            return ModularPanel.defaultPanel(HINT_PANEL_NAME)
+            ModularPanel panel = ModularPanel.defaultPanel(HINT_PANEL_NAME)
                 .size(220, 50)
-                .align(Alignment.Center)
-                .child(
-                    new Column().widthRel(1.0f)
-                        .heightRel(1.0f)
-                        .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                        .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                        .child(
-                            new TextWidget<>(GuiText.key("wawelauth.gui.drop.hint_title")).widthRel(1.0f)
-                                .height(14)
-                                .alignment(Alignment.Center))
-                        .child(
-                            new TextWidget<>(GuiText.key("wawelauth.gui.drop.hint_subtitle")).color(0xFFAAAAAA)
-                                .scale(0.85f)
-                                .widthRel(1.0f)
-                                .height(12)
-                                .alignment(Alignment.Center)));
+                .align(Alignment.Center);
+            WawelAuthStyle.dialog(panel);
+            return panel.child(
+                new Column().widthRel(1.0f)
+                    .heightRel(1.0f)
+                    .background(IDrawable.EMPTY)
+                    .disableHoverBackground()
+                    .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                    .child(
+                        new TextWidget<>(GuiText.key("wawelauth.gui.drop.hint_title")).widthRel(1.0f)
+                            .height(14)
+                            .color(WawelAuthStyle.THEME_LIGHTER)
+                            .alignment(Alignment.Center))
+                    .child(
+                        new TextWidget<>(GuiText.key("wawelauth.gui.drop.hint_subtitle"))
+                            .color(WawelAuthStyle.TEXT_SECONDARY)
+                            .scale(0.85f)
+                            .widthRel(1.0f)
+                            .height(12)
+                            .alignment(Alignment.Center)));
         }
 
         @Override
@@ -113,6 +127,10 @@ public final class ServerDropScreen {
             super.onUpdate();
             if (!hintOpen) {
                 getMainPanel().closeIfOpen();
+                return;
+            }
+            if (System.currentTimeMillis() - lastDragPulseMs > HINT_STALE_AFTER_MS) {
+                dismissHint();
             }
         }
     }
@@ -132,6 +150,7 @@ public final class ServerDropScreen {
 
         ConfirmScreen() {
             super("wawelauth");
+            openParentOnClose(true);
         }
 
         @Override
@@ -142,6 +161,7 @@ public final class ServerDropScreen {
             ModularPanel panel = ModularPanel.defaultPanel(CONFIRM_PANEL_NAME)
                 .size(260, 110)
                 .align(Alignment.Center);
+            WawelAuthStyle.dialog(panel);
 
             ButtonWidget<?> cancelBtn = new ButtonWidget<>();
             cancelBtn.size(60, 18)
@@ -149,7 +169,7 @@ public final class ServerDropScreen {
                     panel.closeIfOpen();
                     return true;
                 });
-            GuiText.fitButtonLabel(cancelBtn, 60, "wawelauth.gui.common.cancel");
+            WawelAuthStyle.textButton(cancelBtn, 52, "wawelauth.gui.common.cancel");
 
             ButtonWidget<?> addBtn = new ButtonWidget<>();
             addBtn.size(80, 18)
@@ -158,22 +178,25 @@ public final class ServerDropScreen {
                     panel.closeIfOpen();
                     return true;
                 });
-            GuiText.fitButtonLabel(addBtn, 80, "wawelauth.gui.drop.add_server");
+            WawelAuthStyle.textButton(addBtn, 72, "wawelauth.gui.drop.add_server");
 
             panel.child(
                 new Column().widthRel(1.0f)
                     .heightRel(1.0f)
                     .padding(8)
+                    .background(IDrawable.EMPTY)
+                    .disableHoverBackground()
                     .child(
                         new TextWidget<>(GuiText.key("wawelauth.gui.drop.confirm_title")).widthRel(1.0f)
-                            .height(14))
+                            .height(14)
+                            .color(WawelAuthStyle.THEME_LIGHTER))
                     .child(
-                        new TextWidget<>(IKey.str(name)).color(0xFF55FF55)
+                        new TextWidget<>(IKey.str(name)).color(WawelAuthStyle.TEXT_PRIMARY)
                             .widthRel(1.0f)
                             .height(12)
                             .margin(0, 2))
                     .child(
-                        new TextWidget<>(IKey.str(address)).color(0xFFAAAAAA)
+                        new TextWidget<>(IKey.str(address)).color(WawelAuthStyle.TEXT_SECONDARY)
                             .scale(0.85f)
                             .widthRel(1.0f)
                             .height(12)

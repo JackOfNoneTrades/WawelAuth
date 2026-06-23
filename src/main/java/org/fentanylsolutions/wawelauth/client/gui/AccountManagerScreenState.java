@@ -6,8 +6,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import net.minecraft.client.multiplayer.ServerData;
-
 import org.fentanylsolutions.wawelauth.wawelclient.ServerCapabilities;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
@@ -18,9 +16,7 @@ final class AccountManagerScreenState {
     ClientProvider selectedProvider;
     ClientAccount selectedAccount;
 
-    ServerData focusedLocalServerData;
-    ServerCapabilities focusedLocalCapabilities;
-    String focusedLocalStatusText = "";
+    long localAuthFingerprintCopiedUntilMs;
 
     ServerCapabilities connectedServerCapabilities;
 
@@ -47,10 +43,8 @@ final class AccountManagerScreenState {
     Set<String> registerCapabilityProbeInFlight = new HashSet<>();
     long nextStatusUiRefreshAtMs;
 
-    void resetForBuild(ServerData focusedLocalServerData, ServerCapabilities focusedLocalCapabilities) {
-        this.focusedLocalServerData = focusedLocalServerData;
-        this.focusedLocalCapabilities = focusedLocalCapabilities;
-        this.focusedLocalStatusText = "";
+    void resetForBuild() {
+        this.localAuthFingerprintCopiedUntilMs = 0L;
         this.connectedServerCapabilities = null;
         this.pendingRemoveAccountId = -1L;
         this.pendingRemoveAccountName = null;

@@ -11,6 +11,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.ProviderRegistry;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 
+import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.screen.ModularPanel;
@@ -59,8 +60,10 @@ public final class AddProviderDialog {
         dialog.setCloseOnOutOfBoundsClick(false);
 
         TabTextFieldWidget nameField = new TabTextFieldWidget();
+        WawelAuthStyle.textField(nameField);
         nameField.hintText(GuiText.tr("wawelauth.gui.add_provider.hint.display_name"));
         TabTextFieldWidget urlField = new TabTextFieldWidget();
+        WawelAuthStyle.textField(urlField);
         urlField.hintText(GuiText.tr("wawelauth.gui.add_provider.hint.url"));
 
         String[] statusText = { "" };
@@ -78,7 +81,7 @@ public final class AddProviderDialog {
                 dialog.closeWith(null);
                 return true;
             });
-        GuiText.fitButtonLabel(cancelBtn, 60, "wawelauth.gui.common.cancel");
+        WawelAuthStyle.textButton(cancelBtn, 52, "wawelauth.gui.common.cancel");
 
         Runnable doDiscover = () -> {
             if (busy[0]) return;
@@ -136,16 +139,20 @@ public final class AddProviderDialog {
                 doDiscover.run();
                 return true;
             });
-        GuiText.fitButtonLabel(discoverBtn, 70, "wawelauth.gui.add_provider.discover");
+        WawelAuthStyle.textButton(discoverBtn, 62, "wawelauth.gui.add_provider.discover");
 
+        WawelAuthStyle.dialog(dialog);
         dialog.size(240, 155)
             .child(
                 new Column().widthRel(1.0f)
                     .heightRel(1.0f)
                     .padding(8)
+                    .background(IDrawable.EMPTY)
+                    .disableHoverBackground()
                     .child(
                         new TextWidget<>(GuiText.key("wawelauth.gui.add_provider.title")).widthRel(1.0f)
-                            .height(12))
+                            .height(12)
+                            .color(WawelAuthStyle.THEME_LIGHTER))
                     .child(
                         nameField.widthRel(1.0f)
                             .height(18)
@@ -157,7 +164,7 @@ public final class AddProviderDialog {
                             .setMaxLength(256)
                             .margin(0, 3))
                     .child(
-                        new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(0xFFFFFF55)
+                        new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(WawelAuthStyle.WARNING)
                             .widthRel(1.0f)
                             .height(12)
                             .margin(0, 2))
@@ -178,47 +185,80 @@ public final class AddProviderDialog {
         dialog.setCloseOnOutOfBoundsClick(false);
 
         if (provider == null) {
+            ButtonWidget<?> closeBtn = new ButtonWidget<>();
+            closeBtn.size(60, 18)
+                .onMousePressed(mouseButton -> {
+                    dialog.closeWith(null);
+                    return true;
+                });
+            WawelAuthStyle.textButton(closeBtn, 52, "wawelauth.gui.common.close");
+            WawelAuthStyle.dialog(dialog);
             dialog.size(220, 80)
                 .child(
                     new Column().widthRel(1.0f)
                         .heightRel(1.0f)
                         .padding(8)
+                        .background(IDrawable.EMPTY)
+                        .disableHoverBackground()
                         .child(
                             new TextWidget<>(GuiText.key("wawelauth.gui.add_provider.no_pending")).widthRel(1.0f)
-                                .height(12))
+                                .height(12)
+                                .color(WawelAuthStyle.THEME_LIGHTER))
                         .child(
                             new Row().widthRel(1.0f)
                                 .height(20)
                                 .margin(0, 4)
                                 .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                                .child(
-                                    GuiText
-                                        .fitButtonLabel(
-                                            new ButtonWidget<>().size(60, 18),
-                                            60,
-                                            "wawelauth.gui.common.close")
-                                        .onMousePressed(mouseButton -> {
-                                            dialog.closeWith(null);
-                                            return true;
-                                        }))));
+                                .child(closeBtn)));
             return dialog;
         }
 
         String fingerprint = provider.getPublicKeyFingerprint();
         String displayFp = fingerprint != null ? fingerprint : GuiText.tr("wawelauth.gui.add_provider.no_public_key");
 
+        ButtonWidget<?> rejectBtn = new ButtonWidget<>();
+        rejectBtn.size(60, 18)
+            .onMousePressed(mouseButton -> {
+                pendingProvider = null;
+                dialog.closeWith(null);
+                return true;
+            });
+        WawelAuthStyle.textButton(rejectBtn, 52, "wawelauth.gui.add_provider.reject");
+
+        ButtonWidget<?> trustBtn = new ButtonWidget<>();
+        trustBtn.size(60, 18)
+            .onMousePressed(mouseButton -> {
+                try {
+                    WawelClient.instance()
+                        .getProviderRegistry()
+                        .persistProvider(provider);
+                    pendingProvider = null;
+                    dialog.closeWith(provider);
+                } catch (Exception e) {
+                    WawelAuth.LOG.warn("Failed to persist provider: {}", e.getMessage());
+                    pendingProvider = null;
+                    dialog.closeWith(null);
+                }
+                return true;
+            });
+        WawelAuthStyle.textButton(trustBtn, 52, "wawelauth.gui.add_provider.trust");
+
+        WawelAuthStyle.dialog(dialog);
         dialog.size(280, 130)
             .child(
                 new Column().widthRel(1.0f)
                     .heightRel(1.0f)
                     .padding(8)
+                    .background(IDrawable.EMPTY)
+                    .disableHoverBackground()
                     .child(
                         new TextWidget<>(GuiText.key("wawelauth.gui.add_provider.confirm_title", provider.getName()))
                             .widthRel(1.0f)
-                            .height(12))
+                            .height(12)
+                            .color(WawelAuthStyle.THEME_LIGHTER))
                     .child(
                         new TextWidget<>(GuiText.key("wawelauth.gui.common.api_root", provider.getApiRoot()))
-                            .color(0xFFAAAAAA)
+                            .color(WawelAuthStyle.TEXT_SECONDARY)
                             .scale(0.8f)
                             .widthRel(1.0f)
                             .height(10)
@@ -226,9 +266,10 @@ public final class AddProviderDialog {
                     .child(
                         new TextWidget<>(GuiText.key("wawelauth.gui.common.fingerprint")).widthRel(1.0f)
                             .height(10)
+                            .color(WawelAuthStyle.TEXT_SECONDARY)
                             .margin(0, 2))
                     .child(
-                        new TextWidget<>(IKey.str(displayFp)).color(0xFF55FFFF)
+                        new TextWidget<>(IKey.str(displayFp)).color(WawelAuthStyle.FINGERPRINT)
                             .scale(0.7f)
                             .widthRel(1.0f)
                             .height(10)
@@ -238,38 +279,9 @@ public final class AddProviderDialog {
                             .height(20)
                             .margin(0, 4)
                             .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                            .child(
-                                GuiText
-                                    .fitButtonLabel(
-                                        new ButtonWidget<>().size(60, 18),
-                                        60,
-                                        "wawelauth.gui.add_provider.reject")
-                                    .onMousePressed(mouseButton -> {
-                                        pendingProvider = null;
-                                        dialog.closeWith(null);
-                                        return true;
-                                    }))
+                            .child(rejectBtn)
                             .child(new Widget<>().size(6, 18))
-                            .child(
-                                GuiText
-                                    .fitButtonLabel(
-                                        new ButtonWidget<>().size(60, 18),
-                                        60,
-                                        "wawelauth.gui.add_provider.trust")
-                                    .onMousePressed(mouseButton -> {
-                                        try {
-                                            WawelClient.instance()
-                                                .getProviderRegistry()
-                                                .persistProvider(provider);
-                                            pendingProvider = null;
-                                            dialog.closeWith(provider);
-                                        } catch (Exception e) {
-                                            WawelAuth.LOG.warn("Failed to persist provider: {}", e.getMessage());
-                                            pendingProvider = null;
-                                            dialog.closeWith(null);
-                                        }
-                                        return true;
-                                    }))));
+                            .child(trustBtn)));
         return dialog;
     }
 }

@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
 
 import org.fentanylsolutions.fentlib.util.FileUtil;
@@ -22,6 +23,7 @@ import org.fentanylsolutions.wawelauth.api.SkinImageUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.compat.EtFuturumCompat;
+import org.fentanylsolutions.wawelauth.client.ClipboardHelper;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyEntityClientPlayerMP;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyWorldClient;
 import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
@@ -103,11 +105,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final int DETAIL_SECONDARY_TEXT_COLOR = WawelAuthStyle.TEXT_SECONDARY;
     private static final int PREVIEW_PANEL_BACKGROUND_COLOR = WawelAuthStyle.PANEL_INSET;
     private static final int PANORAMA_DIM_COLOR = 0x55000000;
-    private static final int VISIBLE_PROVIDER_ROWS = 5;
-    private static final int VISIBLE_ACCOUNT_ROWS = 6;
+    private static final int VISIBLE_PROVIDER_ROWS = 6;
+    private static final int VISIBLE_ACCOUNT_ROWS = 7;
     private static final int ACCOUNT_SECTION_TOP_SPACE = 6;
     private static final int PROVIDER_LABEL_HEIGHT = 12;
-    private static final int PROVIDER_LIST_FRAME_VERTICAL_MARGIN = 2;
+    private static final int PROVIDER_LIST_FRAME_VERTICAL_MARGIN = 1;
     private static final int ADD_PROVIDER_BUTTON_HEIGHT = 16;
     private static final int PREVIEW_PANEL_TOP_MARGIN = 2;
     private static final int PREVIEW_PANEL_HEIGHT = PROVIDER_LABEL_HEIGHT
@@ -117,10 +119,13 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         - PREVIEW_PANEL_TOP_MARGIN;
     private static final int ACCOUNT_ACTION_BUTTON_SIZE = 16;
     private static final int ACCOUNT_ACTION_ICON_SIZE = 12;
-    private static final int ACCOUNT_ACTION_ROW_LEADING_SPACE = 2;
+    private static final int ACCOUNT_ACTION_ROW_LEADING_SPACE = 0;
     private static final int ACCOUNT_ACTION_BUTTON_GAP = 4;
+    private static final int ACCOUNT_ACTION_ROW_WIDTH = ACCOUNT_ACTION_ROW_LEADING_SPACE
+        + ACCOUNT_ACTION_BUTTON_SIZE * 7
+        + ACCOUNT_ACTION_BUTTON_GAP * 6;
     private static final int ACCOUNT_ACTION_ICON_SOURCE_SIZE = 12;
-    private static final int ACCOUNT_ACTION_ICON_SHEET_WIDTH = ACCOUNT_ACTION_ICON_SOURCE_SIZE * 5;
+    private static final int ACCOUNT_ACTION_ICON_SHEET_WIDTH = ACCOUNT_ACTION_ICON_SOURCE_SIZE * 7;
     private static final int ACCOUNT_ACTION_BUTTON_IDLE_BACKGROUND = WawelAuthStyle.BUTTON_IDLE;
     private static final int ACCOUNT_ACTION_ICON_IDLE_COLOR = 0xFFE0E0E0;
     private static final int ACCOUNT_ACTION_ICON_HOVER_COLOR = 0xFFFFFFFF;
@@ -206,6 +211,18 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         ACCOUNT_ACTION_ICON_SIZE);
     private static final IDrawable ACCOUNT_ACTION_REMOVE_ICON_HOVER = centeredIcon(
         actionIcon(4, "remove_hover", ACCOUNT_ACTION_DANGER_ICON_HOVER_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_TRUST_ICON = centeredIcon(
+        actionIcon(5, "trust", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_TRUST_ICON_HOVER = centeredIcon(
+        actionIcon(5, "trust_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_FINGERPRINT_ICON = centeredIcon(
+        actionIcon(6, "fingerprint", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_FINGERPRINT_ICON_HOVER = centeredIcon(
+        actionIcon(6, "fingerprint_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
         ACCOUNT_ACTION_ICON_SIZE);
     private static final IDrawable PREVIEW_MODE_NONE_ICON = centeredIcon(
         previewModeTexture("none", ACCOUNT_ACTION_ICON_COLOR_TYPE),
@@ -298,8 +315,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         TEXTURE_MODEL_ICON_OFFSET_X,
         TEXTURE_MODEL_ICON_OFFSET_Y);
 
-    private static ServerData pendingFocusedServerData;
-    private static ServerCapabilities pendingFocusedCapabilities;
     private static String pendingSelectedProviderName;
     private static long pendingSelectedAccountId = -1L;
 
@@ -327,7 +342,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private PreviewBackMode capePreviewMode = PreviewBackMode.CAPE;
 
     private ModularPanel mainPanel;
-    private FocusedLocalAuthPanel focusedLocalPanel;
     private AccountManagerProviderListPanel providerListPanel;
     private AccountManagerAccountListPanel accountListPanel;
     private final VanillaPanoramaBackdrop panoramaBackdrop = new VanillaPanoramaBackdrop();
@@ -423,8 +437,20 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     public static void openForLocalAuth(ServerData serverData) {
-        pendingFocusedServerData = serverData;
-        pendingFocusedCapabilities = ServerBindingPersistence.getEffectiveLocalAuthCapabilities(serverData);
+        ServerCapabilities capabilities = ServerBindingPersistence.getEffectiveLocalAuthCapabilities(serverData);
+        WawelClient client = WawelClient.instance();
+        if (client != null && hasLocalAuthMetadata(capabilities)) {
+            try {
+                ClientProvider provider = client.getLocalAuthProviderResolver()
+                    .resolveOrCreate(capabilities);
+                if (provider != null && !isBlank(provider.getName())) {
+                    openForProvider(provider.getName());
+                    return;
+                }
+            } catch (Exception e) {
+                WawelAuth.LOG.warn("Failed to resolve local auth provider: {}", e.getMessage());
+            }
+        }
         ClientGUI.open(new AccountManagerScreen());
     }
 
@@ -435,35 +461,14 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         mainPanel.background(WawelAuthStyle.panelBackground())
             .disableHoverThemeBackground(true);
 
-        ServerData focusedLocalServerData = null;
-        ServerCapabilities focusedLocalCapabilities = null;
-        if (pendingFocusedServerData != null || pendingFocusedCapabilities != null) {
-            focusedLocalServerData = pendingFocusedServerData;
-            focusedLocalCapabilities = pendingFocusedCapabilities;
-            pendingFocusedServerData = null;
-            pendingFocusedCapabilities = null;
-        }
-        state.resetForBuild(focusedLocalServerData, focusedLocalCapabilities);
+        state.resetForBuild();
 
-        if (focusedLocalServerData == null) {
+        if (Minecraft.getMinecraft().theWorld != null) {
             state.connectedServerCapabilities = detectConnectedServerLocalAuth();
         }
 
-        focusedLocalPanel = new FocusedLocalAuthPanel(
-            state,
-            this::resolveProvider,
-            this::ensureRegisterCapabilityProbe,
-            this::rebuildProviderList,
-            this::rebuildAccountList,
-            this::requestAccountListRebuild,
-            this::clearPreview,
-            this::openProviderProxyDialog);
-        focusedLocalPanel.initializeSelectedProvider();
-
         providerListPanel = new AccountManagerProviderListPanel(
             state,
-            this::hasFocusedLocalContext,
-            () -> focusedLocalPanel.refreshProviderListState(),
             this::selectProvider,
             this::clearPreview,
             this::openProviderSettingsDialog);
@@ -547,16 +552,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         Column accountListFrame = new Column();
         accountListFrame.widthRel(1.0f)
             .height(AccountManagerAccountListPanel.ACCOUNT_ROW_HEIGHT * VISIBLE_ACCOUNT_ROWS)
-            .margin(0, 2)
+            .margin(0, PROVIDER_LIST_FRAME_VERTICAL_MARGIN)
             .background(WawelAuthStyle.listBackground())
             .disableHoverThemeBackground(true)
             .child(accountListPanel.widget());
 
-        if (hasFocusedLocalContext()) {
-            populateFocusedLocalSidebar(leftSidebar, accountListFrame);
-        } else {
-            populateGeneralSidebar(leftSidebar, providerListFrame, accountListFrame);
-        }
+        populateGeneralSidebar(leftSidebar, providerListFrame, accountListFrame);
 
         Column rightPanel = new Column();
         rightPanel.expanded()
@@ -743,6 +744,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .child(
                 new Row().widthRel(1.0f)
                     .height(17)
+                    .collapseDisabledChild()
+                    .child(accountActionsRow())
+                    .child(new Widget<>().expanded())
                     .mainAxisAlignment(Alignment.MainAxis.END)
                     .child(
                         textButton(new ButtonWidget<>().size(52, ACCOUNT_ACTION_BUTTON_SIZE), 44, "gui.done")
@@ -784,9 +788,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             }
         }
         rebuildProviderList();
-        if (hasFocusedLocalContext()) {
-            rebuildAccountList();
-        }
 
         return mainPanel;
     }
@@ -810,77 +811,86 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         appendSharedAccountSection(leftSidebar, accountListFrame);
     }
 
-    private void populateFocusedLocalSidebar(Column leftSidebar, Column accountListFrame) {
-        focusedLocalPanel.populateSidebar(leftSidebar, accountListFrame, this::appendSharedAccountSection);
-    }
-
     private void appendSharedAccountSection(Column leftSidebar, Column accountListFrame) {
         leftSidebar.child(
             new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.accounts")).widthRel(1.0f)
                 .height(12)
                 .color(WawelAuthStyle.THEME_LIGHTER))
-            .child(accountListFrame)
-            .child(new Widget<>().widthRel(1.0f)
-                .expanded())
+            .child(accountListFrame);
+    }
+
+    private Row accountActionsRow() {
+        Row row = new Row();
+        row.width(ACCOUNT_ACTION_ROW_WIDTH)
+            .height(17)
+            .collapseDisabledChild()
+            .mainAxisAlignment(Alignment.MainAxis.START)
+            .child(new Widget<>().size(ACCOUNT_ACTION_ROW_LEADING_SPACE, ACCOUNT_ACTION_BUTTON_SIZE))
             .child(
-                new Row().widthRel(1.0f)
-                    .height(17)
-                    .mainAxisAlignment(Alignment.MainAxis.START)
-                    .collapseDisabledChild()
-                    .child(new Widget<>().size(ACCOUNT_ACTION_ROW_LEADING_SPACE, ACCOUNT_ACTION_BUTTON_SIZE))
-                    .child(
-                        dynamicAccountActionButton(
-                            ACCOUNT_ACTION_LOGIN_ICON,
-                            ACCOUNT_ACTION_LOGIN_ICON_HOVER,
-                            this::primaryLoginTooltipKey).onMousePressed(mouseButton -> {
-                                handlePrimaryLoginAction();
-                                return true;
-                            }))
-                    .child(actionGap())
-                    .child(
-                        accountActionButton(
-                            ACCOUNT_ACTION_REGISTER_ICON,
-                            ACCOUNT_ACTION_REGISTER_ICON_HOVER,
-                            "wawelauth.gui.common.register")
-                                .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider())
-                                .onMousePressed(mouseButton -> {
-                                    handlePrimaryRegisterAction();
-                                    return true;
-                                }))
-                    .child(actionGap().setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()))
-                    .child(
-                        accountActionButton(
-                            ACCOUNT_ACTION_REAUTH_ICON,
-                            ACCOUNT_ACTION_REAUTH_ICON_HOVER,
-                            "wawelauth.gui.account_manager.reauth")
-                                .setEnabledIf(widget -> isReauthVisibleForSelectedAccount())
-                                .onMousePressed(mouseButton -> {
-                                    if (state.selectedAccount == null) return true;
-                                    openLoginDialog(
-                                        state.selectedAccount.getProviderName(),
-                                        state.selectedAccount.getProfileName());
-                                    return true;
-                                }))
-                    .child(actionGap().setEnabledIf(widget -> isReauthVisibleForSelectedAccount()))
-                    .child(
-                        accountActionButton(
-                            ACCOUNT_ACTION_CREDENTIALS_ICON,
-                            ACCOUNT_ACTION_CREDENTIALS_ICON_HOVER,
-                            "wawelauth.gui.account_manager.credentials")
-                                .setEnabledIf(widget -> isCredentialManagementAvailableForSelectedAccount())
-                                .onMousePressed(mouseButton -> {
-                                    openCredentialDialog();
-                                    return true;
-                                }))
-                    .child(actionGap().setEnabledIf(widget -> isCredentialManagementAvailableForSelectedAccount()))
-                    .child(
-                        accountActionButton(
-                            ACCOUNT_ACTION_REMOVE_ICON,
-                            ACCOUNT_ACTION_REMOVE_ICON_HOVER,
-                            "wawelauth.gui.account_manager.remove_account").onMousePressed(mouseButton -> {
-                                confirmAndRemoveSelectedAccount();
-                                return true;
-                            })));
+                accountActionButton(
+                    ACCOUNT_ACTION_TRUST_ICON,
+                    ACCOUNT_ACTION_TRUST_ICON_HOVER,
+                    "wawelauth.gui.local_auth.trust_refresh")
+                        .setEnabledIf(widget -> selectedLocalAuthProvider() != null)
+                        .onMousePressed(mouseButton -> {
+                            refreshSelectedLocalAuthProvider();
+                            return true;
+                        }))
+            .child(actionGap().setEnabledIf(widget -> selectedLocalAuthProvider() != null))
+            .child(localFingerprintButton())
+            .child(actionGap().setEnabledIf(widget -> selectedLocalAuthProvider() != null))
+            .child(
+                dynamicAccountActionButton(
+                    ACCOUNT_ACTION_LOGIN_ICON,
+                    ACCOUNT_ACTION_LOGIN_ICON_HOVER,
+                    this::primaryLoginTooltipKey).onMousePressed(mouseButton -> {
+                        handlePrimaryLoginAction();
+                        return true;
+                    }))
+            .child(actionGap())
+            .child(
+                accountActionButton(
+                    ACCOUNT_ACTION_REGISTER_ICON,
+                    ACCOUNT_ACTION_REGISTER_ICON_HOVER,
+                    "wawelauth.gui.common.register")
+                        .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider())
+                        .onMousePressed(mouseButton -> {
+                            handlePrimaryRegisterAction();
+                            return true;
+                        }))
+            .child(actionGap().setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()))
+            .child(
+                accountActionButton(
+                    ACCOUNT_ACTION_REAUTH_ICON,
+                    ACCOUNT_ACTION_REAUTH_ICON_HOVER,
+                    "wawelauth.gui.account_manager.reauth")
+                        .setEnabledIf(widget -> isReauthVisibleForSelectedAccount())
+                        .onMousePressed(mouseButton -> {
+                            if (state.selectedAccount == null) return true;
+                            openLoginDialog(state.selectedAccount.getProviderName(), state.selectedAccount.getProfileName());
+                            return true;
+                        }))
+            .child(actionGap().setEnabledIf(widget -> isReauthVisibleForSelectedAccount()))
+            .child(
+                accountActionButton(
+                    ACCOUNT_ACTION_CREDENTIALS_ICON,
+                    ACCOUNT_ACTION_CREDENTIALS_ICON_HOVER,
+                    "wawelauth.gui.account_manager.credentials")
+                        .setEnabledIf(widget -> isCredentialManagementAvailableForSelectedAccount())
+                        .onMousePressed(mouseButton -> {
+                            openCredentialDialog();
+                            return true;
+                        }))
+            .child(actionGap().setEnabledIf(widget -> isCredentialManagementAvailableForSelectedAccount()))
+            .child(
+                accountActionButton(
+                    ACCOUNT_ACTION_REMOVE_ICON,
+                    ACCOUNT_ACTION_REMOVE_ICON_HOVER,
+                    "wawelauth.gui.account_manager.remove_account").onMousePressed(mouseButton -> {
+                        confirmAndRemoveSelectedAccount();
+                        return true;
+                    }));
+        return row;
     }
 
     private static ButtonWidget<?> accountActionButton(IDrawable icon, IDrawable hoverIcon, String tooltipKey) {
@@ -906,6 +916,37 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .hoverOverlay(hoverIcon)
             .tooltip(tooltip -> tooltip.addLine(IKey.dynamic(() -> GuiText.tr(tooltipKey.get()))))
             .tooltipAutoUpdate(true);
+        return button;
+    }
+
+    private ButtonWidget<?> localFingerprintButton() {
+        ButtonWidget<?> button = new ButtonWidget<>();
+        WawelAuthStyle.iconButton(button);
+        button.size(ACCOUNT_ACTION_BUTTON_SIZE, ACCOUNT_ACTION_BUTTON_SIZE)
+            .background(WawelAuthStyle.rect(ACCOUNT_ACTION_BUTTON_IDLE_BACKGROUND))
+            .hoverBackground(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_HOVER))
+            .overlay(ACCOUNT_ACTION_FINGERPRINT_ICON)
+            .hoverOverlay(ACCOUNT_ACTION_FINGERPRINT_ICON_HOVER)
+            .setEnabledIf(widget -> selectedLocalAuthProvider() != null)
+            .tooltip(tooltip -> {
+                tooltip.addLine(
+                    IKey.dynamic(() -> EnumChatFormatting.WHITE + GuiText.tr("wawelauth.gui.common.fingerprint")));
+                tooltip.addLine(IKey.dynamic(() -> EnumChatFormatting.AQUA + getSelectedLocalAuthFingerprint()));
+                tooltip.addLine(
+                    IKey.dynamic(
+                        () -> isLocalAuthFingerprintCopied()
+                            ? EnumChatFormatting.GREEN + GuiText.tr("wawelauth.gui.common.copied")
+                            : EnumChatFormatting.GRAY + GuiText.tr("wawelauth.gui.common.click_to_copy")));
+            })
+            .tooltipAutoUpdate(true)
+            .onMousePressed(mouseButton -> {
+                String fingerprint = getSelectedLocalAuthFingerprint();
+                if (!isBlank(fingerprint)) {
+                    ClipboardHelper.copyToClipboard(fingerprint, "");
+                    state.localAuthFingerprintCopiedUntilMs = System.currentTimeMillis() + 2000L;
+                }
+                return true;
+            });
         return button;
     }
 
@@ -1050,15 +1091,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void handlePrimaryLoginAction() {
-        if (hasFocusedLocalContext()) {
-            focusedLocalPanel.ensureProvider(() -> {
-                if (state.selectedProvider != null) {
-                    openLoginDialog(state.selectedProvider.getName());
-                }
-            });
-            return;
-        }
-
         if (state.selectedProvider != null) {
             openLoginDialog(state.selectedProvider.getName());
         }
@@ -1071,26 +1103,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void handlePrimaryRegisterAction() {
-        if (hasFocusedLocalContext()) {
-            focusedLocalPanel.ensureProvider(() -> {
-                if (state.selectedProvider != null) {
-                    openRegisterDialog(state.selectedProvider.getName());
-                }
-            });
-            return;
-        }
-
         if (state.selectedProvider != null) {
             openRegisterDialog(state.selectedProvider.getName());
         }
-    }
-
-    private boolean hasFocusedLocalContext() {
-        return focusedLocalPanel != null && focusedLocalPanel.hasContext();
-    }
-
-    private boolean hasFocusedLocalMetadata() {
-        return focusedLocalPanel != null && focusedLocalPanel.hasMetadata();
     }
 
     private static ServerCapabilities detectConnectedServerLocalAuth() {
@@ -1103,6 +1118,48 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             }
         }
         return null;
+    }
+
+    private static boolean hasLocalAuthMetadata(ServerCapabilities capabilities) {
+        return capabilities != null && capabilities.isLocalAuthSupported()
+            && !isBlank(capabilities.getLocalAuthApiRoot())
+            && !isBlank(capabilities.getLocalAuthPublicKeyFingerprint());
+    }
+
+    private ClientProvider selectedLocalAuthProvider() {
+        ClientProvider provider = resolveProvider(state.selectedProvider);
+        if (provider == null
+            || provider.getType() != ProviderType.CUSTOM
+            || provider.isManualEntry()
+            || !LocalAuthProviderResolver.isLocalAuthProvider(provider)) {
+            return null;
+        }
+        return provider;
+    }
+
+    private String getSelectedLocalAuthFingerprint() {
+        ClientProvider provider = selectedLocalAuthProvider();
+        return provider != null && provider.getPublicKeyFingerprint() != null ? provider.getPublicKeyFingerprint() : "";
+    }
+
+    private boolean isLocalAuthFingerprintCopied() {
+        return System.currentTimeMillis() < state.localAuthFingerprintCopiedUntilMs;
+    }
+
+    private void refreshSelectedLocalAuthProvider() {
+        ClientProvider resolved = selectedLocalAuthProvider();
+        if (resolved == null) {
+            return;
+        }
+        state.selectedProvider = resolved;
+        ensureRegisterCapabilityProbe(resolved);
+        if (providerListPanel != null) {
+            providerListPanel.expandLocal();
+            providerListPanel.scrollToSelected();
+        }
+        rebuildProviderList();
+        rebuildAccountList();
+        requestAccountListRebuild();
     }
 
     @Override
@@ -1973,6 +2030,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         final String[] statusText = { "" };
         TextFieldWidget pathField = new TextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.path_hint", label.toLowerCase()));
+        WawelAuthStyle.textField(pathField);
         pathField.widthRel(1.0f)
             .height(18)
             .setMaxLength(4096)
@@ -1991,7 +2049,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     : GuiText.tr("wawelauth.gui.account_manager.open_folder_failed");
                 return true;
             });
-        GuiText.fitButtonLabel(openFolderBtn, 86, "wawelauth.gui.common.open_folder");
+        WawelAuthStyle.textButton(openFolderBtn, 78, "wawelauth.gui.common.open_folder");
 
         ButtonWidget<?> usePathBtn = new ButtonWidget<>();
         usePathBtn.size(86, 18)
@@ -2029,7 +2087,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 openTextureUploadDialog(skin, picked);
                 return true;
             });
-        GuiText.fitButtonLabel(usePathBtn, 86, "wawelauth.gui.account_manager.use_path");
+        WawelAuthStyle.textButton(usePathBtn, 78, "wawelauth.gui.account_manager.use_path");
 
         ButtonWidget<?> cancelBtn = new ButtonWidget<>();
         cancelBtn.size(70, 18)
@@ -2037,25 +2095,30 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 dialog.closeIfOpen();
                 return true;
             });
-        GuiText.fitButtonLabel(cancelBtn, 70, "wawelauth.gui.common.cancel");
+        WawelAuthStyle.textButton(cancelBtn, 62, "wawelauth.gui.common.cancel");
 
+        WawelAuthStyle.dialog(dialog);
         dialog.size(316, 130)
             .child(
                 new Column().widthRel(1.0f)
                     .heightRel(1.0f)
                     .padding(8)
+                    .background(IDrawable.EMPTY)
+                    .disableHoverBackground()
                     .child(
                         new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.select_texture_file", label))
                             .widthRel(1.0f)
-                            .height(14))
+                            .height(14)
+                            .color(WawelAuthStyle.THEME_LIGHTER))
                     .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.path_help")).color(0xFFAAAAAA)
+                        new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.path_help"))
+                            .color(WawelAuthStyle.TEXT_SECONDARY)
                             .scale(0.8f)
                             .widthRel(1.0f)
                             .height(10))
                     .child(pathField)
                     .child(
-                        new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(0xFFFFAA55)
+                        new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(WawelAuthStyle.WARNING)
                             .widthRel(1.0f)
                             .height(12)
                             .margin(0, 2))
@@ -2409,10 +2472,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private boolean isRegisterVisibleForSelectedProvider() {
-        if (hasFocusedLocalContext()) {
-            return hasFocusedLocalMetadata();
-        }
-
         ClientProvider provider = resolveProvider(state.selectedProvider);
         if (provider == null) {
             return false;

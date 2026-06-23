@@ -18,8 +18,6 @@ import org.fentanylsolutions.wawelauth.client.gui.AccountManagerScreen;
 import org.fentanylsolutions.wawelauth.client.gui.ServerDropScreen;
 import org.fentanylsolutions.wawelauth.client.gui.TextureDropOverlay;
 
-import com.cleanroommc.modularui.api.IMuiScreen;
-
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
@@ -54,24 +52,38 @@ public final class WindowDropHandler implements DropListener {
             dragMode = DragMode.TEXTURE;
             TextureDropOverlay.show();
         } else if (isOnServerAddScreen()) {
+            dragMode = DragMode.SERVER_ADD;
             ServerDropScreen.showHint();
         }
     }
 
     @Override
-    public void onDropText(String text) {
-        if (dragMode == DragMode.NONE) dragMode = DragMode.SERVER_ADD;
+    public void onDragText(String text) {
+        if (dragMode == DragMode.NONE && startsWithServerUri(text) && isOnServerAddScreen()) {
+            dragMode = DragMode.SERVER_ADD;
+            ServerDropScreen.showHint();
+        }
     }
 
     @Override
-    public void onDropFile(String filePath, float sdlX, float sdlY) {
+    public void onDragFile(String filePath, float sdlX, float sdlY) {
+        if (dragMode != DragMode.TEXTURE) {
+            return;
+        }
         WawelAuth.LOG.info("[WindowDropHandler] DROP_FILE x={} y={} file={}", sdlX, sdlY, filePath);
         TextureDropOverlay.updateDropPosition(sdlX, sdlY);
         TextureDropOverlay.setDroppedFile(filePath);
     }
 
     @Override
-    public void onDragPosition(float sdlX, float sdlY) {
+    public void onDragPositionMainThread(float sdlX, float sdlY) {
+        if (dragMode == DragMode.SERVER_ADD) {
+            ServerDropScreen.pulseDrag();
+            return;
+        }
+        if (dragMode != DragMode.TEXTURE) {
+            return;
+        }
         TextureDropOverlay.updateDropPosition(sdlX, sdlY);
     }
 
@@ -86,9 +98,14 @@ public final class WindowDropHandler implements DropListener {
             return;
         }
 
+        if (mode != DragMode.SERVER_ADD) {
+            ServerDropScreen.dismissHint();
+            return;
+        }
+
         String text = result.getText();
         ServerDropScreen.dismissHintThenRun(() -> {
-            if (text == null || text.isEmpty()) return;
+            if (!startsWithServerUri(text)) return;
             if (!isOnServerAddScreen()) return;
 
             ServerAddRequest request = parseServerUri(text);
@@ -110,12 +127,6 @@ public final class WindowDropHandler implements DropListener {
         GuiScreen screen = mc.currentScreen;
         if (screen == null) return false;
         if (screen instanceof GuiMainMenu || screen instanceof GuiMultiplayer) return true;
-        if (screen instanceof IMuiScreen muiScreen) {
-            GuiScreen parent = muiScreen.getScreen()
-                .getContext()
-                .getParentScreen();
-            return parent instanceof GuiMainMenu || parent instanceof GuiMultiplayer;
-        }
         return false;
     }
 
@@ -141,6 +152,11 @@ public final class WindowDropHandler implements DropListener {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static boolean startsWithServerUri(String text) {
+        return text != null && text.trim()
+            .startsWith(URI_SCHEME + "://");
     }
 
     private static Map<String, String> parseQuery(String query) {

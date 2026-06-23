@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import net.minecraft.client.Minecraft;
@@ -104,14 +105,18 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         boolean singleplayerMode = pendingSingleplayerMode || this.singleplayerMode;
         ServerData targetServerData = pendingServerData != null ? pendingServerData : serverData;
         if (targetServerData == null && !singleplayerMode) {
-            return ModularPanel.defaultPanel("wawelauth_server_picker", 200, 80)
-                .child(
-                    new Column().widthRel(1.0f)
-                        .heightRel(1.0f)
-                        .padding(6)
-                        .child(
-                            new TextWidget<>(GuiText.key("wawelauth.gui.common.no_server_selected")).widthRel(1.0f)
-                                .height(14)));
+            ModularPanel panel = ModularPanel.defaultPanel("wawelauth_server_picker", 200, 80);
+            WawelAuthStyle.dialog(panel);
+            return panel.child(
+                new Column().widthRel(1.0f)
+                    .heightRel(1.0f)
+                    .padding(6)
+                    .background(IDrawable.EMPTY)
+                    .disableHoverBackground()
+                    .child(
+                        new TextWidget<>(GuiText.key("wawelauth.gui.common.no_server_selected")).widthRel(1.0f)
+                            .height(14)
+                            .color(WawelAuthStyle.THEME_LIGHTER)));
         }
 
         WawelClient client = WawelClient.instance();
@@ -185,6 +190,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         }
 
         ModularPanel panel = ModularPanel.defaultPanel("wawelauth_server_picker", 200, panelHeight);
+        WawelAuthStyle.dialog(panel);
 
         final ServerData serverDataRef = targetServerData;
         final IServerDataExt serverExt = ext;
@@ -216,6 +222,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         });
 
         ListWidget<IWidget, ?> accountList = new ListWidget<>();
+        WawelAuthStyle.styleList(accountList);
         accountList.widthRel(1.0f)
             .height(listHeight);
 
@@ -253,7 +260,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
                 GuiTransitionScheduler.transition(panel, () -> AccountManagerScreen.openForLocalAuth(targetServerData));
                 return true;
             });
-        GuiText.fitButtonLabelMaxWidth(manageLocalAuthBtn, 180, "wawelauth.gui.server_picker.manage_local_auth");
+        WawelAuthStyle.textButton(manageLocalAuthBtn, 180, "wawelauth.gui.server_picker.manage_local_auth");
         manageLocalAuthBtn.setEnabled(localAuthAvailable);
 
         ButtonWidget<?> serverProxyBtn = new ButtonWidget<>();
@@ -267,34 +274,36 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
                 }
                 return true;
             });
-        GuiText.fitButtonLabelMaxWidth(serverProxyBtn, 180, "wawelauth.gui.server_picker.server_proxy");
+        WawelAuthStyle.textButton(serverProxyBtn, 180, "wawelauth.gui.server_picker.server_proxy");
         serverProxyBtn.setEnabled(!singleplayerMode && serverProxyDialogHandler != null);
 
         Column content = new Column();
         content.widthRel(1.0f)
             .heightRel(1.0f)
-            .padding(6);
+            .padding(6)
+            .background(IDrawable.EMPTY)
+            .disableHoverBackground();
         content.child(
             new TextWidget<>(IKey.str(title)).widthRel(1.0f)
-                .height(14));
+                .height(14)
+                .color(WawelAuthStyle.THEME_LIGHTER));
         content.child(accountList);
         if (statusMessage != null && !statusMessage.isEmpty()) {
             content.child(
-                new TextWidget<>(IKey.str(statusMessage)).color(0xFF55FF55)
+                new TextWidget<>(IKey.str(statusMessage)).color(WawelAuthStyle.SUCCESS)
                     .widthRel(1.0f)
                     .height(10)
                     .margin(0, 2));
         }
-        content.child(
-            GuiText.fitButtonLabelMaxWidth(
-                new ButtonWidget<>().widthRel(1.0f)
-                    .height(18),
-                180,
-                "wawelauth.gui.common.manage_accounts")
+        ButtonWidget<?> manageAccountsBtn = new ButtonWidget<>();
+        manageAccountsBtn.widthRel(1.0f)
+            .height(18)
                 .onMousePressed(mouseButton -> {
                     GuiTransitionScheduler.transition(panel, () -> ClientGUI.open(new AccountManagerScreen()));
                     return true;
-                }));
+                });
+        WawelAuthStyle.textButton(manageAccountsBtn, 180, "wawelauth.gui.common.manage_accounts");
+        content.child(manageAccountsBtn);
         if (showLocalAuthControls) {
             content.child(manageLocalAuthBtn);
         }
@@ -303,11 +312,10 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         }
 
         if (showLocalAuthActions) {
-            ButtonWidget<?> loginLocalBtn = GuiText.fitButtonLabel(
-                new ButtonWidget<>().width(90)
-                    .height(18),
-                90,
-                "wawelauth.gui.common.login");
+            ButtonWidget<?> loginLocalBtn = new ButtonWidget<>();
+            loginLocalBtn.width(90)
+                .height(18);
+            WawelAuthStyle.textButton(loginLocalBtn, 82, "wawelauth.gui.common.login");
             loginLocalBtn.setEnabled(localAuthAvailable);
             loginLocalBtn.onMousePressed(mouseButton -> {
                 openLocalAuthAction(
@@ -321,11 +329,10 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
                 return true;
             });
 
-            ButtonWidget<?> registerLocalBtn = GuiText.fitButtonLabel(
-                new ButtonWidget<>().width(90)
-                    .height(18),
-                90,
-                "wawelauth.gui.common.register");
+            ButtonWidget<?> registerLocalBtn = new ButtonWidget<>();
+            registerLocalBtn.width(90)
+                .height(18);
+            WawelAuthStyle.textButton(registerLocalBtn, 82, "wawelauth.gui.common.register");
             registerLocalBtn.setEnabled(localAuthAvailable);
             registerLocalBtn.onMousePressed(mouseButton -> {
                 openLocalAuthAction(
@@ -368,15 +375,30 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         ClientProvider trustedProvider = client.getLocalAuthProviderResolver()
             .findExisting(capabilities);
         if (trustedProvider == null) {
-            GuiTransitionScheduler.transition(panel, () -> LocalAuthManagerScreen.open(targetServerData));
+            CompletableFuture.supplyAsync(
+                () -> client.getLocalAuthProviderResolver()
+                    .resolveOrCreate(capabilities))
+                .whenComplete((provider, err) -> Minecraft.getMinecraft()
+                    .func_152344_a(() -> {
+                        if (err != null || provider == null) {
+                            GuiTransitionScheduler.transition(panel, () -> AccountManagerScreen.openForLocalAuth(targetServerData));
+                            return;
+                        }
+                        openLocalAuthDialog(provider.getName(), trustedLocalProviderName, loginDialog, registerDialog, register);
+                    }));
             return;
         }
 
-        trustedLocalProviderName[0] = trustedProvider.getName();
+        openLocalAuthDialog(trustedProvider.getName(), trustedLocalProviderName, loginDialog, registerDialog, register);
+    }
+
+    private static void openLocalAuthDialog(String providerName, String[] trustedLocalProviderName,
+        LoginDialog loginDialog, RegisterDialog registerDialog, boolean register) {
+        trustedLocalProviderName[0] = providerName;
         if (register) {
-            registerDialog.open(trustedProvider.getName());
+            registerDialog.open(providerName);
         } else {
-            loginDialog.open(trustedProvider.getName());
+            loginDialog.open(providerName);
         }
     }
 
@@ -482,11 +504,9 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         boolean isSelected = selectedAccountId == account.getId();
 
         ButtonWidget<?> selectButton = new ButtonWidget<>();
+        WawelAuthStyle.rowButton(selectButton, () -> isSelected);
         selectButton.expanded()
             .height(ACCOUNT_ENTRY_HEIGHT);
-        if (isSelected) {
-            selectButton.background(new Rectangle().color(0x44FFFFFF));
-        }
 
         Row dot = new Row() {
 
@@ -513,7 +533,9 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             }
         };
         label.expanded()
-            .heightRel(1.0f);
+            .heightRel(1.0f)
+            .color(() -> isSelected ? WawelAuthStyle.THEME_LIGHTER
+                : selectButton.isHovering() ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY);
         label.addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.tooltip.account", fullLabel));
         label.addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.tooltip.provider", providerName));
 
@@ -543,7 +565,10 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         });
 
         ButtonWidget<?> manageButton = new ButtonWidget<>();
+        WawelAuthStyle.iconButton(manageButton);
         manageButton.size(ACCOUNT_ENTRY_HEIGHT, ACCOUNT_ENTRY_HEIGHT)
+            .background(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_IDLE))
+            .hoverBackground(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_HOVER))
             .overlay(MANAGE_PROVIDER_ICON)
             .addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.manage_account"))
             .onMousePressed(mouseButton -> {
@@ -567,15 +592,15 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         boolean isSelected = selectedAccountId < 0L;
 
         ButtonWidget<?> entry = new ButtonWidget<>();
+        WawelAuthStyle.rowButton(entry, () -> isSelected);
         entry.widthRel(1.0f)
             .height(16);
-        if (isSelected) {
-            entry.background(new Rectangle().color(0x44FFFFFF));
-        }
 
         TextWidget<?> label = new TextWidget<>(GuiText.key("wawelauth.gui.common.no_account_selected"));
         label.widthRel(1.0f)
             .heightRel(1.0f)
+            .color(() -> isSelected ? WawelAuthStyle.THEME_LIGHTER
+                : entry.isHovering() ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY)
             .margin(2, 0, 0, 0);
 
         Row row = new Row();
