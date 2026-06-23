@@ -17,6 +17,7 @@ final class AccountManagerScreenState {
     ClientAccount selectedAccount;
 
     long localAuthFingerprintCopiedUntilMs;
+    long profileUuidCopiedUntilMs;
 
     ServerCapabilities connectedServerCapabilities;
 
@@ -45,6 +46,7 @@ final class AccountManagerScreenState {
 
     void resetForBuild() {
         this.localAuthFingerprintCopiedUntilMs = 0L;
+        this.profileUuidCopiedUntilMs = 0L;
         this.connectedServerCapabilities = null;
         this.pendingRemoveAccountId = -1L;
         this.pendingRemoveAccountName = null;

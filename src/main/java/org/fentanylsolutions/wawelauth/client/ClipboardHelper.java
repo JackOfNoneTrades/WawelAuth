@@ -52,4 +52,13 @@ public final class ClipboardHelper {
             }
         });
     }
+
+    public static String readFromClipboard() {
+        try {
+            String clipboard = GuiScreen.getClipboardString();
+            return clipboard != null ? clipboard : "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
 }

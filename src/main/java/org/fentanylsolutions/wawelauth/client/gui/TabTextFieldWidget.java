@@ -46,7 +46,27 @@ public class TabTextFieldWidget extends TextFieldWidget {
         int idx = focusable.indexOf(this);
         if (idx < 0 || focusable.size() < 2) return;
         int next = reverse ? (idx - 1 + focusable.size()) % focusable.size() : (idx + 1) % focusable.size();
-        getContext().focus(focusable.get(next));
+        focusFromTab(focusable.get(next));
+    }
+
+    static void focusFromTab(IFocusedWidget widget) {
+        widgetContext(widget).focus(widget);
+        if (widget instanceof TabTextFieldWidget) {
+            ((TabTextFieldWidget) widget).moveCursorToEndFromTab();
+        } else if (widget instanceof PasswordFieldWidget) {
+            ((PasswordFieldWidget) widget).moveCursorToEndFromTab();
+        }
+    }
+
+    private static com.cleanroommc.modularui.screen.viewport.ModularGuiContext widgetContext(IFocusedWidget widget) {
+        return ((IWidget) widget).getContext();
+    }
+
+    private void moveCursorToEndFromTab() {
+        if (!this.handler.getText()
+            .isEmpty()) {
+            this.handler.moveCursorEnd(false, false);
+        }
     }
 
     static void collectFocusable(IWidget widget, List<IFocusedWidget> result) {

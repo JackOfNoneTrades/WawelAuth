@@ -92,21 +92,21 @@ final class ProxySettingsDialog {
         final ProviderRegistry.ProbeOutcome[] secondaryStatusOutcome = { ProviderRegistry.ProbeOutcome.NEUTRAL };
         final boolean[] busy = { false };
 
-        TextFieldWidget hostField = new TextFieldWidget()
+        TextFieldWidget hostField = new TabTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_address"));
         hostField.width(214)
             .height(18)
             .setMaxLength(255);
         WawelAuthStyle.textField(hostField);
 
-        TextFieldWidget portField = new TextFieldWidget()
+        TextFieldWidget portField = new TabTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_port"));
         portField.width(64)
             .height(18)
             .setMaxLength(5);
         WawelAuthStyle.textField(portField);
 
-        TextFieldWidget usernameField = new TextFieldWidget()
+        TextFieldWidget usernameField = new TabTextFieldWidget()
             .hintText(GuiText.tr("wawelauth.gui.account_manager.proxy_username"));
         usernameField.widthRel(1.0f)
             .height(18)

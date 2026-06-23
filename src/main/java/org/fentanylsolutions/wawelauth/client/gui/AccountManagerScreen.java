@@ -640,14 +640,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 .widthRel(1.0f)
                 .height(12)
                 .margin(0, 1))
-            .child(new TextWidget<>(IKey.dynamic(() -> {
-                if (state.selectedAccount == null) return "";
-                UUID uuid = state.selectedAccount.getProfileUuid();
-                return uuid != null ? uuid.toString() : GuiText.tr("wawelauth.gui.account_manager.no_profile_bound");
-            })).color(DETAIL_SECONDARY_TEXT_COLOR)
-                .scale(0.8f)
-                .widthRel(1.0f)
-                .height(10))
+            .child(profileUuidTextWidget())
             .child(new TextWidget<>(IKey.dynamic(() -> {
                 if (state.selectedAccount == null) return "";
                 if (isSelectedAccountOffline()) return "";
@@ -950,6 +943,38 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         return button;
     }
 
+    private ButtonWidget<?> profileUuidTextWidget() {
+        ButtonWidget<?> widget = new ButtonWidget<>();
+        WawelAuthStyle.iconButton(widget);
+        widget.background(IDrawable.EMPTY)
+            .hoverBackground(IDrawable.EMPTY)
+            .overlay(
+                IKey.dynamic(this::selectedProfileUuidText)
+                    .alignment(Alignment.CenterLeft)
+                    .scale(0.8f)
+                    .color(
+                        () -> isSelectedProfileUuidCopyable() && widget.isBelowMouse() ? WawelAuthStyle.TEXT_PRIMARY
+                            : DETAIL_SECONDARY_TEXT_COLOR))
+            .widthRel(1.0f)
+            .height(10)
+            .tooltipDynamic(tooltip -> {
+                if (!isSelectedProfileUuidCopyable()) {
+                    return;
+                }
+                tooltip.addLine(
+                    IKey.dynamic(
+                        () -> isProfileUuidCopied()
+                            ? EnumChatFormatting.GREEN + GuiText.tr("wawelauth.gui.common.copied")
+                            : EnumChatFormatting.GRAY + GuiText.tr("wawelauth.gui.common.click_to_copy")));
+            })
+            .tooltipAutoUpdate(true)
+            .onMousePressed(mouseButton -> {
+                copySelectedProfileUuid();
+                return isSelectedProfileUuidCopyable();
+            });
+        return widget;
+    }
+
     private static ButtonWidget<?> textureActionButton(IDrawable icon, IDrawable hoverIcon, String tooltipKey) {
         ButtonWidget<?> button = new ButtonWidget<>();
         WawelAuthStyle.iconButton(button);
@@ -1144,6 +1169,29 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private boolean isLocalAuthFingerprintCopied() {
         return System.currentTimeMillis() < state.localAuthFingerprintCopiedUntilMs;
+    }
+
+    private String selectedProfileUuidText() {
+        if (state.selectedAccount == null) return "";
+        UUID uuid = state.selectedAccount.getProfileUuid();
+        return uuid != null ? uuid.toString() : GuiText.tr("wawelauth.gui.account_manager.no_profile_bound");
+    }
+
+    private boolean isSelectedProfileUuidCopyable() {
+        return state.selectedAccount != null && state.selectedAccount.getProfileUuid() != null;
+    }
+
+    private boolean isProfileUuidCopied() {
+        return System.currentTimeMillis() < state.profileUuidCopiedUntilMs;
+    }
+
+    private void copySelectedProfileUuid() {
+        if (!isSelectedProfileUuidCopyable()) {
+            return;
+        }
+        ClipboardHelper.copyToClipboard(state.selectedAccount.getProfileUuid()
+            .toString(), "");
+        state.profileUuidCopiedUntilMs = System.currentTimeMillis() + 2000L;
     }
 
     private void refreshSelectedLocalAuthProvider() {

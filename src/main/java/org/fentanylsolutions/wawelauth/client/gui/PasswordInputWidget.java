@@ -133,4 +133,13 @@ public class PasswordInputWidget extends ParentWidget<PasswordInputWidget> {
         this.field.onEnterPressed(callback);
         return this;
     }
+
+    public PasswordInputWidget setFocusOnGuiOpen(boolean focusOnGuiOpen) {
+        this.field.setFocusOnGuiOpen(focusOnGuiOpen);
+        return this;
+    }
+
+    PasswordFieldWidget focusTarget() {
+        return this.field;
+    }
 }

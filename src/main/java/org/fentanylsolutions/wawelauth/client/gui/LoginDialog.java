@@ -57,6 +57,9 @@ public final class LoginDialog {
             boolean supportsOauthLogin = supportsMicrosoftLogin || supportsProviderOAuth;
             boolean offlineAccountLogin = ProviderDisplayName.isOfflineProvider(provider);
             boolean directMicrosoftLogin = supportsMicrosoftLogin && this.forceMicrosoftLogin;
+            boolean focusPassword = this.initialUsername != null && !this.initialUsername.trim()
+                .isEmpty()
+                && !offlineAccountLogin;
             boolean[] cancelled = { false };
             Dialog<ClientAccount> dialog = new Dialog<>("wawelauth_login", this.onResult);
             dialog.setCloseOnOutOfBoundsClick(false);
@@ -65,10 +68,15 @@ public final class LoginDialog {
             TabTextFieldWidget usernameField = new TabTextFieldWidget();
             usernameField.hintText(GuiText.tr("wawelauth.gui.common.username"));
             usernameField.value(new StringValue(this.initialUsername != null ? this.initialUsername : ""));
+            usernameField.setFocusOnGuiOpen(!directMicrosoftLogin && !focusPassword);
             WawelAuthStyle.textField(usernameField);
             PasswordInputWidget passwordField = new PasswordInputWidget()
                 .hintText(GuiText.tr("wawelauth.gui.common.password"))
-                .applyWawelAuthStyle();
+                .applyWawelAuthStyle()
+                .setFocusOnGuiOpen(!directMicrosoftLogin && focusPassword);
+            if (!directMicrosoftLogin) {
+                GuiFocus.focusAfterOpen(focusPassword ? passwordField.focusTarget() : usernameField);
+            }
 
             String initMsg = this.initialMessage;
             String[] errorText = { initMsg != null ? initMsg : "" };

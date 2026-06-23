@@ -2,9 +2,11 @@ Pixelarticons local auth action icons
 Sources:
 - https://github.com/halfmage/pixelarticons/blob/master/svg/checkbox-on.svg
 - https://github.com/halfmage/pixelarticons/blob/master/svg/hash.svg
+- https://github.com/halfmage/pixelarticons/blob/master/svg/clipboard-note.svg
 Website:
 - https://pixelarticons.com/icon/checkbox-on/
 - https://pixelarticons.com/icon/hash/
+- https://pixelarticons.com/icon/clipboard-note/
 
 MIT License
 Copyright (c) 2019 Gerrit Halfmann

@@ -30,6 +30,7 @@ wawelauth.gui.common.offline_account=Hors ligne
 wawelauth.gui.common.no_server_selected=Aucun serveur sélectionné
 wawelauth.gui.common.open_folder=Ouvrir le dossier
 wawelauth.gui.common.password=Mot de passe
+wawelauth.gui.common.paste_clipboard=Coller le presse-papiers
 wawelauth.gui.common.ready_message=Prêt : %s
 wawelauth.gui.common.register=Inscription
 wawelauth.gui.common.remove=Retirer

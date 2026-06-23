@@ -78,7 +78,14 @@ public class PasswordFieldWidget extends TextFieldWidget {
         int idx = focusable.indexOf(this);
         if (idx < 0 || focusable.size() < 2) return;
         int next = reverse ? (idx - 1 + focusable.size()) % focusable.size() : (idx + 1) % focusable.size();
-        getContext().focus(focusable.get(next));
+        TabTextFieldWidget.focusFromTab(focusable.get(next));
+    }
+
+    void moveCursorToEndFromTab() {
+        if (!this.handler.getText()
+            .isEmpty()) {
+            this.handler.moveCursorEnd(false, false);
+        }
     }
 
     @Override

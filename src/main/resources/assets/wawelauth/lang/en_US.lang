@@ -33,6 +33,7 @@ wawelauth.gui.common.offline_account=Offline
 wawelauth.gui.common.no_server_selected=No server selected
 wawelauth.gui.common.open_folder=Open Folder
 wawelauth.gui.common.password=Password
+wawelauth.gui.common.paste_clipboard=Paste clipboard
 wawelauth.gui.common.ready_message=Ready: %s
 wawelauth.gui.common.register=Register
 wawelauth.gui.common.remove=Remove
