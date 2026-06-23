@@ -42,7 +42,7 @@ final class AccountManagerProviderListPanel {
     private static final int PROVIDER_NAME_MAX_WIDTH_PX = 84;
     private static final int PROVIDER_SETTINGS_ICON_SOURCE_SIZE = 24;
     private static final int PROVIDER_SETTINGS_ICON_DRAW_SIZE = 10;
-    private static final int PROVIDER_SETTINGS_ICON_COLOR = 0xC8FFFFFF;
+    private static final int PROVIDER_SETTINGS_ICON_COLOR = 0xFFE0E0E0;
     private static final int PROVIDER_SETTINGS_ICON_HOVER_COLOR = 0xFFFFFFFF;
     private static final ColorType PROVIDER_SETTINGS_ICON_COLOR_TYPE = new ColorType(
         "wawelauth:provider_settings_icon",

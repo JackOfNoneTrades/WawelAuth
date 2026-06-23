@@ -37,7 +37,10 @@ import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.lwjgl.opengl.GL11;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
+import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.drawable.ColorType;
+import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.viewport.GuiContext;
@@ -95,6 +98,51 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final int DETAIL_SECONDARY_TEXT_COLOR = WawelAuthStyle.TEXT_SECONDARY;
     private static final int PREVIEW_PANEL_BACKGROUND_COLOR = WawelAuthStyle.PANEL_INSET;
     private static final int PANORAMA_DIM_COLOR = 0x55000000;
+    private static final int ACCOUNT_ACTION_BUTTON_SIZE = 16;
+    private static final int ACCOUNT_ACTION_ICON_SIZE = 12;
+    private static final int ACCOUNT_ACTION_ROW_LEADING_SPACE = 2;
+    private static final int ACCOUNT_ACTION_BUTTON_GAP = 4;
+    private static final int ACCOUNT_ACTION_ICON_SOURCE_SIZE = 12;
+    private static final int ACCOUNT_ACTION_ICON_SHEET_WIDTH = ACCOUNT_ACTION_ICON_SOURCE_SIZE * 5;
+    private static final int ACCOUNT_ACTION_BUTTON_IDLE_BACKGROUND = WawelAuthStyle.BUTTON_IDLE;
+    private static final int ACCOUNT_ACTION_ICON_IDLE_COLOR = 0xFFE0E0E0;
+    private static final int ACCOUNT_ACTION_ICON_HOVER_COLOR = 0xFFFFFFFF;
+    private static final ColorType ACCOUNT_ACTION_ICON_COLOR_TYPE = new ColorType(
+        "wawelauth:account_action_icon",
+        theme -> ACCOUNT_ACTION_ICON_IDLE_COLOR);
+    private static final ColorType ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE = new ColorType(
+        "wawelauth:account_action_icon_hover",
+        theme -> ACCOUNT_ACTION_ICON_HOVER_COLOR);
+    private static final IDrawable ACCOUNT_ACTION_LOGIN_ICON = centeredIcon(
+        actionIcon(0, "login", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_LOGIN_ICON_HOVER = centeredIcon(
+        actionIcon(0, "login_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_REGISTER_ICON = centeredIcon(
+        actionIcon(1, "register", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_REGISTER_ICON_HOVER = centeredIcon(
+        actionIcon(1, "register_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_REAUTH_ICON = centeredIcon(
+        actionIcon(2, "reauth", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_REAUTH_ICON_HOVER = centeredIcon(
+        actionIcon(2, "reauth_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_CREDENTIALS_ICON = centeredIcon(
+        actionIcon(3, "credentials", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_CREDENTIALS_ICON_HOVER = centeredIcon(
+        actionIcon(3, "credentials_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_REMOVE_ICON = centeredIcon(
+        actionIcon(4, "remove", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
+    private static final IDrawable ACCOUNT_ACTION_REMOVE_ICON_HOVER = centeredIcon(
+        actionIcon(4, "remove_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        ACCOUNT_ACTION_ICON_SIZE);
 
     private static ServerData pendingFocusedServerData;
     private static ServerCapabilities pendingFocusedCapabilities;
@@ -552,42 +600,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .expanded())
             .child(
                 new Row().widthRel(1.0f)
-                    .height(18)
-                    .margin(0, 1)
+                    .height(17)
+                    .mainAxisAlignment(Alignment.MainAxis.END)
                     .child(
-                        GuiText.fitButtonLabel(
-                            WawelAuthStyle.button(new ButtonWidget<>())
-                                .size(56, 16),
-                            56,
-                            "wawelauth.gui.account_manager.reauth")
+                        textButton(new ButtonWidget<>().size(52, ACCOUNT_ACTION_BUTTON_SIZE), 44, "gui.done")
                             .onMousePressed(mouseButton -> {
-                                if (state.selectedAccount == null) return true;
-                                openLoginDialog(
-                                    state.selectedAccount.getProviderName(),
-                                    state.selectedAccount.getProfileName());
-                                return true;
-                            }))
-                    .child(new Widget<>().size(4, 16))
-                    .child(
-                        GuiText.fitButtonLabel(
-                            WawelAuthStyle.button(new ButtonWidget<>())
-                                .size(74, 16)
-                                .setEnabledIf(widget -> isCredentialManagementAvailableForSelectedAccount()),
-                            74,
-                            "wawelauth.gui.account_manager.credentials")
-                            .onMousePressed(mouseButton -> {
-                                openCredentialDialog();
-                                return true;
-                            }))
-                    .child(new Widget<>().size(4, 16))
-                    .child(
-                        GuiText.fitButtonLabel(
-                            WawelAuthStyle.button(new ButtonWidget<>())
-                                .size(88, 16),
-                            88,
-                            "wawelauth.gui.account_manager.remove_account")
-                            .onMousePressed(mouseButton -> {
-                                confirmAndRemoveSelectedAccount();
+                                mainPanel.closeIfOpen();
                                 return true;
                             })));
 
@@ -596,9 +614,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 .heightRel(1.0f)
                 .child(leftSidebar)
                 .child(rightPanel));
-        mainPanel.child(
-            WawelAuthStyle.iconButton(ButtonWidget.panelCloseButton())
-                .tooltip(tooltip -> tooltip.addLine(GuiText.key("wawelauth.gui.common.close"))));
 
         clearTextureSelection();
         if (pendingSelectedProviderName != null) {
@@ -641,13 +656,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 .color(WawelAuthStyle.THEME_LIGHTER))
             .child(providerListFrame)
             .child(
-                GuiText.fitButtonLabelMaxWidth(
-                    WawelAuthStyle.button(new ButtonWidget<>())
-                        .widthRel(1.0f)
+                textButton(
+                    new ButtonWidget<>().widthRel(1.0f)
                         .height(16),
                     104,
-                    "wawelauth.gui.add_provider.title")
-                    .onMousePressed(mouseButton -> {
+                    "wawelauth.gui.add_provider.title").onMousePressed(mouseButton -> {
                         addProviderDialog.open();
                         return true;
                     }));
@@ -668,44 +681,108 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .child(
                 new Row().widthRel(1.0f)
                     .height(17)
-                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                    .mainAxisAlignment(Alignment.MainAxis.START)
                     .collapseDisabledChild()
+                    .child(new Widget<>().size(ACCOUNT_ACTION_ROW_LEADING_SPACE, ACCOUNT_ACTION_BUTTON_SIZE))
                     .child(
-                        GuiText.fitButtonLabel(
-                            WawelAuthStyle.button(new ButtonWidget<>())
-                                .size(52, 16)
-                                .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()),
-                            52,
-                            "wawelauth.gui.common.login")
-                            .onMousePressed(mouseButton -> {
+                        accountActionButton(
+                            ACCOUNT_ACTION_LOGIN_ICON,
+                            ACCOUNT_ACTION_LOGIN_ICON_HOVER,
+                            "wawelauth.gui.common.login").onMousePressed(mouseButton -> {
                                 handlePrimaryLoginAction();
                                 return true;
                             }))
+                    .child(actionGap())
                     .child(
-                        GuiText.fitButtonLabel(
-                            WawelAuthStyle.button(new ButtonWidget<>())
-                                .size(108, 16)
-                                .setEnabledIf(widget -> !isRegisterVisibleForSelectedProvider()),
-                            108,
-                            "wawelauth.gui.common.login")
-                            .onMousePressed(mouseButton -> {
-                                handlePrimaryLoginAction();
-                                return true;
-                            }))
-                    .child(
-                        new Widget<>().size(4, 16)
-                            .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()))
-                    .child(
-                        GuiText.fitButtonLabel(
-                            WawelAuthStyle.button(new ButtonWidget<>())
-                                .size(52, 16)
-                                .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()),
-                            52,
+                        accountActionButton(
+                            ACCOUNT_ACTION_REGISTER_ICON,
+                            ACCOUNT_ACTION_REGISTER_ICON_HOVER,
                             "wawelauth.gui.common.register")
-                            .onMousePressed(mouseButton -> {
-                                handlePrimaryRegisterAction();
+                                .setEnabledIf(widget -> isRegisterVisibleForSelectedProvider())
+                                .onMousePressed(mouseButton -> {
+                                    handlePrimaryRegisterAction();
+                                    return true;
+                                }))
+                    .child(actionGap().setEnabledIf(widget -> isRegisterVisibleForSelectedProvider()))
+                    .child(
+                        accountActionButton(
+                            ACCOUNT_ACTION_REAUTH_ICON,
+                            ACCOUNT_ACTION_REAUTH_ICON_HOVER,
+                            "wawelauth.gui.account_manager.reauth").onMousePressed(mouseButton -> {
+                                if (state.selectedAccount == null) return true;
+                                openLoginDialog(
+                                    state.selectedAccount.getProviderName(),
+                                    state.selectedAccount.getProfileName());
+                                return true;
+                            }))
+                    .child(actionGap())
+                    .child(
+                        accountActionButton(
+                            ACCOUNT_ACTION_CREDENTIALS_ICON,
+                            ACCOUNT_ACTION_CREDENTIALS_ICON_HOVER,
+                            "wawelauth.gui.account_manager.credentials")
+                                .setEnabledIf(widget -> isCredentialManagementAvailableForSelectedAccount())
+                                .onMousePressed(mouseButton -> {
+                                    openCredentialDialog();
+                                    return true;
+                                }))
+                    .child(actionGap().setEnabledIf(widget -> isCredentialManagementAvailableForSelectedAccount()))
+                    .child(
+                        accountActionButton(
+                            ACCOUNT_ACTION_REMOVE_ICON,
+                            ACCOUNT_ACTION_REMOVE_ICON_HOVER,
+                            "wawelauth.gui.account_manager.remove_account").onMousePressed(mouseButton -> {
+                                confirmAndRemoveSelectedAccount();
                                 return true;
                             })));
+    }
+
+    private static ButtonWidget<?> accountActionButton(IDrawable icon, IDrawable hoverIcon, String tooltipKey) {
+        ButtonWidget<?> button = new ButtonWidget<>();
+        WawelAuthStyle.iconButton(button);
+        button.size(ACCOUNT_ACTION_BUTTON_SIZE, ACCOUNT_ACTION_BUTTON_SIZE)
+            .background(WawelAuthStyle.rect(ACCOUNT_ACTION_BUTTON_IDLE_BACKGROUND))
+            .hoverBackground(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_HOVER))
+            .overlay(icon)
+            .hoverOverlay(hoverIcon)
+            .addTooltipLine(GuiText.tr(tooltipKey));
+        return button;
+    }
+
+    private static ButtonWidget<?> textButton(ButtonWidget<?> button, int maxTextWidthPx, String translationKey) {
+        WawelAuthStyle.button(button);
+        button.overlay(
+            IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(GuiText.tr(translationKey), maxTextWidthPx))
+                .color(() -> button.isBelowMouse() ? ACCOUNT_ACTION_ICON_HOVER_COLOR : ACCOUNT_ACTION_ICON_IDLE_COLOR));
+        return button;
+    }
+
+    private static Widget<?> actionGap() {
+        return new Widget<>().size(ACCOUNT_ACTION_BUTTON_GAP, ACCOUNT_ACTION_BUTTON_SIZE);
+    }
+
+    private static IDrawable actionIcon(int index, String name, ColorType colorType) {
+        return UITexture.builder()
+            .location("wawelauth", "gui/account-action-icons")
+            .imageSize(ACCOUNT_ACTION_ICON_SHEET_WIDTH, ACCOUNT_ACTION_ICON_SOURCE_SIZE)
+            .colorType(colorType)
+            .subAreaXYWH(
+                index * ACCOUNT_ACTION_ICON_SOURCE_SIZE,
+                0,
+                ACCOUNT_ACTION_ICON_SOURCE_SIZE,
+                ACCOUNT_ACTION_ICON_SOURCE_SIZE)
+            .nonOpaque()
+            .name("wawelauth:account_action_" + name)
+            .build();
+    }
+
+    private static IDrawable centeredIcon(IDrawable icon, int drawSize) {
+        return (context, x, y, width, height, widgetTheme) -> {
+            int size = Math.min(drawSize, Math.min(width, height));
+            int iconX = x + (width - size) / 2;
+            int iconY = y + (height - size) / 2;
+            icon.draw(context, iconX, iconY, size, size, widgetTheme);
+        };
     }
 
     private void handlePrimaryLoginAction() {
