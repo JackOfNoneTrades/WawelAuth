@@ -181,7 +181,7 @@ final class AccountManagerCredentialDialogs {
                 openCredentialDeleteDialog.run();
                 return true;
             });
-        WawelAuthStyle.textButton(deleteServerAccountBtn, 98, "wawelauth.gui.credentials.delete_account");
+        WawelAuthStyle.dangerTextButton(deleteServerAccountBtn, 98, "wawelauth.gui.credentials.delete_account");
 
         ButtonWidget<?> closeBtn = new ButtonWidget<>();
         closeBtn.size(70, BUTTON_HEIGHT)
@@ -321,7 +321,7 @@ final class AccountManagerCredentialDialogs {
                     });
                 return true;
             });
-        WawelAuthStyle.textButton(deleteBtn, 56, "wawelauth.gui.common.delete");
+        WawelAuthStyle.dangerTextButton(deleteBtn, 56, "wawelauth.gui.common.delete");
 
         Column root = dialogRoot();
         root.child(

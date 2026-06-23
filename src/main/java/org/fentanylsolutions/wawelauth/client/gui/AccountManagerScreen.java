@@ -116,6 +116,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final ColorType ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE = new ColorType(
         "wawelauth:account_action_icon_hover",
         theme -> ACCOUNT_ACTION_ICON_HOVER_COLOR);
+    private static final ColorType ACCOUNT_ACTION_DANGER_ICON_COLOR_TYPE = new ColorType(
+        "wawelauth:account_action_danger_icon",
+        theme -> WawelAuthStyle.TEXT_DANGER);
+    private static final ColorType ACCOUNT_ACTION_DANGER_ICON_HOVER_COLOR_TYPE = new ColorType(
+        "wawelauth:account_action_danger_icon_hover",
+        theme -> WawelAuthStyle.TEXT_DANGER_HOVER);
     private static final IDrawable ACCOUNT_ACTION_LOGIN_ICON = centeredIcon(
         actionIcon(0, "login", ACCOUNT_ACTION_ICON_COLOR_TYPE),
         ACCOUNT_ACTION_ICON_SIZE);
@@ -141,10 +147,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         actionIcon(3, "credentials_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
         ACCOUNT_ACTION_ICON_SIZE);
     private static final IDrawable ACCOUNT_ACTION_REMOVE_ICON = centeredIcon(
-        actionIcon(4, "remove", ACCOUNT_ACTION_ICON_COLOR_TYPE),
+        actionIcon(4, "remove", ACCOUNT_ACTION_DANGER_ICON_COLOR_TYPE),
         ACCOUNT_ACTION_ICON_SIZE);
     private static final IDrawable ACCOUNT_ACTION_REMOVE_ICON_HOVER = centeredIcon(
-        actionIcon(4, "remove_hover", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
+        actionIcon(4, "remove_hover", ACCOUNT_ACTION_DANGER_ICON_HOVER_COLOR_TYPE),
         ACCOUNT_ACTION_ICON_SIZE);
     private static final IDrawable PREVIEW_MODE_NONE_ICON = centeredIcon(
         previewModeTexture("none", ACCOUNT_ACTION_ICON_COLOR_TYPE),
@@ -185,6 +191,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private IPanelHandler removeAccountDialogHandler;
     private IPanelHandler providerSettingsDialogHandler;
     private IPanelHandler providerProxyDialogHandler;
+    private IPanelHandler providerDeleteDialogHandler;
     private IPanelHandler credentialDialogHandler;
     private IPanelHandler credentialDeleteDialogHandler;
     private IPanelHandler texturePathDialogHandler;
@@ -339,7 +346,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             this::rebuildProviderList,
             this::rebuildAccountList,
             this::openProviderProxyDialog,
-            () -> providerSettingsDialogHandler.deleteCachedPanel());
+            this::openProviderDeleteDialog,
+            () -> providerSettingsDialogHandler.deleteCachedPanel(),
+            () -> providerSettingsDialogHandler.closePanel());
         credentialDialogs = new AccountManagerCredentialDialogs(
             state,
             this::isCredentialManagementSupported,
@@ -353,6 +362,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .simple(mainPanel, (parent, player) -> providerDialogs.buildProviderSettingsDialog(), true);
         providerProxyDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> providerDialogs.buildProviderProxyDialog(), true);
+        providerDeleteDialogHandler = IPanelHandler
+            .simple(mainPanel, (parent, player) -> providerDialogs.buildProviderDeleteDialog(), true);
         credentialDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> credentialDialogs.buildCredentialDialog(), true);
         credentialDeleteDialogHandler = IPanelHandler
@@ -985,6 +996,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         this.providerProxyDialogHandler.openPanel();
     }
 
+    private void openProviderDeleteDialog() {
+        if (state.pendingProviderDeleteName == null) return;
+        this.providerDeleteDialogHandler.deleteCachedPanel();
+        this.providerDeleteDialogHandler.openPanel();
+    }
+
     private void confirmAndRemoveSelectedAccount() {
         if (state.selectedAccount == null) return;
 
@@ -1028,7 +1045,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                 doRemoveAccount(accountId);
                 return true;
             });
-        WawelAuthStyle.textButton(removeBtn, 56, "wawelauth.gui.common.remove");
+        WawelAuthStyle.dangerTextButton(removeBtn, 56, "wawelauth.gui.common.remove");
 
         Column root = new Column();
         root.widthRel(1.0f)

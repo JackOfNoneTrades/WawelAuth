@@ -36,6 +36,8 @@ final class WawelAuthStyle {
     static final int TEXT_BUTTON_IDLE = 0xFFE0E0E0;
     static final int TEXT_SECONDARY = 0xFFAAAAAA;
     static final int TEXT_MUTED = THEME_DARKER;
+    static final int TEXT_DANGER = 0xFFD84444;
+    static final int TEXT_DANGER_HOVER = 0xFFFF5555;
 
     static final int BACKGROUND_LIGHT = 0x30000000;
     static final int BACKGROUND_MEDIUM = 0x50000000;
@@ -116,6 +118,13 @@ final class WawelAuthStyle {
         };
     }
 
+    static IDrawable underlined(IntSupplier color) {
+        return (context, x, y, width, height, widgetTheme) -> {
+            Gui.drawRect(x, y, x + width, y + height, color.getAsInt());
+            Gui.drawRect(x, y + height - 1, x + width, y + height, accent());
+        };
+    }
+
     static IDrawable selectableRow(int idleColor, BooleanSupplier selected, IntSupplier accentColor) {
         return (context, x, y, width, height, widgetTheme) -> {
             int color = selected != null && selected.getAsBoolean() ? ROW_SELECTED : idleColor;
@@ -148,6 +157,34 @@ final class WawelAuthStyle {
         button.overlay(
             IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(GuiText.tr(translationKey), maxTextWidthPx))
                 .color(() -> button.isBelowMouse() ? TEXT_PRIMARY : TEXT_BUTTON_IDLE));
+        return button;
+    }
+
+    static ButtonWidget<?> textButton(ButtonWidget<?> button, int maxTextWidthPx, String translationKey,
+        BooleanSupplier enabled) {
+        button.background(underlined(BUTTON_IDLE))
+            .hoverBackground(underlined(() -> enabled.getAsBoolean() ? BUTTON_HOVER : BUTTON_IDLE));
+        button.overlay(
+            IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(GuiText.tr(translationKey), maxTextWidthPx))
+                .color(
+                    () -> enabled.getAsBoolean() ? button.isBelowMouse() ? TEXT_PRIMARY : TEXT_BUTTON_IDLE
+                        : TEXT_SECONDARY));
+        return button;
+    }
+
+    static ButtonWidget<?> dangerTextButton(ButtonWidget<?> button, int maxTextWidthPx, String translationKey) {
+        return dangerTextButton(button, maxTextWidthPx, translationKey, () -> true);
+    }
+
+    static ButtonWidget<?> dangerTextButton(ButtonWidget<?> button, int maxTextWidthPx, String translationKey,
+        BooleanSupplier enabled) {
+        button.background(underlined(BUTTON_IDLE))
+            .hoverBackground(underlined(() -> enabled.getAsBoolean() ? BUTTON_HOVER : BUTTON_IDLE));
+        button.overlay(
+            IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(GuiText.tr(translationKey), maxTextWidthPx))
+                .color(
+                    () -> enabled.getAsBoolean() ? button.isBelowMouse() ? TEXT_DANGER_HOVER : TEXT_DANGER
+                        : TEXT_SECONDARY));
         return button;
     }
 

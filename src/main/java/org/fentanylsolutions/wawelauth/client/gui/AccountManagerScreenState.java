@@ -27,6 +27,7 @@ final class AccountManagerScreenState {
     String pendingRemoveAccountName;
     String pendingProviderSettingsName;
     String pendingProviderProxyName;
+    String pendingProviderDeleteName;
     long pendingCredentialDeleteAccountId = -1L;
     String pendingCredentialDeleteAccountName;
     String pendingCredentialDeletePassword;
@@ -52,6 +53,7 @@ final class AccountManagerScreenState {
         this.pendingRemoveAccountName = null;
         this.pendingProviderSettingsName = null;
         this.pendingProviderProxyName = null;
+        this.pendingProviderDeleteName = null;
         this.pendingCredentialDeleteAccountId = -1L;
         this.pendingCredentialDeleteAccountName = null;
         this.pendingCredentialDeletePassword = null;
