@@ -9,6 +9,7 @@ import org.fentanylsolutions.wawelauth.client.WindowDropHandler;
 import org.fentanylsolutions.wawelauth.client.gui.GuiSkinCustomizationHandler;
 import org.fentanylsolutions.wawelauth.client.gui.LauncherImportPromptHandler;
 import org.fentanylsolutions.wawelauth.client.gui.WawelAuthKeybind;
+import org.fentanylsolutions.wawelauth.client.gui.WawelAuthTooltipStyle;
 import org.fentanylsolutions.wawelauth.client.render.SkinResolverClientHandler;
 import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeClientHandler;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
@@ -49,6 +50,7 @@ public class ClientProxy extends CommonProxy {
         GuiTransitionScheduler.register();
         AnimatedCapeClientHandler.register();
         SkinResolverClientHandler.register();
+        WawelAuthTooltipStyle.register();
 
         // Window drag-and-drop detection (lwjgl3ify check is inside FentLib)
         WindowDropHandler.register();
