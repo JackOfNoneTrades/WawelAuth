@@ -23,6 +23,7 @@ final class AccountManagerScreenState {
 
     long pendingRemoveAccountId = -1L;
     String pendingRemoveAccountName;
+    boolean pendingRemoveAccountOffline;
     String pendingProviderSettingsName;
     String pendingProviderProxyName;
     String pendingProviderDeleteName;
@@ -51,6 +52,7 @@ final class AccountManagerScreenState {
         this.connectedServerCapabilities = null;
         this.pendingRemoveAccountId = -1L;
         this.pendingRemoveAccountName = null;
+        this.pendingRemoveAccountOffline = false;
         this.pendingProviderSettingsName = null;
         this.pendingProviderProxyName = null;
         this.pendingProviderDeleteName = null;

@@ -1373,6 +1373,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             ? state.selectedAccount.getProfileName()
             : GuiText.tr("wawelauth.gui.account_manager.this_account");
         state.pendingRemoveAccountId = state.selectedAccount.getId();
+        state.pendingRemoveAccountOffline = isSelectedAccountOffline();
         this.removeAccountDialogHandler.deleteCachedPanel();
         this.removeAccountDialogHandler.openPanel();
     }
@@ -1382,7 +1383,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         dialog.setCloseOnOutOfBoundsClick(false);
 
         int dialogWidth = 260;
-        int dialogHeight = 94;
+        boolean offlineAccount = state.pendingRemoveAccountOffline;
+        int dialogHeight = offlineAccount ? 78 : 94;
         int rootPadding = 10;
         int buttonHeight = 18;
         int titleMaxWidthPx = dialogWidth - rootPadding * 2 - 4;
@@ -1395,6 +1397,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .onMousePressed(btn -> {
                 state.pendingRemoveAccountId = -1L;
                 state.pendingRemoveAccountName = null;
+                state.pendingRemoveAccountOffline = false;
                 dialog.closeIfOpen();
                 return true;
             });
@@ -1405,6 +1408,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .onMousePressed(btn -> {
                 state.pendingRemoveAccountId = -1L;
                 state.pendingRemoveAccountName = null;
+                state.pendingRemoveAccountOffline = false;
                 dialog.closeIfOpen();
                 doRemoveAccount(accountId);
                 return true;
@@ -1433,21 +1437,23 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                             .widthRel(1.0f)
                             .height(14)
                             .color(WawelAuthStyle.THEME_LIGHTER))
-            .child(new Widget<>().size(1, 6))
-            .child(
+            .child(new Widget<>().size(1, offlineAccount ? 16 : 6));
+        if (!offlineAccount) {
+            root.child(
                 new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.remove_warning"))
                     .color(WawelAuthStyle.TEXT_SECONDARY)
                     .scale(0.8f)
                     .widthRel(1.0f)
                     .height(10))
-            .child(new Widget<>().size(1, 10))
-            .child(
-                new Row().widthRel(1.0f)
-                    .height(buttonHeight)
-                    .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                    .child(cancelBtn)
-                    .child(new Widget<>().size(8, buttonHeight))
-                    .child(removeBtn));
+                .child(new Widget<>().size(1, 10));
+        }
+        root.child(
+            new Row().widthRel(1.0f)
+                .height(buttonHeight)
+                .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                .child(cancelBtn)
+                .child(new Widget<>().size(8, buttonHeight))
+                .child(removeBtn));
 
         WawelAuthStyle.dialog(dialog);
         dialog.size(dialogWidth, dialogHeight)

@@ -1949,12 +1949,12 @@ public class AccountManager {
         }
         accountDAO.update(account);
         if (skinFile != null && capeFile != null) {
-            return "Applied local offline skin and cape.";
+            return "Applied skin and cape.";
         }
         if (skinFile != null) {
-            return "Applied local offline skin.";
+            return "Applied skin.";
         }
-        return "Applied local offline cape.";
+        return "Applied cape.";
     }
 
 }
