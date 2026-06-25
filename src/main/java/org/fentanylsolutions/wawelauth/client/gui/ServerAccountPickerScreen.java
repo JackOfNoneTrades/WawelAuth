@@ -7,8 +7,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.IntSupplier;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.multiplayer.ServerAddress;
 import net.minecraft.client.multiplayer.ServerData;
 
@@ -70,6 +72,11 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
     private static final int ACCOUNT_LIST_MAX_VISIBLE_ROWS = 8;
     private static final int CONTENT_PADDING = 6;
     private static final int CONTENT_WIDTH_OFFSET = -CONTENT_PADDING * 2;
+    private static final int CLOSE_BUTTON_SIZE = 12;
+    private static final int CLOSE_ICON_SIZE = 7;
+    private static final int TITLE_WIDTH_OFFSET = CONTENT_WIDTH_OFFSET - CLOSE_BUTTON_SIZE - 4;
+    private static final IDrawable CLOSE_ICON = closeIcon(() -> WawelAuthStyle.TEXT_BUTTON_IDLE);
+    private static final IDrawable CLOSE_ICON_HOVER = closeIcon(() -> WawelAuthStyle.TEXT_PRIMARY);
     private static final int PICKER_PANEL_HEIGHT_SINGLEPLAYER = 204;
     private static final int PICKER_PANEL_HEIGHT_SERVER_ONLY = 202;
     private static final int PICKER_PANEL_HEIGHT_SERVER_WITH_LOCAL_AUTH = 246;
@@ -120,17 +127,19 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         if (targetServerData == null && !singleplayerMode) {
             ModularPanel panel = ModularPanel.defaultPanel("wawelauth_server_picker", 200, 80);
             WawelAuthStyle.dialog(panel);
-            return panel.child(
-                new Column().widthRel(1.0f)
-                    .heightRel(1.0f)
-                    .padding(CONTENT_PADDING)
-                    .background(IDrawable.EMPTY)
-                    .disableHoverBackground()
-                    .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.common.no_server_selected"))
-                            .widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
-                            .height(14)
-                            .color(WawelAuthStyle.THEME_LIGHTER)));
+            Column content = new Column();
+            content.widthRel(1.0f)
+                .heightRel(1.0f)
+                .padding(CONTENT_PADDING)
+                .background(IDrawable.EMPTY)
+                .disableHoverBackground()
+                .child(
+                    new TextWidget<>(GuiText.key("wawelauth.gui.common.no_server_selected"))
+                        .widthRelOffset(1.0f, TITLE_WIDTH_OFFSET)
+                        .height(14)
+                        .color(WawelAuthStyle.THEME_LIGHTER));
+            return panel.child(content)
+                .child(closeButton(panel));
         }
 
         WawelClient client = WawelClient.instance();
@@ -298,7 +307,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             .background(IDrawable.EMPTY)
             .disableHoverBackground();
         content.child(
-            new TextWidget<>(IKey.str(title)).widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
+            new TextWidget<>(IKey.str(title)).widthRelOffset(1.0f, TITLE_WIDTH_OFFSET)
                 .height(14)
                 .color(WawelAuthStyle.THEME_LIGHTER));
         content.child(accountList);
@@ -369,9 +378,40 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
                         .child(registerLocalBtn));
         }
 
-        panel.child(content);
+        panel.child(content)
+            .child(closeButton(panel));
 
         return panel;
+    }
+
+    private static ButtonWidget<?> closeButton(ModularPanel panel) {
+        ButtonWidget<?> button = new ButtonWidget<>();
+        WawelAuthStyle.iconButton(button);
+        button.size(CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE)
+            .right(CONTENT_PADDING)
+            .top(CONTENT_PADDING)
+            .background(IDrawable.EMPTY)
+            .hoverBackground(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_HOVER))
+            .overlay(CLOSE_ICON)
+            .hoverOverlay(CLOSE_ICON_HOVER)
+            .addTooltipLine(GuiText.tr("wawelauth.gui.common.close"))
+            .onMousePressed(mouseButton -> {
+                panel.closeIfOpen();
+                return true;
+            });
+        return button;
+    }
+
+    private static IDrawable closeIcon(IntSupplier color) {
+        return (context, x, y, width, height, widgetTheme) -> {
+            int left = x + (width - CLOSE_ICON_SIZE) / 2;
+            int top = y + (height - CLOSE_ICON_SIZE) / 2;
+            int argb = color.getAsInt();
+            for (int i = 0; i < CLOSE_ICON_SIZE; i++) {
+                Gui.drawRect(left + i, top + i, left + i + 1, top + i + 1, argb);
+                Gui.drawRect(left + CLOSE_ICON_SIZE - 1 - i, top + i, left + CLOSE_ICON_SIZE - i, top + i + 1, argb);
+            }
+        };
     }
 
     private static void openLocalAuthAction(ServerData targetServerData, ServerCapabilities capabilities,
