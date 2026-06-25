@@ -3,6 +3,7 @@ package org.fentanylsolutions.wawelauth.client.gui;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
@@ -100,6 +101,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private static final long STATUS_UI_REFRESH_INTERVAL_MS = 1000L;
+    private static final AtomicBoolean TEXTURE_FILE_PICKER_OPEN = new AtomicBoolean(false);
     private static final int TEXTURE_STATUS_MAX_WIDTH_PX = 212;
     private static final int DETAIL_PRIMARY_TEXT_COLOR = WawelAuthStyle.TEXT_PRIMARY;
     private static final int DETAIL_SECONDARY_TEXT_COLOR = WawelAuthStyle.TEXT_SECONDARY;
@@ -1667,12 +1669,51 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             state.textureUploadStatus = selectedTextureAccountMissingMessage();
             return;
         }
-        String label = GuiText.tr(skin ? "wawelauth.gui.account_manager.skin" : "wawelauth.gui.account_manager.cape");
-        FileUtil.FilePickerResult result = FileUtil.pickFile(
-            GuiText.tr("wawelauth.gui.account_manager.select_texture_image", label),
-            getTexturePickerInitialDirectory(skin));
 
-        if (result.getStatus() == FileUtil.FilePickerResult.Status.SELECTED) {
+        String label = GuiText.tr(skin ? "wawelauth.gui.account_manager.skin" : "wawelauth.gui.account_manager.cape");
+        String title = GuiText.tr("wawelauth.gui.account_manager.select_texture_image", label);
+        if (!TEXTURE_FILE_PICKER_OPEN.compareAndSet(false, true)) {
+            state.textureUploadStatus = title + "...";
+            return;
+        }
+        File initialDirectory = getTexturePickerInitialDirectory(skin);
+        long accountId = state.selectedAccount.getId();
+        long requestId = ++state.textureFilePickerRequestId;
+        state.textureUploadStatus = title + "...";
+
+        Thread pickerThread = new Thread(() -> {
+            FileUtil.FilePickerResult result;
+            try {
+                result = FileUtil.pickFile(title, initialDirectory);
+            } catch (Throwable t) {
+                WawelAuth.LOG.warn("Texture file picker failed", t);
+                result = null;
+            }
+            final FileUtil.FilePickerResult pickerResult = result;
+            Minecraft.getMinecraft()
+                .func_152344_a(() -> handleTextureFilePickerResult(skin, accountId, requestId, pickerResult));
+        }, "WawelAuth-TextureFilePicker");
+        pickerThread.setDaemon(true);
+        pickerThread.start();
+    }
+
+    private void handleTextureFilePickerResult(boolean skin, long accountId, long requestId,
+        FileUtil.FilePickerResult result) {
+        if (requestId != state.textureFilePickerRequestId) {
+            TEXTURE_FILE_PICKER_OPEN.set(false);
+            return;
+        }
+        TEXTURE_FILE_PICKER_OPEN.set(false);
+
+        if (!isActive()) {
+            return;
+        }
+
+        if (!hasSelectedTextureAccount() || state.selectedAccount.getId() != accountId) {
+            return;
+        }
+
+        if (result != null && result.getStatus() == FileUtil.FilePickerResult.Status.SELECTED) {
             File picked = result.getFile();
             if (skin) {
                 state.selectedSkinFile = picked;
@@ -1684,16 +1725,19 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return;
         }
 
-        if (result.getStatus() == FileUtil.FilePickerResult.Status.CANCELLED) {
+        if (result != null && result.getStatus() == FileUtil.FilePickerResult.Status.CANCELLED) {
+            state.textureUploadStatus = "";
             return;
         }
 
-        String message = result.getMessage();
+        String message = result != null ? result.getMessage() : null;
         if (message == null || message.trim()
             .isEmpty()) {
             message = GuiText.tr("wawelauth.gui.account_manager.file_picker_fallback");
         }
-        WawelAuth.LOG.warn("Texture file picker failed ({}): {}", result.getStatus(), message);
+        if (result != null) {
+            WawelAuth.LOG.warn("Texture file picker failed ({}): {}", result.getStatus(), message);
+        }
         state.textureUploadStatus = message;
         openTexturePathDialog(skin);
     }

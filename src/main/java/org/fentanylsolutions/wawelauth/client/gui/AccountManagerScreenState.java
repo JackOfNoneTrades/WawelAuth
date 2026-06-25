@@ -35,6 +35,7 @@ final class AccountManagerScreenState {
     File selectedSkinFile;
     File selectedCapeFile;
     String textureUploadStatus = "";
+    long textureFilePickerRequestId;
     boolean pendingTextureUploadSkin;
     File pendingTextureUploadFile;
     boolean pendingTextureUploadSlim;
@@ -61,6 +62,7 @@ final class AccountManagerScreenState {
         this.selectedSkinFile = null;
         this.selectedCapeFile = null;
         this.textureUploadStatus = "";
+        this.textureFilePickerRequestId++;
         this.pendingTextureUploadSkin = true;
         this.pendingTextureUploadFile = null;
         this.pendingTextureUploadSlim = true;
