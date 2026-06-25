@@ -42,7 +42,7 @@ import com.google.gson.JsonParser;
 /**
  * Manages authentication providers.
  * <p>
- * Ensures local config-backed default providers plus the special offline
+ * Ensures config-backed default providers plus the special offline
  * provider exist. Provides methods to add custom providers (with ALI
  * discovery) and remove them.
  */
@@ -147,7 +147,7 @@ public class ProviderRegistry {
         ClientProvider existing = providerDAO.findByName(desired.getName());
         if (existing == null) {
             providerDAO.create(desired);
-            WawelAuth.LOG.info("Created default provider '{}' from local config", desired.getName());
+            WawelAuth.LOG.info("Created default provider '{}' from default provider config", desired.getName());
             return;
         }
 
@@ -661,9 +661,12 @@ public class ProviderRegistry {
     }
 
     private static File ensureDefaultProviderDirectory() {
-        File root = Config.getLocalConfigDir();
+        File root = Config.getDataConfigDir();
         if (root == null) {
             root = Config.getConfigDir();
+        }
+        if (root == null) {
+            root = Config.getLocalConfigDir();
         }
         File directory = new File(root, DEFAULT_PROVIDER_DIR_NAME);
         if (!directory.exists() && !directory.mkdirs()) {
