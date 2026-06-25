@@ -18,6 +18,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.Rectangle;
+import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.widget.Widget;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ListWidget;
@@ -138,11 +139,12 @@ final class AccountManagerAccountListPanel {
             Rectangle dotFillRect = new Rectangle().color(statusColor);
             NonHoverableWidget dotFill = new NonHoverableWidget();
             dotFill.size(6, 6)
-                .margin(1, 1)
                 .background(dotFillRect);
 
-            dot.size(8, 8);
-            dot.margin(1, 3);
+            dot.size(8, 8)
+                .margin(1, 0)
+                .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER);
             dot.background(dotBorderRect);
             dot.child(dotFill);
             accountStatusDots.put(account.getId(), dotFillRect);
@@ -166,14 +168,15 @@ final class AccountManagerAccountListPanel {
                 }
             };
             row.widthRel(1.0f)
-                .heightRel(1.0f);
-            row.child(nonHoverable(2, ACCOUNT_ROW_HEIGHT));
+                .heightRel(1.0f)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER);
+            row.child(nonHoverable(2, 1));
             if (account.getProfileUuid() != null) {
                 row.child(createAccountFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
-                row.child(nonHoverable(2, ACCOUNT_ROW_HEIGHT));
+                row.child(nonHoverable(2, 1));
             }
             row.child(dot);
-            row.child(nonHoverable(2, ACCOUNT_ROW_HEIGHT));
+            row.child(nonHoverable(2, 1));
             row.child(nameLabel);
 
             entry.child(row);
@@ -254,8 +257,7 @@ final class AccountManagerAccountListPanel {
     }
 
     private Widget<?> createAccountFaceWidget(String displayName, UUID profileUuid, String providerName) {
-        return new FaceWidget(displayName, profileUuid, providerName).size(8, 8)
-            .margin(0, 3);
+        return new FaceWidget(displayName, profileUuid, providerName).size(8, 8);
     }
 
     private void ensureStatusCaches() {

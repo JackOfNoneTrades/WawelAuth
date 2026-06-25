@@ -37,6 +37,7 @@ import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
+import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.widget.Widget;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.Dialog;
@@ -67,6 +68,8 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
     private static final int ACCOUNT_ENTRY_HEIGHT = 16;
     private static final int ACCOUNT_LIST_TOP_MARGIN = 4;
     private static final int ACCOUNT_LIST_MAX_VISIBLE_ROWS = 8;
+    private static final int CONTENT_PADDING = 6;
+    private static final int CONTENT_WIDTH_OFFSET = -CONTENT_PADDING * 2;
     private static final int PICKER_PANEL_HEIGHT_SINGLEPLAYER = 204;
     private static final int PICKER_PANEL_HEIGHT_SERVER_ONLY = 202;
     private static final int PICKER_PANEL_HEIGHT_SERVER_WITH_LOCAL_AUTH = 246;
@@ -120,11 +123,12 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             return panel.child(
                 new Column().widthRel(1.0f)
                     .heightRel(1.0f)
-                    .padding(6)
+                    .padding(CONTENT_PADDING)
                     .background(IDrawable.EMPTY)
                     .disableHoverBackground()
                     .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.common.no_server_selected")).widthRel(1.0f)
+                        new TextWidget<>(GuiText.key("wawelauth.gui.common.no_server_selected"))
+                            .widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
                             .height(14)
                             .color(WawelAuthStyle.THEME_LIGHTER)));
         }
@@ -233,7 +237,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
 
         ListWidget<IWidget, ?> accountList = new ListWidget<>();
         WawelAuthStyle.styleList(accountList);
-        accountList.widthRel(1.0f)
+        accountList.widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
             .height(listHeight);
 
         if (singleplayerMode) {
@@ -263,7 +267,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         accountList.margin(0, ACCOUNT_LIST_TOP_MARGIN);
 
         ButtonWidget<?> manageLocalAuthBtn = new ButtonWidget<>();
-        manageLocalAuthBtn.widthRel(1.0f)
+        manageLocalAuthBtn.widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
             .height(18)
             .margin(0, 3, 0, 0)
             .onMousePressed(mouseButton -> {
@@ -274,7 +278,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         manageLocalAuthBtn.setEnabled(localAuthAvailable);
 
         ButtonWidget<?> serverProxyBtn = new ButtonWidget<>();
-        serverProxyBtn.widthRel(1.0f)
+        serverProxyBtn.widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
             .height(18)
             .margin(0, 3, 0, 0)
             .onMousePressed(mouseButton -> {
@@ -290,23 +294,23 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         Column content = new Column();
         content.widthRel(1.0f)
             .heightRel(1.0f)
-            .padding(6)
+            .padding(CONTENT_PADDING)
             .background(IDrawable.EMPTY)
             .disableHoverBackground();
         content.child(
-            new TextWidget<>(IKey.str(title)).widthRel(1.0f)
+            new TextWidget<>(IKey.str(title)).widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
                 .height(14)
                 .color(WawelAuthStyle.THEME_LIGHTER));
         content.child(accountList);
         if (statusMessage != null && !statusMessage.isEmpty()) {
             content.child(
                 new TextWidget<>(IKey.str(statusMessage)).color(WawelAuthStyle.SUCCESS)
-                    .widthRel(1.0f)
+                    .widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
                     .height(10)
                     .margin(0, 2));
         }
         ButtonWidget<?> manageAccountsBtn = new ButtonWidget<>();
-        manageAccountsBtn.widthRel(1.0f)
+        manageAccountsBtn.widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
             .height(18)
             .onMousePressed(mouseButton -> {
                 GuiTransitionScheduler.transition(panel, () -> ClientGUI.open(new AccountManagerScreen()));
@@ -358,7 +362,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
 
             content.child(new Widget<>().size(1, 3))
                 .child(
-                    new Row().widthRel(1.0f)
+                    new Row().widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
                         .height(20)
                         .child(loginLocalBtn)
                         .child(new Widget<>().size(6, 18))
@@ -533,11 +537,11 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             }
         };
         dot.size(8, 8)
-            .margin(1, 4)
+            .margin(1, 0)
+            .mainAxisAlignment(Alignment.MainAxis.CENTER)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(new Rectangle().color(0xFF2A2A2A))
-            .child(
-                nonHoverable(6, 6).margin(1, 1)
-                    .background(new Rectangle().color(statusColor)));
+            .child(nonHoverable(6, 6).background(new Rectangle().color(statusColor)));
 
         String fullLabel = profileName;
         String displayLabel = GuiText.ellipsizeToPixelWidth(fullLabel, ACCOUNT_LABEL_MAX_WIDTH_PX);
@@ -566,13 +570,14 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         };
         innerRow.widthRel(1.0f)
             .heightRel(1.0f)
-            .child(nonHoverable(2, ACCOUNT_ENTRY_HEIGHT));
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .child(nonHoverable(2, 1));
         if (account.getProfileUuid() != null) {
             innerRow.child(createFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
-            innerRow.child(nonHoverable(2, ACCOUNT_ENTRY_HEIGHT));
+            innerRow.child(nonHoverable(2, 1));
         }
         innerRow.child(dot)
-            .child(nonHoverable(2, ACCOUNT_ENTRY_HEIGHT))
+            .child(nonHoverable(2, 1))
             .child(label);
 
         selectButton.child(innerRow);
@@ -600,8 +605,9 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         Row entryRow = new Row();
         entryRow.widthRel(1.0f)
             .height(ACCOUNT_ENTRY_HEIGHT)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .child(selectButton)
-            .child(new Widget<>().size(1, ACCOUNT_ENTRY_HEIGHT))
+            .child(new Widget<>().size(1, 1))
             .child(manageButton);
 
         return entryRow;
@@ -638,7 +644,8 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         Row row = new Row();
         row.widthRel(1.0f)
             .heightRel(1.0f)
-            .child(new Widget<>().size(2, 16))
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .child(new Widget<>().size(2, 1))
             .child(label);
 
         entry.child(row);
@@ -690,8 +697,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
     }
 
     private static Widget<?> createFaceWidget(String displayName, java.util.UUID profileUuid, String providerName) {
-        return new FaceWidget(displayName, profileUuid, providerName).size(8, 8)
-            .margin(0, 4);
+        return new FaceWidget(displayName, profileUuid, providerName).size(8, 8);
     }
 
 }

@@ -23,12 +23,14 @@ public class PasswordInputWidget extends ParentWidget<PasswordInputWidget> {
     private static final ColorType PASSWORD_EYE_ICON_HOVER_COLOR_TYPE = new ColorType(
         "wawelauth:password_eye_icon_hover",
         theme -> WawelAuthStyle.TEXT_PRIMARY);
-    private static final IDrawable EYE_OPEN_ICON = centeredIcon(passwordEyeIcon(0, PASSWORD_EYE_ICON_COLOR_TYPE));
+    private static final IDrawable EYE_OPEN_ICON = centeredIcon(
+        passwordEyeIcon(0, "open", PASSWORD_EYE_ICON_COLOR_TYPE));
     private static final IDrawable EYE_OPEN_ICON_HOVER = centeredIcon(
-        passwordEyeIcon(0, PASSWORD_EYE_ICON_HOVER_COLOR_TYPE));
-    private static final IDrawable EYE_CLOSED_ICON = centeredIcon(passwordEyeIcon(1, PASSWORD_EYE_ICON_COLOR_TYPE));
+        passwordEyeIcon(0, "open_hover", PASSWORD_EYE_ICON_HOVER_COLOR_TYPE));
+    private static final IDrawable EYE_CLOSED_ICON = centeredIcon(
+        passwordEyeIcon(1, "closed", PASSWORD_EYE_ICON_COLOR_TYPE));
     private static final IDrawable EYE_CLOSED_ICON_HOVER = centeredIcon(
-        passwordEyeIcon(1, PASSWORD_EYE_ICON_HOVER_COLOR_TYPE));
+        passwordEyeIcon(1, "closed_hover", PASSWORD_EYE_ICON_HOVER_COLOR_TYPE));
 
     private final PasswordFieldWidget field;
     private final ButtonWidget<?> toggleButton;
@@ -66,7 +68,7 @@ public class PasswordInputWidget extends ParentWidget<PasswordInputWidget> {
             .hoverOverlay(hoverIcon);
     }
 
-    private static IDrawable passwordEyeIcon(int index, ColorType colorType) {
+    private static IDrawable passwordEyeIcon(int index, String variant, ColorType colorType) {
         return UITexture.builder()
             .location("wawelauth", "gui/password_eye")
             .imageSize(PASSWORD_EYE_ICON_SHEET_WIDTH, PASSWORD_EYE_ICON_SOURCE_SIZE)
@@ -77,7 +79,7 @@ public class PasswordInputWidget extends ParentWidget<PasswordInputWidget> {
                 PASSWORD_EYE_ICON_SOURCE_SIZE,
                 PASSWORD_EYE_ICON_SOURCE_SIZE)
             .nonOpaque()
-            .name("wawelauth:password_eye_" + index)
+            .name("wawelauth:password_eye_" + variant)
             .build();
     }
 

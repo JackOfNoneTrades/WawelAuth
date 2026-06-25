@@ -52,8 +52,9 @@ public final class RegisterDialog {
     private static final ColorType PASTE_ICON_HOVER_COLOR_TYPE = new ColorType(
         "wawelauth:clipboard_note_icon_hover",
         theme -> WawelAuthStyle.TEXT_PRIMARY);
-    private static final IDrawable PASTE_ICON = centeredPasteIcon(clipboardNoteIcon(PASTE_ICON_COLOR_TYPE));
-    private static final IDrawable PASTE_ICON_HOVER = centeredPasteIcon(clipboardNoteIcon(PASTE_ICON_HOVER_COLOR_TYPE));
+    private static final IDrawable PASTE_ICON = centeredPasteIcon(clipboardNoteIcon("idle", PASTE_ICON_COLOR_TYPE));
+    private static final IDrawable PASTE_ICON_HOVER = centeredPasteIcon(
+        clipboardNoteIcon("hover", PASTE_ICON_HOVER_COLOR_TYPE));
 
     private final Consumer<Boolean> onResult;
     private final IPanelHandler panelHandler;
@@ -299,13 +300,13 @@ public final class RegisterDialog {
             .matches() ? trimmed : null;
     }
 
-    private static IDrawable clipboardNoteIcon(ColorType colorType) {
+    private static IDrawable clipboardNoteIcon(String variant, ColorType colorType) {
         return UITexture.builder()
             .location("wawelauth", "gui/clipboard-note")
             .imageSize(PASTE_ICON_SOURCE_SIZE, PASTE_ICON_SOURCE_SIZE)
             .colorType(colorType)
             .nonOpaque()
-            .name("wawelauth:clipboard_note")
+            .name("wawelauth:clipboard_note_" + variant)
             .build();
     }
 

@@ -244,74 +244,118 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final IDrawable PREVIEW_MODE_ELYTRA_ICON_HOVER = centeredIcon(
         previewModeTexture("elytra", ACCOUNT_ACTION_ICON_HOVER_COLOR_TYPE),
         PREVIEW_MODE_ICON_SIZE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_ICON = textureActionTexture(
+        "player_model_wide",
+        "idle",
+        TEXTURE_ACTION_ICON_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_HOVER_ICON = textureActionTexture(
+        "player_model_wide",
+        "hover",
+        TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_DIM_ICON = textureActionTexture(
+        "player_model_wide",
+        "dim",
+        TEXTURE_ACTION_ICON_DIM_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_DANGER_ICON = textureActionTexture(
+        "player_model_wide",
+        "danger",
+        TEXTURE_ACTION_ICON_DANGER_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_DANGER_HOVER_ICON = textureActionTexture(
+        "player_model_wide",
+        "danger_hover",
+        TEXTURE_ACTION_ICON_DANGER_HOVER_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_CAPE_ICON = textureActionTexture(
+        "player_model_wide_cape",
+        "idle",
+        TEXTURE_ACTION_ICON_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_CAPE_HOVER_ICON = textureActionTexture(
+        "player_model_wide_cape",
+        "hover",
+        TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_CAPE_GREY_ICON = textureActionTexture(
+        "player_model_wide_cape_grey",
+        "idle",
+        TEXTURE_ACTION_ICON_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_CAPE_GREY_HOVER_ICON = textureActionTexture(
+        "player_model_wide_cape_grey",
+        "hover",
+        TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_CAPE_GREY_DANGER_ICON = textureActionTexture(
+        "player_model_wide_cape_grey",
+        "danger",
+        TEXTURE_ACTION_ICON_DANGER_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_WIDE_CAPE_GREY_DANGER_HOVER_ICON = textureActionTexture(
+        "player_model_wide_cape_grey",
+        "danger_hover",
+        TEXTURE_ACTION_ICON_DANGER_HOVER_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_SLIM_HOVER_ICON = textureActionTexture(
+        "player_model_slim",
+        "hover",
+        TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE);
+    private static final IDrawable TEXTURE_PLAYER_SLIM_DIM_ICON = textureActionTexture(
+        "player_model_slim",
+        "dim",
+        TEXTURE_ACTION_ICON_DIM_COLOR_TYPE);
     private static final IDrawable TEXTURE_SKIN_ICON = centeredIcon(
-        textureActionTexture("player_model_wide", TEXTURE_ACTION_ICON_COLOR_TYPE),
+        TEXTURE_PLAYER_WIDE_ICON,
         TEXTURE_ACTION_ICON_WIDTH,
         TEXTURE_ACTION_ICON_HEIGHT);
     private static final IDrawable TEXTURE_SKIN_ICON_HOVER = centeredIcon(
-        textureActionTexture("player_model_wide", TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE),
+        TEXTURE_PLAYER_WIDE_HOVER_ICON,
         TEXTURE_ACTION_ICON_WIDTH,
         TEXTURE_ACTION_ICON_HEIGHT);
     private static final IDrawable TEXTURE_CAPE_ICON = centeredIcon(
-        textureActionTexture("player_model_wide_cape", TEXTURE_ACTION_ICON_COLOR_TYPE),
+        TEXTURE_PLAYER_WIDE_CAPE_ICON,
         TEXTURE_ACTION_ICON_WIDTH,
         TEXTURE_ACTION_ICON_HEIGHT);
     private static final IDrawable TEXTURE_CAPE_ICON_HOVER = centeredIcon(
-        textureActionTexture("player_model_wide_cape", TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE),
+        TEXTURE_PLAYER_WIDE_CAPE_HOVER_ICON,
         TEXTURE_ACTION_ICON_WIDTH,
         TEXTURE_ACTION_ICON_HEIGHT);
     private static final IDrawable TEXTURE_SKIN_RESET_ICON = centeredIcon(
-        layeredTexture(
-            textureActionTexture("player_model_wide", TEXTURE_ACTION_ICON_COLOR_TYPE),
-            textureActionTexture("player_model_wide", TEXTURE_ACTION_ICON_DANGER_COLOR_TYPE)),
+        layeredTexture(TEXTURE_PLAYER_WIDE_ICON, TEXTURE_PLAYER_WIDE_DANGER_ICON),
         TEXTURE_ACTION_ICON_WIDTH,
         TEXTURE_ACTION_ICON_HEIGHT,
         0,
         0);
     private static final IDrawable TEXTURE_SKIN_RESET_ICON_HOVER = centeredIcon(
-        layeredTexture(
-            textureActionTexture("player_model_wide", TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE),
-            textureActionTexture("player_model_wide", TEXTURE_ACTION_ICON_DANGER_HOVER_COLOR_TYPE)),
+        layeredTexture(TEXTURE_PLAYER_WIDE_HOVER_ICON, TEXTURE_PLAYER_WIDE_DANGER_HOVER_ICON),
         TEXTURE_ACTION_ICON_WIDTH,
         TEXTURE_ACTION_ICON_HEIGHT,
         0,
         0);
     private static final IDrawable TEXTURE_CAPE_RESET_ICON = centeredIcon(
-        layeredTexture(
-            textureActionTexture("player_model_wide_cape_grey", TEXTURE_ACTION_ICON_COLOR_TYPE),
-            textureActionTexture("player_model_wide_cape_grey", TEXTURE_ACTION_ICON_DANGER_COLOR_TYPE)),
+        layeredTexture(TEXTURE_PLAYER_WIDE_CAPE_GREY_ICON, TEXTURE_PLAYER_WIDE_CAPE_GREY_DANGER_ICON),
         TEXTURE_ACTION_ICON_WIDTH,
         TEXTURE_ACTION_ICON_HEIGHT,
         0,
         0);
     private static final IDrawable TEXTURE_CAPE_RESET_ICON_HOVER = centeredIcon(
-        layeredTexture(
-            textureActionTexture("player_model_wide_cape_grey", TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE),
-            textureActionTexture("player_model_wide_cape_grey", TEXTURE_ACTION_ICON_DANGER_HOVER_COLOR_TYPE)),
+        layeredTexture(TEXTURE_PLAYER_WIDE_CAPE_GREY_HOVER_ICON, TEXTURE_PLAYER_WIDE_CAPE_GREY_DANGER_HOVER_ICON),
         TEXTURE_ACTION_ICON_WIDTH,
         TEXTURE_ACTION_ICON_HEIGHT,
         0,
         0);
     private static final IDrawable TEXTURE_MODEL_CLASSIC_ICON = centeredIcon(
-        textureActionTexture("player_model_wide", TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE),
+        TEXTURE_PLAYER_WIDE_HOVER_ICON,
         TEXTURE_MODEL_ICON_WIDTH,
         TEXTURE_MODEL_ICON_HEIGHT,
         TEXTURE_MODEL_ICON_OFFSET_X,
         TEXTURE_MODEL_ICON_OFFSET_Y);
     private static final IDrawable TEXTURE_MODEL_CLASSIC_DIM_ICON = centeredIcon(
-        textureActionTexture("player_model_wide", TEXTURE_ACTION_ICON_DIM_COLOR_TYPE),
+        TEXTURE_PLAYER_WIDE_DIM_ICON,
         TEXTURE_MODEL_ICON_WIDTH,
         TEXTURE_MODEL_ICON_HEIGHT,
         TEXTURE_MODEL_ICON_OFFSET_X,
         TEXTURE_MODEL_ICON_OFFSET_Y);
     private static final IDrawable TEXTURE_MODEL_SLIM_ICON = centeredIcon(
-        textureActionTexture("player_model_slim", TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE),
+        TEXTURE_PLAYER_SLIM_HOVER_ICON,
         TEXTURE_MODEL_ICON_WIDTH,
         TEXTURE_MODEL_ICON_HEIGHT,
         TEXTURE_MODEL_ICON_OFFSET_X,
         TEXTURE_MODEL_ICON_OFFSET_Y);
     private static final IDrawable TEXTURE_MODEL_SLIM_DIM_ICON = centeredIcon(
-        textureActionTexture("player_model_slim", TEXTURE_ACTION_ICON_DIM_COLOR_TYPE),
+        TEXTURE_PLAYER_SLIM_DIM_ICON,
         TEXTURE_MODEL_ICON_WIDTH,
         TEXTURE_MODEL_ICON_HEIGHT,
         TEXTURE_MODEL_ICON_OFFSET_X,
@@ -740,7 +784,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .height(17)
                     .collapseDisabledChild()
                     .child(accountActionsRow())
-                    .child(new Widget<>().expanded())
+                    .child(
+                        new Widget<>().expanded()
+                            .height(1))
                     .mainAxisAlignment(Alignment.MainAxis.END)
                     .child(
                         textButton(new ButtonWidget<>().size(52, ACCOUNT_ACTION_BUTTON_SIZE), 44, "gui.done")
@@ -1075,15 +1121,13 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .build();
     }
 
-    private static IDrawable textureActionTexture(String name, ColorType colorType) {
+    private static IDrawable textureActionTexture(String name, String variant, ColorType colorType) {
         return UITexture.builder()
             .location("wawelauth", name)
             .fullImage()
             .colorType(colorType)
             .nonOpaque()
-            .name(
-                "wawelauth:texture_action_" + name
-                    + (colorType == TEXTURE_ACTION_ICON_HOVER_COLOR_TYPE ? "_hover" : ""))
+            .name("wawelauth:texture_action_" + name + "_" + variant)
             .build();
     }
 

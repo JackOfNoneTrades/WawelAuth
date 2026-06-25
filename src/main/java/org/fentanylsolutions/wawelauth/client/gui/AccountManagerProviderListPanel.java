@@ -303,7 +303,7 @@ final class AccountManagerProviderListPanel {
         selectContent.child(providerLabel);
 
         if (builtInProvider) {
-            selectContent.child(nonHoverable(1, PROVIDER_ROW_HEIGHT))
+            selectContent.child(nonHoverable(1, 1))
                 .child(builtInProviderBadge(providerCurrentTextColor));
         }
         selectButton.child(selectContent);
@@ -343,8 +343,9 @@ final class AccountManagerProviderListPanel {
         };
         providerRow.widthRel(1.0f)
             .height(14)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .child(settingsButton)
-            .child(nonHoverable(1, 14))
+            .child(nonHoverable(1, 1))
             .child(selectButton);
 
         providerList.child(providerRow);
