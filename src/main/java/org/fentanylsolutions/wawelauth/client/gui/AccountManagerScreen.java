@@ -390,7 +390,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private ModularPanel mainPanel;
     private AccountManagerProviderListPanel providerListPanel;
     private AccountManagerAccountListPanel accountListPanel;
-    private final VanillaPanoramaBackdrop panoramaBackdrop = new VanillaPanoramaBackdrop();
+    private final VanillaPanoramaBackdrop panoramaBackdrop = new VanillaPanoramaBackdrop(Minecraft.getMinecraft());
 
     public AccountManagerScreen() {
         super("wawelauth");
@@ -402,12 +402,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         if (Minecraft.getMinecraft().theWorld != null) {
             return false;
         }
-
-        boolean drewPanorama = panoramaBackdrop.draw(getContext().getPartialTicks());
-        if (drewPanorama) {
-            drawPanoramaDim();
-        }
-        return drewPanorama;
+        panoramaBackdrop.draw(getContext().getPartialTicks());
+        drawPanoramaDim();
+        return true;
     }
 
     private AccountManagerScreenState state() {

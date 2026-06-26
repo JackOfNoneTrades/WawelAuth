@@ -68,6 +68,10 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.CLIENT)
             .build();
+        registry.mixin("AccessorGuiMainMenu")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
 
         // Client Mixins: session handoff + server data extension
         registry.mixin("MixinGuiConnecting")
