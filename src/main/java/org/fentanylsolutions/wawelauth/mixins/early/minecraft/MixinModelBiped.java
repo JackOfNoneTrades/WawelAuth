@@ -1,8 +1,5 @@
 package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 import net.minecraft.client.model.ModelBase;
@@ -126,19 +123,17 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
         this.bipedBody.addBox(-4.0F, 0.0F, -2.0F, 8, 12, 4, scale);
 
         this.remapUV(bipedRightArm, 40, 16);
-
+        this.bipedRightArm.addBox(0.0F, 0.0F, 0.0F, 1, 1, 1, 0.0F);
         this.classicRightArm = new ModelRenderer(self, 40, 16);
         this.classicRightArm.addBox(-3.0F, -2.0F, -2.0F, 4, 12, 4, scale);
-
         this.slimRightArm = new ModelRenderer(self, 40, 16);
         this.slimRightArm.addBox(-2.0F, -2.0F, -2.0F, 3, 12, 4, scale);
         this.slimRightArm.setRotationPoint(0.0F, 0.5F, 0.0F);
 
         this.remapUV(bipedLeftArm, 32, 48);
-
+        this.bipedLeftArm.addBox(0.0F, 0.0F, 0.0F, 1, 1, 1, 0.0F);
         this.classicLeftArm = new ModelRenderer(self, 32, 48);
         this.classicLeftArm.addBox(-1.0F, -2.0F, -2.0F, 4, 12, 4, scale);
-
         this.slimLeftArm = new ModelRenderer(self, 32, 48);
         this.slimLeftArm.addBox(-1.0F, -2.0F, -2.0F, 3, 12, 4, scale);
         this.slimLeftArm.setRotationPoint(0.0F, 0.5F, 0.0F);
@@ -159,14 +154,12 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
 
         this.classicRightArmWear = new ModelRenderer(self, 40, 32);
         this.classicRightArmWear.addBox(-3.0F, -2.0F, -2.0F, 4, 12, 4, scale + overlay);
-
         this.slimRightArmWear = new ModelRenderer(self, 40, 32);
         this.slimRightArmWear.addBox(-2.0F, -2.0F, -2.0F, 3, 12, 4, scale + overlay);
         this.slimRightArmWear.setRotationPoint(0.0F, 0.5F, 0.0F);
 
         this.classicLeftArmWear = new ModelRenderer(self, 48, 48);
         this.classicLeftArmWear.addBox(-1.0F, -2.0F, -2.0F, 4, 12, 4, scale + overlay);
-
         this.slimLeftArmWear = new ModelRenderer(self, 48, 48);
         this.slimLeftArmWear.addBox(-1.0F, -2.0F, -2.0F, 3, 12, 4, scale + overlay);
         this.slimLeftArmWear.setRotationPoint(0.0F, 0.5F, 0.0F);
@@ -201,12 +194,9 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     @Override
     public void setSlim(boolean slim) {
         if (!this.modernEnabled) return;
-
         this.currentSlim = slim;
-
         this.classicRightArm.showModel = !slim;
         this.classicLeftArm.showModel = !slim;
-
         this.slimRightArm.showModel = slim;
         this.slimLeftArm.showModel = slim;
     }
@@ -492,22 +482,6 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     @Override
     public ModelRenderer getLeftLegWear() {
         return this.leftLegWear;
-    }
-
-    @Override
-    public ModelRenderer getRandomModelBox(Random random) {
-        List<ModelRenderer> validParts = new ArrayList<>();
-        for (ModelRenderer mr : this.boxList) {
-            if (mr.cubeList != null && !mr.cubeList.isEmpty() && mr.showModel) {
-                validParts.add(mr);
-            }
-        }
-        if (validParts.isEmpty()) {
-            ModelRenderer dummy = new ModelRenderer(this);
-            dummy.addBox(0, 0, 0, 1, 1, 1);
-            return dummy;
-        }
-        return validParts.get(random.nextInt(validParts.size()));
     }
 
 }
