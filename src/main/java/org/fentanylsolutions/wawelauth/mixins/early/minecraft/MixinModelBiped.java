@@ -1,5 +1,8 @@
 package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 import net.minecraft.client.model.ModelBase;
@@ -489,6 +492,22 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     @Override
     public ModelRenderer getLeftLegWear() {
         return this.leftLegWear;
+    }
+
+    @Override
+    public ModelRenderer getRandomModelBox(Random random) {
+        List<ModelRenderer> validParts = new ArrayList<>();
+        for (ModelRenderer mr : this.boxList) {
+            if (mr.cubeList != null && !mr.cubeList.isEmpty() && mr.showModel) {
+                validParts.add(mr);
+            }
+        }
+        if (validParts.isEmpty()) {
+            ModelRenderer dummy = new ModelRenderer(this);
+            dummy.addBox(0, 0, 0, 1, 1, 1);
+            return dummy;
+        }
+        return validParts.get(random.nextInt(validParts.size()));
     }
 
 }
