@@ -18,6 +18,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
 
+import org.fentanylsolutions.fentlib.gui.PanoramaOverlayRenderer;
 import org.fentanylsolutions.fentlib.util.FileUtil;
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.WawelAuth;
@@ -403,7 +404,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return false;
         }
         panoramaBackdrop.draw(getContext().getPartialTicks());
-        drawPanoramaDim();
+        drawPanoramaOverlay();
         return true;
     }
 
@@ -1282,10 +1283,14 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         refreshVisibleStatuses();
     }
 
-    private void drawPanoramaDim() {
+    private void drawPanoramaOverlay() {
         Minecraft mc = Minecraft.getMinecraft();
         ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
-        Gui.drawRect(0, 0, resolution.getScaledWidth(), resolution.getScaledHeight(), PANORAMA_DIM_COLOR);
+        int width = resolution.getScaledWidth();
+        int height = resolution.getScaledHeight();
+        if (!PanoramaOverlayRenderer.drawMilkyPanorama(width, height)) {
+            Gui.drawRect(0, 0, width, height, PANORAMA_DIM_COLOR);
+        }
     }
 
     private void selectProvider(ClientProvider provider) {
