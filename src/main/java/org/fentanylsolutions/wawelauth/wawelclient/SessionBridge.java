@@ -58,8 +58,8 @@ public class SessionBridge {
     private final AccountManager accountManager;
     private final ExecutorService profileFetchExecutor;
 
-    /** Launcher's original session, captured at construction. */
-    private final Session launcherSession;
+    /** Session that was active when the bridge was constructed. */
+    private final Session originalSession;
 
     private volatile ClientAccount activeAccount;
     private volatile ClientProvider activeProvider;
@@ -82,12 +82,12 @@ public class SessionBridge {
     }
 
     SessionBridge(YggdrasilHttpClient httpClient, ClientProviderDAO providerDAO, ClientAccountDAO accountDAO,
-        AccountManager accountManager, Session launcherSession) {
+        AccountManager accountManager, Session originalSession) {
         this.httpClient = httpClient;
         this.providerDAO = providerDAO;
         this.accountDAO = accountDAO;
         this.accountManager = accountManager;
-        this.launcherSession = launcherSession;
+        this.originalSession = originalSession;
         this.profileFetchExecutor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "WawelAuth-ProfileFetch");
             t.setDaemon(true);
@@ -174,7 +174,7 @@ public class SessionBridge {
             .debug("Activated account '" + account.getProfileName() + "' on provider '" + provider.getName() + "'");
     }
 
-    /** Clear active account and restore launcher session. */
+    /** Clear the active account and restore the session that was active at startup. */
     public void clearActiveAccount() {
         this.activeAccount = null;
         this.activeProvider = null;
@@ -184,7 +184,7 @@ public class SessionBridge {
         this.profileCache.clear();
         this.profileFetchInFlight.clear();
         activeProviderContext.remove();
-        ((AccessorMinecraft) Minecraft.getMinecraft()).wawelauth$setSession(launcherSession);
+        ((AccessorMinecraft) Minecraft.getMinecraft()).wawelauth$setSession(originalSession);
     }
 
     /** Clear cached profiles for this UUID so next fetch is fresh. */

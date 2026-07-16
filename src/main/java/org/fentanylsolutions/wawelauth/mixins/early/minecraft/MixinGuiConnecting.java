@@ -58,9 +58,9 @@ public class MixinGuiConnecting {
                 return;
             }
 
-            // No unique auto-match: restore launcher session.
+            // No unique auto-match: restore the original session.
             bridge.clearActiveAccount();
-            WawelAuth.debug("No bound/auto-selected WawelAuth account for server, restored launcher session");
+            WawelAuth.debug("No bound/auto-selected WawelAuth account for server, restored original session");
             return;
         }
 

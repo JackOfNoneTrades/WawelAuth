@@ -399,6 +399,8 @@ val verifyCurseForgeJars = tasks.register("verifyCurseForgeJars") {
             "LauncherImportSuppression",
             "[launcher-import]",
             "Imported launcher session",
+            "launcher session",
+            "launcherSession",
             "launcher_import_suppression",
             "wawelauth.gui.launcher_import",
         )
