@@ -1,9 +1,8 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
-import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
-import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge.LauncherImportCandidate;
-import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
+import org.fentanylsolutions.wawelauth.wawelclient.LauncherAccountImport;
+import org.fentanylsolutions.wawelauth.wawelclient.LauncherAccountImport.Candidate;
 
 import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.factory.ClientGUI;
@@ -27,27 +26,26 @@ import cpw.mods.fml.relauncher.SideOnly;
 public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
 
     private static final String PANEL_NAME = "wawelauth_launcher_import";
-    private static LauncherImportCandidate pending;
+    private static Candidate pending;
 
     private LauncherImportPromptScreen() {
         super("wawelauth");
         openParentOnClose(true);
     }
 
-    public static void open(LauncherImportCandidate candidate) {
+    public static void open(Candidate candidate) {
         pending = candidate;
         ClientGUI.open(new LauncherImportPromptScreen());
     }
 
     @Override
     public ModularPanel buildUI(ModularGuiContext context) {
-        LauncherImportCandidate candidate = pending;
+        Candidate candidate = pending;
         String name = candidate != null ? candidate.getUsername() : "";
         String providerName = candidate != null ? candidate.getProviderName() : "";
         java.util.UUID profileUuid = candidate != null ? candidate.getProfileUuid() : null;
 
-        WawelClient client = WawelClient.instance();
-        SessionBridge bridge = client != null ? client.getSessionBridge() : null;
+        LauncherAccountImport accountImport = LauncherAccountImport.instance();
 
         ModularPanel panel = ModularPanel.defaultPanel(PANEL_NAME)
             .size(280, 116)
@@ -57,8 +55,8 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
         ButtonWidget<?> yesBtn = new ButtonWidget<>();
         yesBtn.size(60, 18)
             .onMousePressed(mouseButton -> {
-                if (bridge != null) {
-                    bridge.confirmLauncherImport();
+                if (accountImport != null) {
+                    accountImport.confirmImport();
                 }
                 panel.closeIfOpen();
                 return true;
@@ -68,8 +66,8 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
         ButtonWidget<?> noBtn = new ButtonWidget<>();
         noBtn.size(60, 18)
             .onMousePressed(mouseButton -> {
-                if (bridge != null) {
-                    bridge.declineLauncherImport();
+                if (accountImport != null) {
+                    accountImport.declineImport();
                 }
                 panel.closeIfOpen();
                 return true;
@@ -79,8 +77,8 @@ public final class LauncherImportPromptScreen extends ParentAwareModularScreen {
         ButtonWidget<?> dontAskBtn = new ButtonWidget<>();
         dontAskBtn.size(110, 18)
             .onMousePressed(mouseButton -> {
-                if (bridge != null) {
-                    bridge.suppressLauncherImport();
+                if (accountImport != null) {
+                    accountImport.suppressImport();
                 }
                 panel.closeIfOpen();
                 return true;

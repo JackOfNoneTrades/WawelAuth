@@ -3,9 +3,8 @@ package org.fentanylsolutions.wawelauth.client.gui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiMainMenu;
 
-import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
-import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge.LauncherImportCandidate;
-import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
+import org.fentanylsolutions.wawelauth.wawelclient.LauncherAccountImport;
+import org.fentanylsolutions.wawelauth.wawelclient.LauncherAccountImport.Candidate;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
@@ -32,16 +31,11 @@ public final class LauncherImportPromptHandler {
             return;
         }
 
-        WawelClient client = WawelClient.instance();
-        if (client == null) {
+        LauncherAccountImport accountImport = LauncherAccountImport.instance();
+        if (accountImport == null) {
             return;
         }
-        SessionBridge bridge = client.getSessionBridge();
-        if (bridge == null) {
-            return;
-        }
-
-        LauncherImportCandidate candidate = bridge.getPendingLauncherImport();
+        Candidate candidate = accountImport.getPendingImport();
         if (candidate == null) {
             return;
         }

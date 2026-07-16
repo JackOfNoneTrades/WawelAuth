@@ -1,7 +1,6 @@
 package org.fentanylsolutions.wawelauth.wawelclient;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.security.KeyFactory;
 import java.security.PublicKey;
@@ -24,13 +23,11 @@ import net.minecraft.util.Session;
 import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.mixins.early.minecraft.AccessorMinecraft;
-import org.fentanylsolutions.wawelauth.wawelclient.compat.AuthlibInjectorCompat;
 import org.fentanylsolutions.wawelauth.wawelclient.data.AccountStatus;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilHttpClient;
 import org.fentanylsolutions.wawelauth.wawelclient.http.YggdrasilRequestException;
-import org.fentanylsolutions.wawelauth.wawelclient.oauth.MicrosoftOAuthClient;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientAccountDAO;
 import org.fentanylsolutions.wawelauth.wawelclient.storage.ClientProviderDAO;
 import org.fentanylsolutions.wawelauth.wawelcore.data.UuidUtil;
@@ -49,7 +46,7 @@ import com.mojang.authlib.properties.Property;
 /**
  * Bridge between WawelAuth account system and vanilla auth/session.
  * Session swap, joinServer redirect, texture verification, domain whitelisting,
- * profile fetching from custom providers, launcher session auto-import.
+ * and profile fetching from custom providers.
  */
 public class SessionBridge {
 
@@ -67,7 +64,6 @@ public class SessionBridge {
     private volatile ClientAccount activeAccount;
     private volatile ClientProvider activeProvider;
     private volatile String lastActivationError;
-    private volatile LauncherImportCandidate pendingImport;
     private volatile List<ClientProvider> trustedProviders = Collections.emptyList();
     private volatile List<PublicKey> trustedKeys = Collections.emptyList();
     private final ConcurrentHashMap<String, GameProfile> profileCache = new ConcurrentHashMap<>();
@@ -492,305 +488,6 @@ public class SessionBridge {
     }
 
     // =========================================================================
-    // Auto-import launcher session
-    // =========================================================================
-
-    /** Auto-import launcher session for its matching provider if the token is valid. Called once on start. */
-    public void tryImportLauncherSession() {
-        Session session = Minecraft.getMinecraft()
-            .getSession();
-        profileFetchExecutor.submit(() -> importLauncherSession(session));
-    }
-
-    private void importLauncherSession(Session session) {
-        try {
-            String token = session.getToken();
-
-            WawelAuth.debug(
-                "[launcher-import] session user=" + session.getUsername()
-                    + " hasToken="
-                    + (token != null && !token.isEmpty()));
-
-            // Skip invalid/dev sessions
-            if (!isUsableLauncherSession(session)) {
-                WawelAuth.debug("[launcher-import] token not usable, skipping");
-                return;
-            }
-
-            WawelAuth.debug("[launcher-import] authlib-injector active=" + AuthlibInjectorCompat.isActive());
-
-            ClientProvider provider = resolveLauncherSessionProvider();
-            WawelAuth.debug("[launcher-import] resolved provider=" + (provider != null ? provider.getName() : "null"));
-            boolean tokenAlreadyValidated = false;
-            if (provider == null) {
-                if (!AuthlibInjectorCompat.isActive()) {
-                    WawelAuth.debug("[launcher-import] no provider and no authlib-injector, giving up");
-                    return;
-                }
-                // authlib-injector is present but backend host couldn't be determined;
-                // probe each non-Mojang/non-offline provider to find the right one.
-                provider = probeProviderByTokenValidation(token);
-                WawelAuth.debug("[launcher-import] probe result=" + (provider != null ? provider.getName() : "null"));
-                if (provider == null) {
-                    WawelAuth.debug("[launcher-import] no provider accepted the token");
-                    return;
-                }
-                tokenAlreadyValidated = true;
-            }
-
-            UUID profileUuid;
-            String username;
-            if (BuiltinProviders.isMojangProvider(provider.getName())) {
-                MicrosoftOAuthClient.MinecraftProfile profile;
-                try {
-                    profile = new MicrosoftOAuthClient().fetchMinecraftProfile(token, provider);
-                } catch (IOException e) {
-                    WawelAuth.debug("Microsoft launcher token validation failed: " + e.getMessage());
-                    return;
-                }
-                profileUuid = profile.getUuid();
-                username = profile.getName();
-            } else {
-                if (!tokenAlreadyValidated) {
-                    JsonObject validateBody = new JsonObject();
-                    validateBody.addProperty("accessToken", token);
-                    try {
-                        httpClient.postJson(provider, provider.authUrl("/validate"), validateBody);
-                    } catch (YggdrasilRequestException e) {
-                        WawelAuth.debug("Launcher session token validation failed: " + e.getMessage());
-                        return;
-                    } catch (IOException | IllegalStateException e) {
-                        WawelAuth.debug(
-                            "Could not validate launcher session against " + provider.getName()
-                                + ": "
-                                + e.getMessage());
-                        return;
-                    }
-                }
-                profileUuid = parseSessionUuid(session.getPlayerID());
-                username = session.getUsername();
-            }
-
-            WawelAuth.debug("[launcher-import] uuid=" + profileUuid + " username=" + username);
-
-            if (profileUuid == null) {
-                WawelAuth.debug("[launcher-import] no usable profile UUID");
-                return;
-            }
-
-            ClientAccount existing = accountDAO.findByProviderAndProfile(provider.getName(), profileUuid);
-            if (existing != null) {
-                WawelAuth.debug("[launcher-import] account already exists, resyncing");
-                resyncImportedAccount(existing, token, username);
-                return;
-            }
-
-            if (LauncherImportSuppression.isSuppressed(provider.getName(), profileUuid)) {
-                WawelAuth.debug("[launcher-import] suppressed, skipping");
-                return;
-            }
-
-            this.pendingImport = new LauncherImportCandidate(provider.getName(), profileUuid, username, token);
-            WawelAuth.debug("[launcher-import] pending import created for '" + username + "'");
-
-        } catch (Exception e) {
-            WawelAuth.LOG.warn("Failed to inspect launcher session: {}", e.getMessage());
-        }
-    }
-
-    /** The launcher account awaiting first-time import approval, or null. */
-    public LauncherImportCandidate getPendingLauncherImport() {
-        return pendingImport;
-    }
-
-    /** Approve the pending launcher import, persisting it as a new account. */
-    public void confirmLauncherImport() {
-        LauncherImportCandidate candidate = this.pendingImport;
-        this.pendingImport = null;
-        if (candidate == null) {
-            return;
-        }
-        profileFetchExecutor.submit(() -> createImportedAccount(candidate));
-    }
-
-    /** Decline the pending import; it will be re-detected on the next launch. */
-    public void declineLauncherImport() {
-        this.pendingImport = null;
-    }
-
-    /** Decline and remember not to prompt for this account again. */
-    public void suppressLauncherImport() {
-        LauncherImportCandidate candidate = this.pendingImport;
-        this.pendingImport = null;
-        if (candidate == null) {
-            return;
-        }
-        LauncherImportSuppression.suppress(candidate.getProviderName(), candidate.getProfileUuid());
-    }
-
-    private void createImportedAccount(LauncherImportCandidate candidate) {
-        try {
-            ClientProvider provider = providerDAO.findByName(candidate.getProviderName());
-            if (provider == null) {
-                WawelAuth.LOG.warn(
-                    "Cannot import launcher session: provider '{}' no longer exists",
-                    candidate.getProviderName());
-                return;
-            }
-
-            ClientAccount existing = accountDAO
-                .findByProviderAndProfile(provider.getName(), candidate.getProfileUuid());
-            if (existing != null) {
-                resyncImportedAccount(existing, candidate.getToken(), candidate.getUsername());
-                return;
-            }
-
-            long now = System.currentTimeMillis();
-            ClientAccount account = new ClientAccount();
-            account.setProviderName(provider.getName());
-            account.setUserUuid(UuidUtil.toUnsigned(candidate.getProfileUuid()));
-            account.setProfileUuid(candidate.getProfileUuid());
-            account.setProfileName(candidate.getUsername());
-            account.setAccessToken(candidate.getToken());
-            account.setClientToken(null);
-            account.setStatus(AccountStatus.VALID);
-            account.setConsecutiveFailures(0);
-            account.setCreatedAt(now);
-            account.setLastValidatedAt(now);
-            account.setTokenIssuedAt(now);
-
-            long id = accountDAO.create(account);
-            account.setId(id);
-            accountManager.cacheStatus(id, AccountStatus.VALID);
-
-            WawelAuth.LOG
-                .info("Imported launcher session as {} account: {}", provider.getName(), candidate.getUsername());
-        } catch (Exception e) {
-            WawelAuth.LOG.warn("Failed to import launcher session: {}", e.getMessage());
-        }
-    }
-
-    private void resyncImportedAccount(ClientAccount existing, String token, String username) {
-        if (StringUtil.trimToNull(existing.getRefreshToken()) != null) {
-            WawelAuth.debug("Account '" + username + "' is WawelAuth-managed, leaving launcher session untouched");
-            return;
-        }
-        long now = System.currentTimeMillis();
-        existing.setAccessToken(token);
-        existing.setStatus(AccountStatus.VALID);
-        existing.setConsecutiveFailures(0);
-        existing.setLastValidatedAt(now);
-        existing.setTokenIssuedAt(now);
-        existing.setLastError(null);
-        accountDAO.update(existing);
-        accountManager.cacheStatus(existing.getId(), AccountStatus.VALID);
-        WawelAuth.LOG.info("Re-synced imported account from launcher session: {}", username);
-    }
-
-    private ClientProvider resolveLauncherSessionProvider() {
-        String backendHost = detectLauncherAuthBackendHost();
-        WawelAuth.debug("[launcher-import] detectLauncherAuthBackendHost=" + backendHost);
-        if (backendHost == null) {
-            if (AuthlibInjectorCompat.isActive()) {
-                WawelAuth.debug("authlib-injector detected but backend host unknown, skipping Mojang default");
-                return null;
-            }
-            return providerDAO.findByName(MOJANG_PROVIDER_NAME);
-        }
-        boolean aliActive = AuthlibInjectorCompat.isActive();
-        for (ClientProvider provider : providerDAO.listAll()) {
-            if (BuiltinProviders.isOfflineProvider(provider.getName())) {
-                continue;
-            }
-            // authlib-injector rewrites Mojang URL constants, so the Mojang provider's
-            // URLs will point to the ALI server — skip it to avoid a false match.
-            if (aliActive && BuiltinProviders.isMojangProvider(provider.getName())) {
-                continue;
-            }
-            if (backendHost.equals(extractHost(provider.getApiRoot()))
-                || backendHost.equals(extractHost(provider.getAuthServerUrl()))
-                || backendHost.equals(extractHost(provider.getSessionServerUrl()))) {
-                return provider;
-            }
-        }
-        WawelAuth.debug("Launcher auth backend '" + backendHost + "' is not a configured provider, skipping import");
-        return null;
-    }
-
-    private static String detectLauncherAuthBackendHost() {
-        try {
-            for (String arg : ManagementFactory.getRuntimeMXBean()
-                .getInputArguments()) {
-                if (arg == null) {
-                    continue;
-                }
-                String lower = arg.toLowerCase();
-                if (lower.startsWith("-javaagent:")
-                    && (lower.contains("authlib-injector") || lower.contains("authlibinjector"))) {
-                    int eq = arg.indexOf('=');
-                    if (eq >= 0 && eq + 1 < arg.length()) {
-                        String host = extractHost(
-                            arg.substring(eq + 1)
-                                .trim());
-                        if (host != null) {
-                            return host;
-                        }
-                    }
-                }
-            }
-        } catch (Throwable ignored) {}
-        for (String key : new String[] { "minecraft.api.authHost", "minecraft.api.accountsHost",
-            "minecraft.api.sessionHost", "minecraft.api.servicesHost" }) {
-            String val = System.getProperty(key);
-            if (val != null) {
-                WawelAuth.debug("[launcher-import] system property " + key + "=" + val);
-            }
-            String host = extractHost(val);
-            if (host != null) {
-                return host;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * When authlib-injector is present but we couldn't determine the backend host,
-     * try validating the token against each non-Mojang, non-offline provider.
-     */
-    private ClientProvider probeProviderByTokenValidation(String token) {
-        for (ClientProvider provider : providerDAO.listAll()) {
-            if (BuiltinProviders.isOfflineProvider(provider.getName())
-                || BuiltinProviders.isMojangProvider(provider.getName())) {
-                continue;
-            }
-            JsonObject validateBody = new JsonObject();
-            validateBody.addProperty("accessToken", token);
-            try {
-                httpClient.postJson(provider, provider.authUrl("/validate"), validateBody);
-                WawelAuth.debug("Token accepted by provider '" + provider.getName() + "'");
-                return provider;
-            } catch (Exception ignored) {}
-        }
-        return null;
-    }
-
-    private static UUID parseSessionUuid(String playerIdStr) {
-        if (playerIdStr == null || playerIdStr.trim()
-            .isEmpty()) {
-            return null;
-        }
-        try {
-            return UUID.fromString(playerIdStr);
-        } catch (IllegalArgumentException e) {
-            try {
-                return UuidUtil.fromUnsigned(playerIdStr);
-            } catch (Exception ex) {
-                return null;
-            }
-        }
-    }
-
-    // =========================================================================
     // Internals
     // =========================================================================
 
@@ -1152,18 +849,6 @@ public class SessionBridge {
             capePath);
     }
 
-    private static boolean isUsableLauncherSession(Session session) {
-        if (session == null) {
-            return false;
-        }
-
-        String token = session.getToken();
-        return token != null && !token.isEmpty()
-            && !"NotValid".equals(token)
-            && !"0".equals(token)
-            && !"FML".equals(token);
-    }
-
     private static String normalizeFingerprint(String fingerprint) {
         if (fingerprint == null) return null;
         String trimmed = fingerprint.trim();
@@ -1263,38 +948,6 @@ public class SessionBridge {
     private static boolean hasProperties(GameProfile profile) {
         return profile != null && !profile.getProperties()
             .isEmpty();
-    }
-
-    /** A launcher session detected at startup, pending first-time import approval. */
-    public static final class LauncherImportCandidate {
-
-        private final String providerName;
-        private final UUID profileUuid;
-        private final String username;
-        private final String token;
-
-        LauncherImportCandidate(String providerName, UUID profileUuid, String username, String token) {
-            this.providerName = providerName;
-            this.profileUuid = profileUuid;
-            this.username = username;
-            this.token = token;
-        }
-
-        public String getProviderName() {
-            return providerName;
-        }
-
-        public UUID getProfileUuid() {
-            return profileUuid;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public String getToken() {
-            return token;
-        }
     }
 
     public static final class OfflineLocalSkin {

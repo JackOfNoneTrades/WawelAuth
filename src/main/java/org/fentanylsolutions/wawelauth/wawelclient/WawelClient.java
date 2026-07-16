@@ -72,7 +72,7 @@ public class WawelClient {
 
         // Session bridge
         sessionBridge = new SessionBridge(httpClient, providerDAO, accountDAO, accountManager);
-        sessionBridge.tryImportLauncherSession();
+        ClientStartupExtensions.start(httpClient, providerDAO, accountDAO, accountManager);
 
         // Connection provider cache
         connectionProviderCache = new ConnectionProviderCache();
@@ -131,6 +131,7 @@ public class WawelClient {
 
     private void doStop() {
         WawelAuth.LOG.info("Stopping WawelAuth client module...");
+        ClientStartupExtensions.stop();
         try {
             accountManager.shutdown();
         } catch (Exception e) {
