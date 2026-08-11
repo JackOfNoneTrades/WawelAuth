@@ -31,8 +31,6 @@ final class AccountManagerScreenState {
     String pendingCredentialDeleteAccountName;
     String pendingCredentialDeletePassword;
 
-    boolean texturePathDialogForSkin;
-    String texturePathDialogInitialPath;
     File selectedSkinFile;
     File selectedCapeFile;
     String textureUploadStatus = "";
@@ -59,8 +57,6 @@ final class AccountManagerScreenState {
         this.pendingCredentialDeleteAccountId = -1L;
         this.pendingCredentialDeleteAccountName = null;
         this.pendingCredentialDeletePassword = null;
-        this.texturePathDialogForSkin = false;
-        this.texturePathDialogInitialPath = null;
         this.selectedSkinFile = null;
         this.selectedCapeFile = null;
         this.textureUploadStatus = "";

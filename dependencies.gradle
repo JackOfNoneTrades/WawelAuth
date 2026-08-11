@@ -64,6 +64,8 @@ dependencies {
     shadowImplementation("org.bouncycastle:bcprov-jdk15to18:${bouncyCastleVersion}")
     shadowImplementation("org.bouncycastle:bcpkix-jdk15to18:${bouncyCastleVersion}")
     shadowImplementation("org.xerial:sqlite-jdbc:${sqliteJdbcVersion}")
+    // Since 3.53.0.0, sqlite-jdbc publishes Android natives as a separate artifact.
+    shadowImplementation("org.xerial:sqlite-jdbc:${sqliteJdbcVersion}:natives-android")
 
     // Test
     testImplementation("junit:junit:4.13.2")

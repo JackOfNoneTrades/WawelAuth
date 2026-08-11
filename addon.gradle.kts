@@ -216,7 +216,8 @@ val writeNodepFplibDependencies = tasks.register("writeNodepFplibDependencies") 
                     "org.bouncycastle:bcprov-jdk15to18:$bouncyCastleVersion",
                     "org.bouncycastle:bcutil-jdk15to18:$bouncyCastleVersion",
                     "org.bouncycastle:bcpkix-jdk15to18:$bouncyCastleVersion",
-                    "org.xerial:sqlite-jdbc:$sqliteJdbcVersion"
+                    "org.xerial:sqlite-jdbc:$sqliteJdbcVersion",
+                    "org.xerial:sqlite-jdbc:$sqliteJdbcVersion:natives-android"
                   ],
                   "client": [],
                   "server": []

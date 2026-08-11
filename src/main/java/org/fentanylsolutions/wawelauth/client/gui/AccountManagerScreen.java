@@ -63,7 +63,6 @@ import com.cleanroommc.modularui.widgets.EntityDisplayWidget;
 import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Column;
 import com.cleanroommc.modularui.widgets.layout.Row;
-import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 import com.mojang.authlib.GameProfile;
 
 import cpw.mods.fml.relauncher.Side;
@@ -103,6 +102,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private static final long STATUS_UI_REFRESH_INTERVAL_MS = 1000L;
     private static final AtomicBoolean TEXTURE_FILE_PICKER_OPEN = new AtomicBoolean(false);
+    private static final String POJAV_CALLBACK_BRIDGE = "org.lwjgl.glfw.CallbackBridge";
     private static final int TEXTURE_STATUS_MAX_WIDTH_PX = 212;
     private static final int DETAIL_PRIMARY_TEXT_COLOR = WawelAuthStyle.TEXT_PRIMARY;
     private static final int DETAIL_SECONDARY_TEXT_COLOR = WawelAuthStyle.TEXT_SECONDARY;
@@ -383,7 +383,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private IPanelHandler providerDeleteDialogHandler;
     private IPanelHandler credentialDialogHandler;
     private IPanelHandler credentialDeleteDialogHandler;
-    private IPanelHandler texturePathDialogHandler;
+    private IPanelHandler texturePickerUnsupportedDialogHandler;
     private IPanelHandler textureUploadDialogHandler;
     private IPanelHandler textureResetDialogHandler;
     private PreviewBackMode capePreviewMode = PreviewBackMode.CAPE;
@@ -568,7 +568,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .simple(mainPanel, (parent, player) -> credentialDialogs.buildCredentialDialog(), true);
         credentialDeleteDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> credentialDialogs.buildCredentialDeleteDialog(), true);
-        texturePathDialogHandler = IPanelHandler.simple(mainPanel, (parent, player) -> buildTexturePathDialog(), true);
+        texturePickerUnsupportedDialogHandler = IPanelHandler
+            .simple(mainPanel, (parent, player) -> buildTexturePickerUnsupportedDialog(), true);
         textureUploadDialogHandler = IPanelHandler
             .simple(mainPanel, (parent, player) -> buildTextureUploadDialog(), true);
         textureResetDialogHandler = IPanelHandler
@@ -1722,6 +1723,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             return;
         }
 
+        if (isAndroidLauncher()) {
+            state.textureUploadStatus = "";
+            openTexturePickerUnsupportedDialog();
+            return;
+        }
+
         String label = GuiText.tr(skin ? "wawelauth.gui.account_manager.skin" : "wawelauth.gui.account_manager.cape");
         String title = GuiText.tr("wawelauth.gui.account_manager.select_texture_image", label);
         if (!TEXTURE_FILE_PICKER_OPEN.compareAndSet(false, true)) {
@@ -1791,7 +1798,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             WawelAuth.LOG.warn("Texture file picker failed ({}): {}", result.getStatus(), message);
         }
         state.textureUploadStatus = message;
-        openTexturePathDialog(skin);
     }
 
     private void openTextureUploadDialog(boolean skin, File file) {
@@ -2168,94 +2174,25 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         }
     }
 
-    private void openTexturePathDialog(boolean skin) {
-        state.texturePathDialogForSkin = skin;
-        File current = skin ? state.selectedSkinFile : state.selectedCapeFile;
-        state.texturePathDialogInitialPath = current != null ? current.getAbsolutePath() : defaultTexturePath(skin);
-        this.texturePathDialogHandler.deleteCachedPanel();
-        this.texturePathDialogHandler.openPanel();
+    private void openTexturePickerUnsupportedDialog() {
+        this.texturePickerUnsupportedDialogHandler.deleteCachedPanel();
+        this.texturePickerUnsupportedDialogHandler.openPanel();
     }
 
-    private Dialog<Boolean> buildTexturePathDialog() {
-        final boolean skin = state.texturePathDialogForSkin;
-        final String label = GuiText
-            .tr(skin ? "wawelauth.gui.account_manager.skin" : "wawelauth.gui.account_manager.cape");
-
-        Dialog<Boolean> dialog = new Dialog<>("wawelauth_texture_path");
+    private Dialog<Boolean> buildTexturePickerUnsupportedDialog() {
+        Dialog<Boolean> dialog = new Dialog<>("wawelauth_texture_picker_unsupported");
         dialog.setCloseOnOutOfBoundsClick(false);
 
-        final String[] statusText = { "" };
-        TextFieldWidget pathField = new TextFieldWidget()
-            .hintText(GuiText.tr("wawelauth.gui.account_manager.path_hint", label.toLowerCase()));
-        WawelAuthStyle.textField(pathField);
-        pathField.widthRel(1.0f)
-            .height(18)
-            .setMaxLength(4096)
-            .margin(0, 2);
-        if (state.texturePathDialogInitialPath != null) {
-            pathField.setText(state.texturePathDialogInitialPath);
-        }
-
-        ButtonWidget<?> openFolderBtn = new ButtonWidget<>();
-        openFolderBtn.size(86, 18)
-            .onMousePressed(btn -> {
-                File folder = getTexturePickerInitialDirectory(skin);
-                boolean opened = FileUtil.openFolder(folder);
-                statusText[0] = opened
-                    ? GuiText.tr("wawelauth.gui.account_manager.opened_path", trimPath(folder.getAbsolutePath(), 74))
-                    : GuiText.tr("wawelauth.gui.account_manager.open_folder_failed");
-                return true;
-            });
-        WawelAuthStyle.textButton(openFolderBtn, 78, "wawelauth.gui.common.open_folder");
-
-        ButtonWidget<?> usePathBtn = new ButtonWidget<>();
-        usePathBtn.size(86, 18)
-            .onMousePressed(btn -> {
-                String raw = pathField.getText();
-                String path = raw != null ? raw.trim() : "";
-                if (path.isEmpty()) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.account_manager.path_required", label);
-                    return true;
-                }
-
-                File picked = new File(path);
-                if (!picked.isFile()) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.account_manager.file_not_found");
-                    return true;
-                }
-                if (!picked.canRead()) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.account_manager.file_not_readable");
-                    return true;
-                }
-                String lowerName = picked.getName()
-                    .toLowerCase();
-                if (!lowerName.endsWith(".png") && !lowerName.endsWith(".gif")) {
-                    statusText[0] = GuiText.tr("wawelauth.gui.account_manager.file_types_supported");
-                    return true;
-                }
-
-                if (skin) {
-                    state.selectedSkinFile = picked;
-                } else {
-                    state.selectedCapeFile = picked;
-                }
-                state.textureUploadStatus = "";
-                dialog.closeIfOpen();
-                openTextureUploadDialog(skin, picked);
-                return true;
-            });
-        WawelAuthStyle.textButton(usePathBtn, 78, "wawelauth.gui.account_manager.use_path");
-
-        ButtonWidget<?> cancelBtn = new ButtonWidget<>();
-        cancelBtn.size(70, 18)
+        ButtonWidget<?> closeBtn = new ButtonWidget<>();
+        closeBtn.size(70, 18)
             .onMousePressed(btn -> {
                 dialog.closeIfOpen();
                 return true;
             });
-        WawelAuthStyle.textButton(cancelBtn, 62, "wawelauth.gui.common.cancel");
+        WawelAuthStyle.textButton(closeBtn, 62, "wawelauth.gui.common.close");
 
         WawelAuthStyle.dialog(dialog);
-        dialog.size(316, 130)
+        dialog.size(320, 92)
             .child(
                 new Column().widthRel(1.0f)
                     .heightRel(1.0f)
@@ -2263,32 +2200,24 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .background(IDrawable.EMPTY)
                     .disableHoverBackground()
                     .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.select_texture_file", label))
+                        new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.texture_picker_android_title"))
                             .widthRel(1.0f)
                             .height(14)
                             .color(WawelAuthStyle.THEME_LIGHTER))
+                    .child(new Widget<>().size(1, 6))
                     .child(
-                        new TextWidget<>(GuiText.key("wawelauth.gui.account_manager.path_help"))
-                            .color(WawelAuthStyle.TEXT_SECONDARY)
-                            .scale(0.8f)
-                            .widthRel(1.0f)
-                            .height(10))
-                    .child(pathField)
-                    .child(
-                        new TextWidget<>(IKey.dynamic(() -> statusText[0])).color(WawelAuthStyle.WARNING)
-                            .widthRel(1.0f)
-                            .height(12)
-                            .margin(0, 2))
+                        new TextWidget<>(
+                            GuiText.key("wawelauth.gui.account_manager.texture_picker_android_unsupported"))
+                                .color(WawelAuthStyle.TEXT_SECONDARY)
+                                .scale(0.8f)
+                                .widthRel(1.0f)
+                                .height(12))
+                    .child(new Widget<>().size(1, 8))
                     .child(
                         new Row().widthRel(1.0f)
                             .height(20)
-                            .margin(0, 4)
                             .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                            .child(openFolderBtn)
-                            .child(new Widget<>().size(6, 18))
-                            .child(usePathBtn)
-                            .child(new Widget<>().size(6, 18))
-                            .child(cancelBtn)));
+                            .child(closeBtn)));
 
         return dialog;
     }
@@ -2321,14 +2250,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         return file.isDirectory() ? file : null;
     }
 
-    private static String defaultTexturePath(boolean skin) {
-        return new File(FileUtil.getDefaultFileSelectionDirectory(), skin ? "skin.png" : "cape.png").getAbsolutePath();
-    }
-
-    private static String trimPath(String path, int maxLength) {
-        if (path == null) return "";
-        if (path.length() <= maxLength) return path;
-        return "..." + path.substring(path.length() - maxLength + 3);
+    private static boolean isAndroidLauncher() {
+        try {
+            Class<?> bridgeCls = Class
+                .forName(POJAV_CALLBACK_BRIDGE, false, AccountManagerScreen.class.getClassLoader());
+            bridgeCls.getMethod("nativeClipboard", int.class, byte[].class);
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     private ClientProvider selectedTextureProvider() {
