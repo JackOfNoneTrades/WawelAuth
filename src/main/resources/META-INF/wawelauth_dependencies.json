@@ -4,7 +4,7 @@
     "https://repo.maven.apache.org/maven2/"
   ],
   "dependencies": {
-    "always": {
+    "obf": {
       "common": [
         "org.bouncycastle:bcprov-jdk15to18:${bouncyCastleVersion}",
         "org.bouncycastle:bcutil-jdk15to18:${bouncyCastleVersion}",

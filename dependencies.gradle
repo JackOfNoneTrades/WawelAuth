@@ -42,13 +42,14 @@ configurations {
     }
 
     // These libraries are downloaded by DepLoader in normal distributions.
-    // Keep them available for compilation and tests without leaking them into
+    // Keep them available for development and tests without leaking them into
     // the regular artifact or its published dependency metadata.
     compileOnly.extendsFrom(fatImplementation)
+    runtimeOnlyNonPublishable.extendsFrom(fatImplementation)
     testRuntimeOnly.extendsFrom(fatImplementation)
 }
 
-def fplibDepLoaderVersion = "1.11.0"
+def fplibDepLoaderVersion = "1.12.2"
 
 dependencies {
     deploader("com.falsepattern:falsepatternlib-mc1.7.10:${fplibDepLoaderVersion}:deploader") // LGPL 3.0
