@@ -11,6 +11,7 @@ import org.gradle.api.specs.Specs
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.tasks.Jar
+import org.gradle.language.jvm.tasks.ProcessResources
 import java.nio.charset.StandardCharsets
 import java.util.zip.ZipFile
 
@@ -21,9 +22,7 @@ fun wawelProp(name: String): String? = providers.gradleProperty(name).orNull?.tr
 
 fun projectVersionString(): String = project.version.toString()
 
-fun nodepVersionSuffix(): String = wawelProp("wawelAuthNodepVersionSuffix") ?: "nodep"
-
-fun nodepVersion(): String = "${projectVersionString()}-${nodepVersionSuffix()}"
+fun fatVersion(): String = "${projectVersionString()}-fat"
 
 val configuredCurseForgeProjectId = wawelProp("curseForgeProjectId").orEmpty()
 val configuredCurseForgeRelations = wawelProp("curseForgeRelations").orEmpty()
@@ -89,6 +88,10 @@ val bouncyCastleVersion = wawelProp("bouncyCastleVersion") ?: "1.84"
 val reobfJar = tasks.named<Jar>("reobfJar")
 val baseJar = tasks.named<Jar>("jar")
 val shadedDevJar = tasks.named<Jar>("shadowJar")
+// addon.gradle.kts is evaluated before dependencies.gradle, so create these
+// custom configurations here and let dependencies.gradle populate them later.
+val depLoaderBootstrap = configurations.maybeCreate("deploader")
+val fatImplementation = configurations.maybeCreate("fatImplementation")
 
 val sourceSets = extensions.getByType<SourceSetContainer>()
 val mainSourceSet = sourceSets.named("main").get()
@@ -186,84 +189,51 @@ val reobfCurseForgeJar = tasks.named<ReobfuscatedJar>("reobfCurseForgeJar") {
     getExtraSrgFiles().from(layout.buildDirectory.file("tmp/mixins/mixins.srg"))
 }
 
-val writeNodepFplibDependencies = tasks.register("writeNodepFplibDependencies") {
-    notCompatibleWithConfigurationCache("Writes generated nodep FPLib dependency metadata from addon script values.")
-
-    val output = layout.buildDirectory.file("generated/wawelauth-nodep/wawelauth_fplib_dependencies.json")
-
+tasks.named<ProcessResources>("processResources").configure {
+    notCompatibleWithConfigurationCache("Expands generated dependency versions and embeds the DepLoader bootstrap.")
     inputs.property("bouncyCastleVersion", bouncyCastleVersion)
     inputs.property("sqliteJdbcVersion", sqliteJdbcVersion)
-    outputs.file(output)
-
-    doLast {
-        val out = output.get().asFile
-        out.parentFile.mkdirs()
-        out.writeText(
-            """
-            {
-              "identifier": "falsepatternlib_dependencies",
-              "repositories": [
-                "https://repo.maven.apache.org/maven2/"
-              ],
-              "dependencies": {
-                "always": {
-                  "common": [],
-                  "client": [],
-                  "server": []
-                },
-                "obf": {
-                  "common": [
-                    "org.bouncycastle:bcprov-jdk15to18:$bouncyCastleVersion",
-                    "org.bouncycastle:bcutil-jdk15to18:$bouncyCastleVersion",
-                    "org.bouncycastle:bcpkix-jdk15to18:$bouncyCastleVersion",
-                    "org.xerial:sqlite-jdbc:$sqliteJdbcVersion",
-                    "org.xerial:sqlite-jdbc:$sqliteJdbcVersion:natives-android"
-                  ],
-                  "client": [],
-                  "server": []
-                },
-                "dev": {
-                  "common": [],
-                  "client": [],
-                  "server": []
-                }
-              },
-              "modDependencies": {
-                "always": {
-                  "common": [],
-                  "client": [],
-                  "server": []
-                },
-                "obf": {
-                  "common": [],
-                  "client": [],
-                  "server": []
-                },
-                "dev": {
-                  "common": [],
-                  "client": [],
-                  "server": []
-                }
-              }
-            }
-            """.trimIndent(),
+    filesMatching("META-INF/wawelauth_dependencies.json") {
+        expand(
+            "bouncyCastleVersion" to bouncyCastleVersion,
+            "sqliteJdbcVersion" to sqliteJdbcVersion,
         )
+    }
+    // DepLoader's small bootstrap jar is embedded; FalsePatternLib itself is
+    // neither bundled nor required as an installed mod.
+    from(depLoaderBootstrap) {
+        rename { "fplib_deploader.jar" }
     }
 }
 
-val nodepJar = tasks.register<Jar>("nodepJar") {
+fun Jar.configureFatJar(sourceJar: TaskProvider<out Jar>, classifier: String) {
     group = "build"
-    description = "Builds the nodep jar with runtime libraries downloaded through FalsePatternLib."
-    notCompatibleWithConfigurationCache("Copies and filters the reobfuscated shaded jar through addon script copy specs.")
+    description = "Builds a fully bundled $classifier jar."
+    notCompatibleWithConfigurationCache("Unpacks runtime dependencies into a distribution jar.")
 
-    dependsOn(reobfJar)
-    dependsOn(writeNodepFplibDependencies)
+    dependsOn(sourceJar)
 
     archiveBaseName.set(baseJar.flatMap { it.archiveBaseName })
     archiveVersion.set(providers.provider { projectVersionString() })
-    archiveClassifier.set(nodepVersionSuffix())
+    archiveClassifier.set(classifier)
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    from(sourceJar.flatMap { it.archiveFile }.map { zipTree(it) }) {
+        exclude(
+            "META-INF/MANIFEST.MF",
+            "META-INF/wawelauth_dependencies.json",
+        )
+    }
+    from(providers.provider { fatImplementation.map(::zipTree) }) {
+        exclude(
+            "META-INF/BC*.DSA",
+            "META-INF/BC*.RSA",
+            "META-INF/BC*.SF",
+            "META-INF/MANIFEST.MF",
+            "META-INF/versions/**/module-info.class",
+        )
+    }
 
     manifest {
         attributes(
@@ -275,118 +245,27 @@ val nodepJar = tasks.register<Jar>("nodepJar") {
             "Multi-Release" to "true",
         )
     }
-
-    from(reobfJar.flatMap { it.archiveFile }.map { zipTree(it) }) {
-        exclude(
-            "META-INF/BC*.DSA",
-            "META-INF/BC*.RSA",
-            "META-INF/BC*.SF",
-            "META-INF/MANIFEST.MF",
-            "META-INF/maven/org.bouncycastle/**",
-            "META-INF/maven/org.xerial/**",
-            "META-INF/native-image/org.xerial/**",
-            "META-INF/services/java.security.Provider",
-            "META-INF/services/java.sql.Driver",
-            "META-INF/versions/**/module-info.class",
-            "META-INF/versions/**/org/bouncycastle/**",
-            "META-INF/versions/9/org/sqlite/**",
-            "org/bouncycastle/**",
-            "org/fentanylsolutions/wawelauth/shadow/bouncycastle/**",
-            "org/sqlite/**",
-            "sqlite-jdbc.properties",
-        )
-
-        filesMatching("mcmod.info") {
-            filter { line: String ->
-                line
-                    .replace(Regex("\"version\"\\s*:\\s*\"[^\"]*\""), "\"version\": \"${nodepVersion()}\"")
-                    .replace("\"requiredMods\": [\"fentlib\"]", "\"requiredMods\": [\"fentlib\", \"falsepatternlib\"]")
-                    .replace("\"dependencies\": [\"fentlib\"]", "\"dependencies\": [\"fentlib\", \"falsepatternlib\"]")
-            }
-        }
-    }
-
-    from(layout.buildDirectory.file("generated/wawelauth-nodep/wawelauth_fplib_dependencies.json")) {
-        into("META-INF")
-    }
 }
 
-val curseForgeNodepJar = tasks.register<Jar>("curseForgeNodepJar") {
-    group = "build"
-    description = "Builds the CurseForge nodep jar without launcher account import."
-    notCompatibleWithConfigurationCache("Copies and filters the CurseForge jar through addon script copy specs.")
-
-    dependsOn(reobfCurseForgeJar)
-    dependsOn(writeNodepFplibDependencies)
-
-    archiveBaseName.set(baseJar.flatMap { it.archiveBaseName })
-    archiveVersion.set(providers.provider { projectVersionString() })
-    archiveClassifier.set("curseforge-${nodepVersionSuffix()}")
-    destinationDirectory.set(layout.buildDirectory.dir("libs"))
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
-    manifest {
-        attributes(
-            "FMLCorePluginContainsFMLMod" to "true",
-            "FMLCorePlugin" to "${wawelProp("modGroup")}.core.EarlyMixinLoader",
-            "TweakClass" to "org.spongepowered.asm.launch.MixinTweaker",
-            "MixinConfigs" to "mixins.${wawelProp("modId")}.json",
-            "ForceLoadAsMod" to "true",
-            "Multi-Release" to "true",
-        )
-    }
-
-    from(reobfCurseForgeJar.flatMap { it.archiveFile }.map { zipTree(it) }) {
-        exclude(
-            "META-INF/BC*.DSA",
-            "META-INF/BC*.RSA",
-            "META-INF/BC*.SF",
-            "META-INF/MANIFEST.MF",
-            "META-INF/maven/org.bouncycastle/**",
-            "META-INF/maven/org.xerial/**",
-            "META-INF/native-image/org.xerial/**",
-            "META-INF/services/java.security.Provider",
-            "META-INF/services/java.sql.Driver",
-            "META-INF/versions/**/module-info.class",
-            "META-INF/versions/**/org/bouncycastle/**",
-            "META-INF/versions/9/org/sqlite/**",
-            "org/bouncycastle/**",
-            "org/fentanylsolutions/wawelauth/shadow/bouncycastle/**",
-            "org/sqlite/**",
-            "sqlite-jdbc.properties",
-        )
-
-        filesMatching("mcmod.info") {
-            filter { line: String ->
-                line
-                    .replace(Regex("\"version\"\\s*:\\s*\"[^\"]*\""), "\"version\": \"${nodepVersion()}\"")
-                    .replace("\"requiredMods\": [\"fentlib\"]", "\"requiredMods\": [\"fentlib\", \"falsepatternlib\"]")
-                    .replace("\"dependencies\": [\"fentlib\"]", "\"dependencies\": [\"fentlib\", \"falsepatternlib\"]")
-            }
-        }
-    }
-
-    from(layout.buildDirectory.file("generated/wawelauth-nodep/wawelauth_fplib_dependencies.json")) {
-        into("META-INF")
-    }
+val fatJar = tasks.register<Jar>("fatJar") {
+    configureFatJar(reobfJar, "fat")
 }
 
-tasks.register("nodepJars") {
-    group = "build"
-    description = "Builds the nodep jar."
-    dependsOn(nodepJar)
+val curseForgeFatJar = tasks.register<Jar>("curseForgeFatJar") {
+    configureFatJar(reobfCurseForgeJar, "curseforge-fat")
+    description = "Builds the fully bundled CurseForge jar without launcher account import."
 }
 
 tasks.named("assemble").configure {
-    dependsOn("nodepJars", reobfCurseForgeJar, curseForgeNodepJar)
+    dependsOn(fatJar, reobfCurseForgeJar, curseForgeFatJar)
 }
 
 val verifyCurseForgeJars = tasks.register("verifyCurseForgeJars") {
     group = "verification"
     description = "Verifies CurseForge jars contain no launcher account import implementation."
     notCompatibleWithConfigurationCache("Scans distribution jars for forbidden classes and string markers.")
-    dependsOn(reobfCurseForgeJar, curseForgeNodepJar)
-    inputs.files(reobfCurseForgeJar.flatMap { it.archiveFile }, curseForgeNodepJar.flatMap { it.archiveFile })
+    dependsOn(reobfCurseForgeJar, curseForgeFatJar)
+    inputs.files(reobfCurseForgeJar.flatMap { it.archiveFile }, curseForgeFatJar.flatMap { it.archiveFile })
 
     doLast {
         val forbiddenEntryFragments = listOf(
@@ -406,7 +285,7 @@ val verifyCurseForgeJars = tasks.register("verifyCurseForgeJars") {
             "wawelauth.gui.launcher_import",
         )
 
-        listOf(reobfCurseForgeJar.get().archiveFile.get().asFile, curseForgeNodepJar.get().archiveFile.get().asFile)
+        listOf(reobfCurseForgeJar.get().archiveFile.get().asFile, curseForgeFatJar.get().archiveFile.get().asFile)
             .forEach { archive ->
                 ZipFile(archive).use { zip ->
                     val entries = zip.entries()
@@ -444,16 +323,16 @@ fun Any.callNoArg(methodName: String): Any? = javaClass.methods
     .invoke(this)
 
 @Suppress("UNCHECKED_CAST")
-fun configureModrinthBundledNodep(extension: Any) {
-    (extension.callNoArg("getAdditionalFiles") as ListProperty<Any>).add(nodepJar)
+fun configureModrinthFatJar(extension: Any) {
+    (extension.callNoArg("getAdditionalFiles") as ListProperty<Any>).add(fatJar)
 }
 
 plugins.withId("com.modrinth.minotaur") {
     afterEvaluate {
-        extensions.findByName("modrinth")?.let(::configureModrinthBundledNodep)
+        extensions.findByName("modrinth")?.let(::configureModrinthFatJar)
     }
     tasks.matching { it.name == "modrinth" }.configureEach {
-        dependsOn(nodepJar)
+        dependsOn(fatJar)
     }
 }
 
@@ -473,7 +352,7 @@ if (configuredCurseForgeProjectId.isNotEmpty()) {
     val publishCurseforge = tasks.register<TaskPublishCurseForge>("publishCurseforge") {
         group = "publishing"
         description = "Publishes the privacy-restricted WawelAuth jars to CurseForge."
-        dependsOn(reobfCurseForgeJar, curseForgeNodepJar)
+        dependsOn(reobfCurseForgeJar, curseForgeFatJar)
 
         apiToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         disableVersionDetection()
@@ -500,11 +379,10 @@ if (configuredCurseForgeProjectId.isNotEmpty()) {
             artifact.addRelation("unimixins", "requiredDependency")
         }
 
-        val nodepArtifact = artifact.withAdditionalFile(curseForgeNodepJar)
-        nodepArtifact.displayName = providers.provider {
-            "${wawelProp("modName") ?: project.name} ${nodepVersion()}"
+        val fatArtifact = artifact.withAdditionalFile(curseForgeFatJar)
+        fatArtifact.displayName = providers.provider {
+            "${wawelProp("modName") ?: project.name} ${fatVersion()}"
         }
-        nodepArtifact.addRequirement("fplib")
     }
 
     if (providers.environmentVariable("CURSEFORGE_TOKEN").orNull != null) {
@@ -514,15 +392,15 @@ if (configuredCurseForgeProjectId.isNotEmpty()) {
     }
 }
 
-extensions.extraProperties.set("publishableNodepJar", nodepJar)
+extensions.extraProperties.set("publishableFatJar", fatJar)
 afterEvaluate {
     val extras = extensions.extraProperties
     if (!extras.has("publishableApiJar")) {
         // 67minecraft's extra-file hook.
-        extras.set("publishableApiJar", nodepJar)
+        extras.set("publishableApiJar", fatJar)
     }
 }
 
 tasks.matching { it.name == "publish67Minecraft" }.configureEach {
-    dependsOn(nodepJar)
+    dependsOn(fatJar)
 }

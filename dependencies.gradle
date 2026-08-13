@@ -33,7 +33,27 @@
  *
  * For more details, see https://docs.gradle.org/8.0.1/userguide/java_library_plugin.html#sec:java_library_configurations_graph
  */
+configurations {
+    deploader
+
+    fatImplementation {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+
+    // These libraries are downloaded by DepLoader in normal distributions.
+    // Keep them available for compilation and tests without leaking them into
+    // the regular artifact or its published dependency metadata.
+    compileOnly.extendsFrom(fatImplementation)
+    testRuntimeOnly.extendsFrom(fatImplementation)
+}
+
+def fplibDepLoaderVersion = "1.11.0"
+
 dependencies {
+    deploader("com.falsepattern:falsepatternlib-mc1.7.10:${fplibDepLoaderVersion}:deploader") // LGPL 3.0
+    shadowImplementation("com.falsepattern:falsepatternlib-mc1.7.10:${fplibDepLoaderVersion}:deploader_stub") // LGPL 3.0
+
     // Pure runtime
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.171:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.114-GTNH:dev")
@@ -60,12 +80,12 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:twilightforest:2.7.36:dev")
     compileOnly("com.github.GTNewHorizons:Botania:1.13.26-GTNH:dev")
 
-    // Shadow
-    shadowImplementation("org.bouncycastle:bcprov-jdk15to18:${bouncyCastleVersion}")
-    shadowImplementation("org.bouncycastle:bcpkix-jdk15to18:${bouncyCastleVersion}")
-    shadowImplementation("org.xerial:sqlite-jdbc:${sqliteJdbcVersion}")
+    // Downloaded by DepLoader in the regular jar and bundled in the fat jar.
+    fatImplementation("org.bouncycastle:bcprov-jdk15to18:${bouncyCastleVersion}")
+    fatImplementation("org.bouncycastle:bcpkix-jdk15to18:${bouncyCastleVersion}")
+    fatImplementation("org.xerial:sqlite-jdbc:${sqliteJdbcVersion}")
     // Since 3.53.0.0, sqlite-jdbc publishes Android natives as a separate artifact.
-    shadowImplementation("org.xerial:sqlite-jdbc:${sqliteJdbcVersion}:natives-android")
+    fatImplementation("org.xerial:sqlite-jdbc:${sqliteJdbcVersion}:natives-android")
 
     // Test
     testImplementation("junit:junit:4.13.2")

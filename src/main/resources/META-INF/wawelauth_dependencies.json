@@ -1,0 +1,19 @@
+{
+  "identifier": "falsepatternlib_dependencies",
+  "repositories": [
+    "https://repo.maven.apache.org/maven2/"
+  ],
+  "dependencies": {
+    "always": {
+      "common": [
+        "org.bouncycastle:bcprov-jdk15to18:${bouncyCastleVersion}",
+        "org.bouncycastle:bcutil-jdk15to18:${bouncyCastleVersion}",
+        "org.bouncycastle:bcpkix-jdk15to18:${bouncyCastleVersion}",
+        "org.xerial:sqlite-jdbc:${sqliteJdbcVersion}",
+        "org.xerial:sqlite-jdbc:${sqliteJdbcVersion}:natives-android"
+      ],
+      "client": [],
+      "server": []
+    }
+  }
+}

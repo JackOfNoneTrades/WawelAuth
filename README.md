@@ -30,7 +30,7 @@ This mod also adds some other features, like an admin web panel, and animated ca
 * [ModularUI2](https://github.com/GTNewHorizons/ModularUI2) [![curse](images/icons/curse.png)](https://www.curseforge.com/minecraft/mc-mods/modularui)  [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/modularui) [![git](images/icons/git.png)](https://github.com/GTNewHorizons/ModularUI2) (Client only)
 
 > [!NOTE]
-> Each release also includes a `nodep` jar. It does not ship `sqlite-jdbc` or Bouncy Castle, and relies on [FalsePatternLib](https://github.com/FalsePattern/FalsePatternLib) [![curse](images/icons/curse.png)](https://www.curseforge.com/minecraft/mc-mods/fplib) [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/fplib) [![git](images/icons/git.png)](https://github.com/FalsePattern/FalsePatternLib) to supply them.
+> The regular jar uses DepLoader to download `sqlite-jdbc` and `org.bouncycastle` automatically. A fully bundled `fat` jar is also provided for offline installations.
 
 > [!NOTE]
 > `wawelauth-curseforge` releases do not have the ability to import launcher sessions.
