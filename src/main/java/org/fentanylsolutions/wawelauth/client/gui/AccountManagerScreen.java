@@ -1594,6 +1594,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void prepareEntityPreview(PlayerPreviewEntity entity, boolean backView) {
+        PlayerPreviewEntity.ensureIsolatedRenderer();
+        entity.updatePreviewAge();
+
         // EntityDisplayWidget may run after flat-color draw calls; ensure textured rendering state.
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);

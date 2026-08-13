@@ -1,8 +1,15 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
+import java.lang.reflect.Constructor;
+
 import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.renderer.entity.Render;
+import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.renderer.entity.RenderPlayer;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ResourceLocation;
 
+import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.WawelTextureResolver;
 import org.fentanylsolutions.wawelauth.client.render.ISkinModelOverride;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
@@ -16,11 +23,57 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class PlayerPreviewEntity extends EntityOtherPlayerMP implements ISkinModelOverride {
 
+    private static Render isolatedRenderer;
+    private static Class<? extends Render> isolatedRendererClass;
+
     private boolean capeVisible = true;
     private SkinModel forcedSkinModel;
+    private final long previewCreatedAtNanos = System.nanoTime();
 
     public PlayerPreviewEntity(GameProfile profile) {
         super(DummyWorld.INSTANCE, profile);
+    }
+
+    /**
+     * Give GUI previews an isolated instance of the active player renderer. This preserves
+     * renderer-provided features without sharing mutable model state with live players.
+     */
+    public static void ensureIsolatedRenderer() {
+        RenderManager renderManager = RenderManager.instance;
+        Render activeRenderer = renderManager.entityRenderMap.get(EntityPlayer.class);
+        Class<? extends Render> activeRendererClass = activeRenderer == null ? RenderPlayer.class
+            : activeRenderer.getClass()
+                .asSubclass(Render.class);
+
+        if (isolatedRenderer == null || isolatedRendererClass != activeRendererClass) {
+            isolatedRenderer = createIsolatedRenderer(activeRendererClass, renderManager);
+            isolatedRendererClass = activeRendererClass;
+        }
+        renderManager.entityRenderMap.put(PlayerPreviewEntity.class, isolatedRenderer);
+    }
+
+    private static Render createIsolatedRenderer(Class<? extends Render> rendererClass, RenderManager renderManager) {
+        Render renderer;
+        try {
+            Constructor<? extends Render> constructor = rendererClass.getDeclaredConstructor();
+            if (!constructor.isAccessible()) {
+                constructor.setAccessible(true);
+            }
+            renderer = constructor.newInstance();
+        } catch (ReflectiveOperationException | SecurityException | LinkageError e) {
+            WawelAuth.LOG.warn(
+                "Could not isolate player renderer {}; falling back to vanilla previews",
+                rendererClass.getName(),
+                e);
+            renderer = new RenderPlayer();
+        }
+        renderer.setRenderManager(renderManager);
+        return renderer;
+    }
+
+    /** Keep time-based renderer effects moving even though preview entities do not join a world. */
+    public void updatePreviewAge() {
+        ticksExisted = (int) ((System.nanoTime() - previewCreatedAtNanos) / 50_000_000L);
     }
 
     @Override
