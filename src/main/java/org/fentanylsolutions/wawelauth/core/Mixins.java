@@ -298,6 +298,17 @@ public class Mixins extends FentMixins {
             .side(MiscUtil.Side.CLIENT)
             .build();
 
+        registry.mixin("MixinChatBubblesMod")
+            .modid("chatbubbles")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+        registry.mixin("MixinLiteModChatBubbles")
+            .modid("chatbubbles")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+
     }
 
     public static java.util.List<String> getEarlyMixinsForLoader() {

@@ -24,6 +24,7 @@ servers.dat
 usercache.json
 whitelist.json
 /out/
+/libs/ChatBubbles-1.7.2-1.0.jar
 *.iml
 *.ipr
 *.iws
