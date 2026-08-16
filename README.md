@@ -30,7 +30,7 @@ This mod also adds some other features, like an admin web panel, and animated ca
 * [ModularUI2](https://github.com/GTNewHorizons/ModularUI2) [![curse](images/icons/curse.png)](https://www.curseforge.com/minecraft/mc-mods/modularui)  [![modrinth](images/icons/modrinth.png)](https://modrinth.com/mod/modularui) [![git](images/icons/git.png)](https://github.com/GTNewHorizons/ModularUI2) (Client only)
 
 > [!NOTE]
-> The regular jar uses DepLoader to download `sqlite-jdbc` and `org.bouncycastle` automatically. A fully bundled `fat` jar is also provided for offline installations.
+> The regular and Maven `dev` jars bundle `sqlite-jdbc` and `org.bouncycastle` so they work in offline and downstream development environments. Lightweight `slim` and `slim-dev` jars using embedded DepLoader are also provided.
 
 > [!NOTE]
 > `wawelauth-curseforge` releases do not have the ability to import launcher sessions.

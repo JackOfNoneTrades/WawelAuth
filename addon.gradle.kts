@@ -7,6 +7,8 @@ import net.darkhax.curseforgegradle.TaskPublishCurseForge
 import org.gradle.api.artifacts.dsl.RepositoryHandler
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.provider.ListProperty
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.specs.Specs
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.compile.JavaCompile
@@ -22,7 +24,7 @@ fun wawelProp(name: String): String? = providers.gradleProperty(name).orNull?.tr
 
 fun projectVersionString(): String = project.version.toString()
 
-fun fatVersion(): String = "${projectVersionString()}-fat"
+fun slimVersion(): String = "${projectVersionString()}-slim"
 
 val configuredCurseForgeProjectId = wawelProp("curseForgeProjectId").orEmpty()
 val configuredCurseForgeRelations = wawelProp("curseForgeRelations").orEmpty()
@@ -88,6 +90,17 @@ val bouncyCastleVersion = wawelProp("bouncyCastleVersion") ?: "1.84"
 val reobfJar = tasks.named<Jar>("reobfJar")
 val baseJar = tasks.named<Jar>("jar")
 val shadedDevJar = tasks.named<Jar>("shadowJar")
+
+// The default Maven artifacts must be self-contained: downstream RFG runs put
+// the dev artifact directly on the launch classpath, where DepLoader is not a
+// reliable substitute for Gradle runtime dependencies. Keep the lightweight
+// DepLoader artifacts available behind explicit slim classifiers.
+reobfJar.configure {
+    archiveClassifier.set("slim")
+}
+shadedDevJar.configure {
+    archiveClassifier.set("slim-dev")
+}
 // addon.gradle.kts is evaluated before dependencies.gradle, so create these
 // custom configurations here and let dependencies.gradle populate them later.
 val depLoaderBootstrap = configurations.maybeCreate("deploader")
@@ -185,7 +198,7 @@ val curseForgeJar = tasks.register<Jar>("curseForgeJar") {
 }
 
 val reobfCurseForgeJar = tasks.named<ReobfuscatedJar>("reobfCurseForgeJar") {
-    archiveClassifier.set("curseforge")
+    archiveClassifier.set("curseforge-slim")
     getExtraSrgFiles().from(layout.buildDirectory.file("tmp/mixins/mixins.srg"))
 }
 
@@ -208,7 +221,11 @@ tasks.named<ProcessResources>("processResources").configure {
 
 fun Jar.configureFatJar(sourceJar: TaskProvider<out Jar>, classifier: String) {
     group = "build"
-    description = "Builds a fully bundled $classifier jar."
+    description = if (classifier.isEmpty()) {
+        "Builds the fully bundled default jar."
+    } else {
+        "Builds a fully bundled $classifier jar."
+    }
     notCompatibleWithConfigurationCache("Unpacks runtime dependencies into a distribution jar.")
 
     dependsOn(sourceJar)
@@ -248,16 +265,93 @@ fun Jar.configureFatJar(sourceJar: TaskProvider<out Jar>, classifier: String) {
 }
 
 val fatJar = tasks.register<Jar>("fatJar") {
-    configureFatJar(reobfJar, "fat")
+    configureFatJar(reobfJar, "")
+}
+
+val fatDevJar = tasks.register<Jar>("fatDevJar") {
+    configureFatJar(shadedDevJar, "dev")
 }
 
 val curseForgeFatJar = tasks.register<Jar>("curseForgeFatJar") {
-    configureFatJar(reobfCurseForgeJar, "curseforge-fat")
-    description = "Builds the fully bundled CurseForge jar without launcher account import."
+    configureFatJar(reobfCurseForgeJar, "curseforge")
+    description = "Builds the fully bundled default CurseForge jar without launcher account import."
 }
 
 tasks.named("assemble").configure {
-    dependsOn(fatJar, reobfCurseForgeJar, curseForgeFatJar)
+    dependsOn(fatJar, fatDevJar, reobfCurseForgeJar, curseForgeFatJar)
+}
+
+fun replaceOutgoingJar(configurationName: String, jarTask: TaskProvider<out Jar>) {
+    configurations.named(configurationName).configure {
+        outgoing.artifacts.clear()
+        outgoing.artifact(jarTask)
+    }
+}
+
+replaceOutgoingJar("apiElements", fatDevJar)
+replaceOutgoingJar("runtimeElements", fatDevJar)
+replaceOutgoingJar("reobfElements", fatJar)
+
+plugins.withId("maven-publish") {
+    extensions.getByType(PublishingExtension::class.java)
+        .publications
+        .withType(MavenPublication::class.java)
+        .configureEach {
+            artifact(reobfJar)
+            artifact(shadedDevJar)
+        }
+}
+
+val verifyDistributionJars = tasks.register("verifyDistributionJars") {
+    group = "verification"
+    description = "Verifies default jars are bundled and slim jars retain DepLoader metadata."
+    notCompatibleWithConfigurationCache("Scans distribution jar contents.")
+    dependsOn(fatJar, fatDevJar, reobfJar, shadedDevJar)
+    inputs.files(
+        fatJar.flatMap { it.archiveFile },
+        fatDevJar.flatMap { it.archiveFile },
+        reobfJar.flatMap { it.archiveFile },
+        shadedDevJar.flatMap { it.archiveFile },
+    )
+
+    doLast {
+        val dependencyDescriptor = "META-INF/wawelauth_dependencies.json"
+        val bundledEntries = listOf(
+            "org/sqlite/JDBC.class",
+            "org/bouncycastle/jce/provider/BouncyCastleProvider.class",
+        )
+
+        fun entriesOf(archive: File): Set<String> = ZipFile(archive).use { zip ->
+            buildSet {
+                val entries = zip.entries()
+                while (entries.hasMoreElements()) {
+                    add(entries.nextElement().name)
+                }
+            }
+        }
+
+        listOf(fatJar.get(), fatDevJar.get()).forEach { task ->
+            val archive = task.archiveFile.get().asFile
+            val entries = entriesOf(archive)
+            bundledEntries.forEach { required ->
+                check(required in entries) { "Bundled archive ${archive.name} is missing $required" }
+            }
+            check(dependencyDescriptor !in entries) {
+                "Bundled archive ${archive.name} still contains $dependencyDescriptor"
+            }
+        }
+
+        listOf(reobfJar.get(), shadedDevJar.get()).forEach { task ->
+            val archive = task.archiveFile.get().asFile
+            val entries = entriesOf(archive)
+            check(dependencyDescriptor in entries) {
+                "Slim archive ${archive.name} is missing $dependencyDescriptor"
+            }
+            bundledEntries.forEach { forbidden ->
+                check(forbidden !in entries) { "Slim archive ${archive.name} unexpectedly contains $forbidden" }
+            }
+        }
+    }
 }
 
 val verifyCurseForgeJars = tasks.register("verifyCurseForgeJars") {
@@ -315,7 +409,7 @@ val verifyCurseForgeJars = tasks.register("verifyCurseForgeJars") {
 }
 
 tasks.named("check").configure {
-    dependsOn(verifyCurseForgeJars)
+    dependsOn(verifyCurseForgeJars, verifyDistributionJars)
 }
 
 fun Any.callNoArg(methodName: String): Any? = javaClass.methods
@@ -323,16 +417,16 @@ fun Any.callNoArg(methodName: String): Any? = javaClass.methods
     .invoke(this)
 
 @Suppress("UNCHECKED_CAST")
-fun configureModrinthFatJar(extension: Any) {
-    (extension.callNoArg("getAdditionalFiles") as ListProperty<Any>).add(fatJar)
+fun configureModrinthSlimJar(extension: Any) {
+    (extension.callNoArg("getAdditionalFiles") as ListProperty<Any>).add(reobfJar)
 }
 
 plugins.withId("com.modrinth.minotaur") {
     afterEvaluate {
-        extensions.findByName("modrinth")?.let(::configureModrinthFatJar)
+        extensions.findByName("modrinth")?.let(::configureModrinthSlimJar)
     }
     tasks.matching { it.name == "modrinth" }.configureEach {
-        dependsOn(fatJar)
+        dependsOn(fatJar, reobfJar)
     }
 }
 
@@ -352,11 +446,11 @@ if (configuredCurseForgeProjectId.isNotEmpty()) {
     val publishCurseforge = tasks.register<TaskPublishCurseForge>("publishCurseforge") {
         group = "publishing"
         description = "Publishes the privacy-restricted WawelAuth jars to CurseForge."
-        dependsOn(reobfCurseForgeJar, curseForgeFatJar)
+        dependsOn(curseForgeFatJar, reobfCurseForgeJar)
 
         apiToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         disableVersionDetection()
-        val artifact = upload(configuredCurseForgeProjectId, reobfCurseForgeJar.flatMap { it.archiveFile })
+        val artifact = upload(configuredCurseForgeProjectId, curseForgeFatJar.flatMap { it.archiveFile })
         if (changelogFile.exists()) {
             artifact.changelogType = "markdown"
             artifact.changelog = changelogFile
@@ -379,9 +473,9 @@ if (configuredCurseForgeProjectId.isNotEmpty()) {
             artifact.addRelation("unimixins", "requiredDependency")
         }
 
-        val fatArtifact = artifact.withAdditionalFile(curseForgeFatJar)
-        fatArtifact.displayName = providers.provider {
-            "${wawelProp("modName") ?: project.name} ${fatVersion()}"
+        val slimArtifact = artifact.withAdditionalFile(reobfCurseForgeJar)
+        slimArtifact.displayName = providers.provider {
+            "${wawelProp("modName") ?: project.name} ${slimVersion()}"
         }
     }
 
@@ -392,15 +486,15 @@ if (configuredCurseForgeProjectId.isNotEmpty()) {
     }
 }
 
+extensions.extraProperties.set("publishableObfJar", fatJar)
+extensions.extraProperties.set("publishableDevJar", fatDevJar)
 extensions.extraProperties.set("publishableFatJar", fatJar)
 afterEvaluate {
     val extras = extensions.extraProperties
-    if (!extras.has("publishableApiJar")) {
-        // 67minecraft's extra-file hook.
-        extras.set("publishableApiJar", fatJar)
-    }
+    // 67minecraft's extra-file hook; WawelAuth has no separate API jar.
+    extras.set("publishableApiJar", reobfJar)
 }
 
 tasks.matching { it.name == "publish67Minecraft" }.configureEach {
-    dependsOn(fatJar)
+    dependsOn(fatJar, fatDevJar, reobfJar)
 }
