@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
@@ -48,6 +49,7 @@ import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.drawable.ColorType;
+import com.cleanroommc.modularui.drawable.GuiDraw;
 import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
@@ -137,6 +139,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     private static final int PREVIEW_ENTITY_ROW_HEIGHT = PREVIEW_PANEL_HEIGHT - PREVIEW_MODE_BUTTON_SIZE
         - PREVIEW_MODE_BUTTON_EDGE_MARGIN;
     private static final int PREVIEW_ENTITY_VERTICAL_OFFSET = 13;
+    // ModelBiped's head spans 1.5-2.0 blocks above the feet.
+    private static final float PLAYER_MODEL_FACE_CENTER_ABOVE_FEET = 1.75F;
     private static final int TEXTURE_ACTION_BUTTON_WIDTH = 24;
     private static final int TEXTURE_ACTION_BUTTON_HEIGHT = 24;
     private static final int TEXTURE_ACTION_ICON_WIDTH = 8;
@@ -621,55 +625,17 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                         .height(PREVIEW_ENTITY_ROW_HEIGHT)
                         .mainAxisAlignment(Alignment.MainAxis.CENTER)
                         .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                        .child(new EntityDisplayWidget(() -> previewFrontEntity) {
-
-                            @Override
-                            public void draw(GuiContext context, int x, int y, int width, int height,
-                                WidgetTheme widgetTheme) {
-                                PreviewEntityRenderContext.isRenderingInGui = true;
-                                try {
-                                    super.draw(
-                                        context,
-                                        x,
-                                        y + PREVIEW_ENTITY_VERTICAL_OFFSET,
-                                        width,
-                                        height,
-                                        widgetTheme);
-                                } finally {
-                                    PreviewEntityRenderContext.isRenderingInGui = false;
-                                }
-                            }
-                        }.doesLookAtMouse(true)
-                            .preDraw(entity -> { prepareEntityPreview((PlayerPreviewEntity) entity, false); })
-                            .postDraw(entity -> { postEntityPreview(); })
-                            .asWidget()
-                            .size(72, 66)
-                            .invisible())
+                        .child(
+                            previewEntityDrawable(() -> previewFrontEntity, false, PREVIEW_ENTITY_VERTICAL_OFFSET)
+                                .asWidget()
+                                .size(72, 66)
+                                .invisible())
                         .child(new Widget<>().size(6, 66))
-                        .child(new EntityDisplayWidget(() -> previewBackEntity) {
-
-                            @Override
-                            public void draw(GuiContext context, int x, int y, int width, int height,
-                                WidgetTheme widgetTheme) {
-                                PreviewEntityRenderContext.isRenderingInGui = true;
-                                try {
-                                    super.draw(
-                                        context,
-                                        x,
-                                        y + PREVIEW_ENTITY_VERTICAL_OFFSET,
-                                        width,
-                                        height,
-                                        widgetTheme);
-                                } finally {
-                                    PreviewEntityRenderContext.isRenderingInGui = false;
-                                }
-                            }
-                        }.doesLookAtMouse(false)
-                            .preDraw(entity -> { prepareEntityPreview((PlayerPreviewEntity) entity, true); })
-                            .postDraw(entity -> { postEntityPreview(); })
-                            .asWidget()
-                            .size(72, 66)
-                            .invisible()))
+                        .child(
+                            previewEntityDrawable(() -> previewBackEntity, true, PREVIEW_ENTITY_VERTICAL_OFFSET)
+                                .asWidget()
+                                .size(72, 66)
+                                .invisible()))
                 .child(
                     new Row().widthRel(1.0f)
                         .height(PREVIEW_MODE_BUTTON_SIZE)
@@ -1593,6 +1559,60 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         previewBackEntity.setForcedSkinModel(model);
     }
 
+    private EntityDisplayWidget previewEntityDrawable(Supplier<? extends PlayerPreviewEntity> entitySupplier,
+        boolean backView, int verticalOffset) {
+        return new EntityDisplayWidget(() -> entitySupplier.get()) {
+
+            @Override
+            public void draw(GuiContext context, int x, int y, int width, int height, WidgetTheme widgetTheme) {
+                drawPreviewEntity(context, entitySupplier.get(), backView, x, y + verticalOffset, width, height);
+            }
+        };
+    }
+
+    private void drawPreviewEntity(GuiContext context, PlayerPreviewEntity entity, boolean backView, int x, int y,
+        int width, int height) {
+        if (entity == null) {
+            return;
+        }
+
+        PreviewEntityRenderContext.isRenderingInGui = true;
+        try {
+            if (backView) {
+                GuiDraw.drawEntity(
+                    entity,
+                    x,
+                    y,
+                    width,
+                    height,
+                    context.getCurrentDrawingZ(),
+                    ignored -> prepareEntityPreview(entity, true),
+                    ignored -> postEntityPreview());
+                return;
+            }
+
+            int mouseYFromFaceCenter = context.getMouseY() - previewFaceCenterY(entity, y, width, height);
+            GuiDraw.drawEntityLookingAtMouse(
+                entity,
+                x,
+                y,
+                width,
+                height,
+                context.getCurrentDrawingZ(),
+                context.getMouseX(),
+                mouseYFromFaceCenter,
+                ignored -> prepareEntityPreview(entity, false),
+                ignored -> postEntityPreview());
+        } finally {
+            PreviewEntityRenderContext.isRenderingInGui = false;
+        }
+    }
+
+    private static int previewFaceCenterY(PlayerPreviewEntity entity, int y, int width, int height) {
+        float scale = Math.min(height / entity.height, width / entity.width);
+        return Math.round(y + height / 2.0F + scale * (entity.height / 2.0F - PLAYER_MODEL_FACE_CENTER_ABOVE_FEET));
+    }
+
     private void prepareEntityPreview(PlayerPreviewEntity entity, boolean backView) {
         PlayerPreviewEntity.ensureIsolatedRenderer();
         entity.updatePreviewAge();
@@ -1997,17 +2017,16 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             @Override
             public void draw(GuiContext context, int x, int y, int width, int height, WidgetTheme widgetTheme) {
                 applyTextureUploadPreviewModel(entity, null);
-                PreviewEntityRenderContext.isRenderingInGui = true;
-                try {
-                    super.draw(context, x, y + TEXTURE_DIALOG_ENTITY_VERTICAL_OFFSET, width, height, widgetTheme);
-                } finally {
-                    PreviewEntityRenderContext.isRenderingInGui = false;
-                }
+                drawPreviewEntity(
+                    context,
+                    entity,
+                    backView,
+                    x,
+                    y + TEXTURE_DIALOG_ENTITY_VERTICAL_OFFSET,
+                    width,
+                    height);
             }
-        }.doesLookAtMouse(!backView)
-            .preDraw(preview -> { prepareEntityPreview((PlayerPreviewEntity) preview, backView); })
-            .postDraw(preview -> { postEntityPreview(); })
-            .asWidget()
+        }.asWidget()
             .size(TEXTURE_DIALOG_ENTITY_WIDTH, TEXTURE_DIALOG_ENTITY_HEIGHT)
             .invisible();
     }
