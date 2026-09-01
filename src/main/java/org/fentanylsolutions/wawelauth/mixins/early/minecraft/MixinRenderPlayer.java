@@ -1,25 +1,23 @@
 package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 
-import java.util.UUID;
-
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
-
-import org.fentanylsolutions.wawelauth.client.render.FirstPersonRenderState;
+import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.SkinModelHelper;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DState;
-import org.fentanylsolutions.wawelauth.common.ISkinLayerExtender;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.UUID;
 
 /**
  * Hooks into RenderPlayer to initialize the modern 64x64 model,
@@ -39,9 +37,8 @@ public class MixinRenderPlayer {
      */
     @Inject(method = "<init>", at = @At("RETURN"))
     private void wawelauth$initModernModel(CallbackInfo ci) {
-        if (SkinLayers3DConfig.modernSkinSupport) {
+        if (SkinLayers3DConfig.modernSkinSupport)
             ((IModelBipedModernExt) this.modelBipedMain).initModern();
-        }
     }
 
     /**
@@ -61,9 +58,8 @@ public class MixinRenderPlayer {
             SkinLayers3DSetup.updateState(uuid, null);
             return;
         }
-        if (!ext.isModern()) {
-            ext.initModern();
-        }
+
+        if (!ext.isModern()) ext.initModern();
 
         SkinModel model = SkinModelHelper.getSkinModel(player);
         boolean slim = model == SkinModel.SLIM;
@@ -95,16 +91,16 @@ public class MixinRenderPlayer {
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         UUID uuid = player.getUniqueID();
         ext.setCurrentPlayerUuid(uuid);
-        SkinLayers3DState state = null;
+        SkinLayers3DState state;
 
         if (!SkinLayers3DConfig.modernSkinSupport) {
             ext.setSlim(false);
             SkinLayers3DSetup.updateState(uuid, null);
             return;
         }
-        if (!ext.isModern()) {
-            ext.initModern();
-        }
+
+        if (!ext.isModern()) ext.initModern();
+
         if (player instanceof AbstractClientPlayer clientPlayer) {
             SkinModel model = SkinModelHelper.getSkinModel(clientPlayer);
             boolean slim = model == SkinModel.SLIM;
@@ -121,12 +117,8 @@ public class MixinRenderPlayer {
             SkinLayers3DSetup.updateState(uuid, null);
         }
 
-        // Apply right sleeve visibility for first-person arm
-        if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()
-            || FirstPersonRenderState.isRightSleeveSuppressed()) {
-            ext.getRightArmWear().showModel = false;
-        }
-
+        if (SkinLayersHelper.isSkinLayerHidden(player, SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE))
+            ext.hidePart(SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE, true);
     }
 
     /**
@@ -138,19 +130,18 @@ public class MixinRenderPlayer {
             value = "INVOKE",
             target = "Lnet/minecraft/client/model/ModelRenderer;render(F)V",
             shift = At.Shift.BEFORE))
-    private void wawelauth$renderFirstPersonArmWearPre(EntityPlayer player, CallbackInfo ci) {
+    private void wawelauth$renderFirstPersonSleevePre(EntityPlayer player, CallbackInfo ci) {
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
-        ext.render3DRightArmWear(0.0625F);
+        ext.renderPart3D(SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE, 0.0625F);
     }
 
     /**
      * Returns right arm overlay layer visibility after first-person arm base renders
      */
     @Inject(method = "renderFirstPersonArm", at = @At(value = "TAIL"))
-    private void wawelauth$renderFirstPersonArmWearPost(EntityPlayer player, CallbackInfo ci) {
+    private void wawelauth$renderFirstPersonSleevePost(EntityPlayer player, CallbackInfo ci) {
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
-        if (ext.isModern()) {
-            ext.getRightArmWear().showModel = true;
-        }
+        ext.hidePart(SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE, false);
     }
+
 }

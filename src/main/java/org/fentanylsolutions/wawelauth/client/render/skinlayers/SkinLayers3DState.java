@@ -1,6 +1,7 @@
 package org.fentanylsolutions.wawelauth.client.render.skinlayers;
 
 import net.minecraft.util.ResourceLocation;
+import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 
 /**
  * Per-player state holding 3D meshes for each body part overlay.
@@ -24,6 +25,18 @@ public class SkinLayers3DState {
 
     /** Whether this state was built for slim arms. */
     public boolean slim;
+
+    public SkinLayers3DMesh meshFromPart(SkinLayersHelper.EnumPlayerModelParts part) {
+        return switch (part) {
+            case CAPE -> null;
+            case JACKET -> jacketMesh;
+            case LEFT_SLEEVE -> leftSleeveMesh;
+            case RIGHT_SLEEVE -> rightSleeveMesh;
+            case LEFT_PANTS -> leftPantsMesh;
+            case RIGHT_PANTS -> rightPantsMesh;
+            case HAT -> hatMesh;
+        };
+    }
 
     /**
      * Delete all GL display lists. Call when the player leaves render distance

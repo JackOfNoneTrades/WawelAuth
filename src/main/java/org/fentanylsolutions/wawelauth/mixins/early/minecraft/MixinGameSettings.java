@@ -22,8 +22,8 @@ public class MixinGameSettings {
     private void sendSettingsToServer(CallbackInfo ci) {
         byte mask = 0;
         for (SkinLayersHelper.EnumPlayerModelParts part : SkinLayersHelper.EnumPlayerModelParts.values()) {
-            if (part.getPartHidden()) {
-                mask |= part.getPartMask();
+            if (part.hidden()) {
+                mask |= part.mask();
             }
         }
         PacketHandler.sendToServer(new UpdateSkinLayersPacket(mask));

@@ -35,15 +35,11 @@ public class UpdateSkinLayersPacket implements IMessage {
         @Override
         public IMessage onMessage(UpdateSkinLayersPacket message, MessageContext ctx) {
             EntityPlayerMP player = ctx.getServerHandler().playerEntity;
-            if (player == null) {
-                return null;
-            }
+            if (player == null) return null;
+
             byte mask = (byte) (message.mask & 127);
             ServerTaskScheduler.schedule(() -> {
-                if (!player.isDead) {
-                    player.getDataWatcher()
-                        .updateObject(16, mask);
-                }
+                if (!player.isDead) player.getDataWatcher().updateObject(16, mask);
             });
             return null;
         }

@@ -1,8 +1,9 @@
 package org.fentanylsolutions.wawelauth.client.render;
 
-import java.util.UUID;
-
 import net.minecraft.client.model.ModelRenderer;
+import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
+
+import java.util.UUID;
 
 /**
  * Duck interface injected into {@link net.minecraft.client.model.ModelBiped} via mixin.
@@ -23,7 +24,6 @@ public interface IModelBipedModernExt {
 
     /**
      * Swap between slim (3px) and classic (4px) arm ModelRenderers.
-     * No-op if the current state already matches the requested mode.
      */
     void setSlim(boolean slim);
 
@@ -32,20 +32,15 @@ public interface IModelBipedModernExt {
      */
     boolean isModern();
 
-    /**
-     * Renders the 3d right arm overlay mesh (for first-person arm rendering).
-     */
-    void render3DRightArmWear(float scale);
-
     void setCurrentPlayerUuid(UUID uuid);
 
-    ModelRenderer getBodyWear();
+    void renderPart3D(SkinLayersHelper.EnumPlayerModelParts part, float scale);
+    ModelRenderer rendererFromPart(SkinLayersHelper.EnumPlayerModelParts part);
+    ModelRenderer baseRendererFromPart(SkinLayersHelper.EnumPlayerModelParts part);
+    SkinLayersHelper.EnumPlayerModelParts partFromRenderer(ModelRenderer renderer);
+    default void hidePart(SkinLayersHelper.EnumPlayerModelParts part, boolean value) {
+        if (!this.isModern() && part.isModern()) return;
+        this.rendererFromPart(part).showModel = !value;
+    }
 
-    ModelRenderer getRightArmWear();
-
-    ModelRenderer getLeftArmWear();
-
-    ModelRenderer getRightLegWear();
-
-    ModelRenderer getLeftLegWear();
 }

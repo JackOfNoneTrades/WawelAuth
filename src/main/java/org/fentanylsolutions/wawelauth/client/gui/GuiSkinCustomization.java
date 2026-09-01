@@ -24,7 +24,7 @@ public class GuiSkinCustomization extends GuiScreen {
         this.buttonList.add(new GuiButton(-1, this.width / 2 - 100, this.height / 6 + 168, I18n.format("gui.done")));
 
         for (SkinLayersHelper.EnumPlayerModelParts part : SkinLayersHelper.EnumPlayerModelParts.values()) {
-            int partID = part.getPartId();
+            int partID = part.id();
             this.buttonList.add(
                 new GuiCustomToggleButton(
                     partID + 1,
@@ -32,8 +32,8 @@ public class GuiSkinCustomization extends GuiScreen {
                     this.height / 6 + 24 * ((partID) >> 1),
                     150,
                     20,
-                    I18n.format(part.getPartName()),
-                    !part.getPartHidden()));
+                    I18n.format(part.partName()),
+                    !part.hidden()));
         }
     }
 
@@ -60,7 +60,7 @@ public class GuiSkinCustomization extends GuiScreen {
             SkinLayersHelper.EnumPlayerModelParts part = SkinLayersHelper.EnumPlayerModelParts.fromId(button.id - 1);
             if (part != null) {
                 toggle.toggle();
-                part.setPartHidden(!toggle.getEnabled());
+                part.setHidden(!toggle.getEnabled());
             }
         } else if (button.id == -1) {
             this.mc.displayGuiScreen(this.parentScreen);

@@ -1,9 +1,12 @@
 package org.fentanylsolutions.wawelauth.client.render;
 
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.eventhandler.EventPriority;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
+import cpw.mods.fml.common.network.FMLNetworkEvent;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.renderer.entity.RenderPlayer;
@@ -13,19 +16,21 @@ import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.world.WorldEvent;
-
+import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
-import org.fentanylsolutions.wawelauth.common.ISkinLayerExtender;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.EventPriority;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
-import cpw.mods.fml.common.network.FMLNetworkEvent;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.HAT;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.JACKET;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_PANTS;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_SLEEVE;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_PANTS;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE;
 
 /**
  * Drives WawelTextureResolver lifecycle: tick sweep, invalidate on join, clear on disconnect.
@@ -117,36 +122,30 @@ public final class SkinResolverClientHandler {
         IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
         ItemStack[] armor = player.inventory.armorInventory;
 
-        if (((ISkinLayerExtender) player).wawelAuth$getHideHat()
-            || (SkinLayers3DConfig.hideOverlayArmor && armor[3] != null)) {
-            renderer.modelBipedMain.bipedHeadwear.showModel = false;
-        }
-
-        // The modern overlay parts do not exist when modern skin support is disabled.
-        if (!ext.isModern()) return;
-
-        if (((ISkinLayerExtender) player).wawelAuth$getHideJacket()) ext.getBodyWear().showModel = false;
-        if (((ISkinLayerExtender) player).wawelAuth$getHideLeftSleeve()) ext.getLeftArmWear().showModel = false;
-        if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()) ext.getRightArmWear().showModel = false;
-        if (((ISkinLayerExtender) player).wawelAuth$getHideLeftPants()) ext.getLeftLegWear().showModel = false;
-        if (((ISkinLayerExtender) player).wawelAuth$getHideRightPants()) ext.getRightLegWear().showModel = false;
+        if (SkinLayersHelper.isSkinLayerHidden(player, HAT)) ext.hidePart(HAT, true);
+        if (SkinLayersHelper.isSkinLayerHidden(player, JACKET)) ext.hidePart(JACKET, true);
+        if (SkinLayersHelper.isSkinLayerHidden(player, LEFT_SLEEVE)) ext.hidePart(LEFT_SLEEVE, true);
+        if (SkinLayersHelper.isSkinLayerHidden(player, RIGHT_SLEEVE)) ext.hidePart(RIGHT_SLEEVE, true);
+        if (SkinLayersHelper.isSkinLayerHidden(player, LEFT_PANTS)) ext.hidePart(LEFT_PANTS, true);
+        if (SkinLayersHelper.isSkinLayerHidden(player, RIGHT_PANTS)) ext.hidePart(RIGHT_PANTS, true);
 
         if (SkinLayers3DConfig.hideOverlayArmor) {
+            ItemStack head = armor[3];
             ItemStack chest = armor[2];
             ItemStack legs = armor[1];
             ItemStack boots = armor[0];
 
+            if (head != null) ext.hidePart(HAT, true);
             if (chest != null) {
-                ext.getBodyWear().showModel = false;
-                ext.getLeftArmWear().showModel = false;
-                ext.getRightArmWear().showModel = false;
+                ext.hidePart(JACKET, true);
+                ext.hidePart(LEFT_SLEEVE, true);
+                ext.hidePart(RIGHT_SLEEVE, true);
             }
             if (legs != null || boots != null) {
-                ext.getLeftLegWear().showModel = false;
-                ext.getRightLegWear().showModel = false;
+                ext.hidePart(LEFT_PANTS, true);
+                ext.hidePart(RIGHT_PANTS, true);
             }
         }
-
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
@@ -154,16 +153,12 @@ public final class SkinResolverClientHandler {
         RenderPlayer renderer = event.renderer;
         IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
 
-        renderer.modelBipedMain.bipedHeadwear.showModel = true;
-
-        // The modern overlay parts do not exist when modern skin support is disabled.
-        if (!ext.isModern()) return;
-
-        ext.getBodyWear().showModel = true;
-        ext.getLeftArmWear().showModel = true;
-        ext.getRightArmWear().showModel = true;
-        ext.getLeftLegWear().showModel = true;
-        ext.getRightLegWear().showModel = true;
+        ext.hidePart(HAT, false);
+        ext.hidePart(JACKET, false);
+        ext.hidePart(LEFT_SLEEVE, false);
+        ext.hidePart(RIGHT_SLEEVE, false);
+        ext.hidePart(LEFT_PANTS, false);
+        ext.hidePart(RIGHT_PANTS, false);
     }
 
 }
