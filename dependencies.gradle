@@ -56,30 +56,30 @@ dependencies {
     shadowImplementation("com.falsepattern:falsepatternlib-mc1.7.10:${fplibDepLoaderVersion}:deploader_stub") // LGPL 3.0
 
     // Pure runtime
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.171:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.114-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.193:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.129-GTNH:dev")
     // Disabled: client.core.MixinMinecraft @Redirect on displayWorkingScreen clashes with Et Futurum's MixinMinecraft_LoadingBridge
     //runtimeOnlyNonPublishable("curse.maven:archaicfix-677782:6785842")
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:catalogue-vintage-1465746:8384975")) // 1.0.8-1.7.10
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.53:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.2.8:dev")
     //runtimeOnlyNonPublishable("org.fentanylsolutions.vintagedamageindicators:VintageDamageIndicators:test2")
     //runtimeOnlyNonPublishable(rfg.deobf("curse.maven:skinport-234948:3212017"))
 
     // Compile + runtime
-    devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.11.29:dev")
-    devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:0.0.53:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.80-1.7.10:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.4.1:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.8.74-GTNH:dev")
-    devOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.49-GTNH:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:GTNHLib:0.11.44:dev")
+    devOnlyNonPublishable("org.fentanylsolutions.fentlib:FentLib:0.0.54:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:ModularUI2:2.3.87-1.7.10:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.4.7:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.8.82-GTNH:dev")
+    devOnlyNonPublishable("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.57-GTNH:dev")
 
     // Pure compile
     compileOnly("org.jetbrains:annotations:26.1.0")
-    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.26:dev")
-    compileOnly("org.lwjgl:lwjgl-sdl:3.4.1")
+    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.31:dev")
+    compileOnly("org.lwjgl:lwjgl-sdl:3.4.3")
     compileOnly("com.github.GTNewHorizons:GTNH-Web-Map:0.3.46:dev")
-    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.36:dev")
-    compileOnly("com.github.GTNewHorizons:Botania:1.13.26-GTNH:dev")
+    compileOnly("com.github.GTNewHorizons:twilightforest:2.7.40:dev")
+    compileOnly("com.github.GTNewHorizons:Botania:1.13.34-GTNH:dev")
 
     // Downloaded by DepLoader in the regular jar and bundled in the fat jar.
     fatImplementation("org.bouncycastle:bcprov-jdk15to18:${bouncyCastleVersion}")
