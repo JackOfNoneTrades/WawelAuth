@@ -37,6 +37,13 @@ public interface IModelBipedModernExt {
      */
     void render3DRightArmWear(float scale);
 
+    /**
+     * Returns whether the flat first-person sleeve should be replaced with its 3D mesh.
+     */
+    default boolean shouldRender3DRightArmWear() {
+        return false;
+    }
+
     void setCurrentPlayerUuid(UUID uuid);
 
     ModelRenderer getBodyWear();

@@ -235,10 +235,6 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
     public void render3DRightArmWear(float scale) {
         if (!is3DEnabled()) return;
 
-        ModelRenderer rightArmWear = this.getRightArmWear();
-        boolean rightArmWearSaved = rightArmWear.showModel;
-        rightArmWear.showModel = false;
-
         SkinLayers3DState state3d = SkinLayers3DSetup.getState(currentRenderingPlayerUuid);
         if (state3d != null && state3d.initialized) {
             GL11.glEnable(GL11.GL_BLEND);
@@ -247,9 +243,21 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
                 state3d.rightSleeveMesh,
                 this.bipedRightArm,
                 scale,
-                SkinLayers3DConfig.enableRightSleeve3D && rightArmWearSaved,
+                SkinLayers3DConfig.enableRightSleeve3D,
                 LAYER_PART_RIGHT_ARM);
         }
+    }
+
+    @Override
+    public boolean shouldRender3DRightArmWear() {
+        if (!is3DEnabled() || !SkinLayers3DConfig.enableRightSleeve3D || !this.getRightArmWear().showModel) {
+            return false;
+        }
+
+        SkinLayers3DState state3d = SkinLayers3DSetup.getState(currentRenderingPlayerUuid);
+        return state3d != null && state3d.initialized
+            && state3d.rightSleeveMesh != null
+            && state3d.rightSleeveMesh.isCompiled();
     }
 
     /**

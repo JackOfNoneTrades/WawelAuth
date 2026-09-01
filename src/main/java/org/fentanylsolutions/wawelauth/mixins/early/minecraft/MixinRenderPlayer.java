@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.model.ModelBiped;
+import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
 
@@ -17,6 +18,7 @@ import org.fentanylsolutions.wawelauth.common.ISkinLayerExtender;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -31,6 +33,9 @@ public class MixinRenderPlayer {
 
     @Shadow
     public ModelBiped modelBipedMain;
+
+    @Unique
+    private boolean wawelauth$render3DRightArmWear;
 
     /**
      * Initialize the main player model for modern 64x64 rendering.
@@ -92,6 +97,7 @@ public class MixinRenderPlayer {
      */
     @Inject(method = "renderFirstPersonArm", at = @At("HEAD"))
     private void wawelauth$setSlimFirstPersonArm(EntityPlayer player, CallbackInfo ci) {
+        this.wawelauth$render3DRightArmWear = false;
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         UUID uuid = player.getUniqueID();
         ext.setCurrentPlayerUuid(uuid);
@@ -121,24 +127,33 @@ public class MixinRenderPlayer {
             SkinLayers3DSetup.updateState(uuid, null);
         }
 
-        // Apply right sleeve visibility for first-person arm
+        ModelRenderer rightArmWear = ext.getRightArmWear();
+
+        // Apply right sleeve visibility for first-person arm.
         if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()
             || FirstPersonRenderState.isRightSleeveSuppressed()) {
-            ext.getRightArmWear().showModel = false;
+            rightArmWear.showModel = false;
         }
 
+        // Render the base arm without the flat sleeve, then place the 3D sleeve over it.
+        this.wawelauth$render3DRightArmWear = ext.shouldRender3DRightArmWear();
+        if (this.wawelauth$render3DRightArmWear) {
+            rightArmWear.showModel = false;
+        }
     }
 
     /**
-     * Renders right arm overlay layer before first-person arm base renders
+     * Renders the right arm overlay after the first-person base arm.
      */
     @Inject(
         method = "renderFirstPersonArm",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/model/ModelRenderer;render(F)V",
-            shift = At.Shift.BEFORE))
-    private void wawelauth$renderFirstPersonArmWearPre(EntityPlayer player, CallbackInfo ci) {
+            shift = At.Shift.AFTER))
+    private void wawelauth$renderFirstPersonArmWearPost(EntityPlayer player, CallbackInfo ci) {
+        if (!this.wawelauth$render3DRightArmWear) return;
+
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         ext.render3DRightArmWear(0.0625F);
     }
@@ -147,7 +162,8 @@ public class MixinRenderPlayer {
      * Returns right arm overlay layer visibility after first-person arm base renders
      */
     @Inject(method = "renderFirstPersonArm", at = @At(value = "TAIL"))
-    private void wawelauth$renderFirstPersonArmWearPost(EntityPlayer player, CallbackInfo ci) {
+    private void wawelauth$restoreFirstPersonArmWear(EntityPlayer player, CallbackInfo ci) {
+        this.wawelauth$render3DRightArmWear = false;
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         if (ext.isModern()) {
             ext.getRightArmWear().showModel = true;
