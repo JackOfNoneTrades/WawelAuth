@@ -7,6 +7,7 @@ import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
 
+import org.fentanylsolutions.wawelauth.client.render.FirstPersonRenderState;
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.SkinModelHelper;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
@@ -121,7 +122,8 @@ public class MixinRenderPlayer {
         }
 
         // Apply right sleeve visibility for first-person arm
-        if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()) {
+        if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()
+            || FirstPersonRenderState.isRightSleeveSuppressed()) {
             ext.getRightArmWear().showModel = false;
         }
 
@@ -147,6 +149,8 @@ public class MixinRenderPlayer {
     @Inject(method = "renderFirstPersonArm", at = @At(value = "TAIL"))
     private void wawelauth$renderFirstPersonArmWearPost(EntityPlayer player, CallbackInfo ci) {
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
-        ext.getRightArmWear().showModel = true;
+        if (ext.isModern()) {
+            ext.getRightArmWear().showModel = true;
+        }
     }
 }

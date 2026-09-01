@@ -115,9 +115,16 @@ public final class SkinResolverClientHandler {
         EntityPlayer player = event.entityPlayer;
         RenderPlayer renderer = event.renderer;
         IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
+        ItemStack[] armor = player.inventory.armorInventory;
 
-        if (((ISkinLayerExtender) player).wawelAuth$getHideHat())
+        if (((ISkinLayerExtender) player).wawelAuth$getHideHat()
+            || (SkinLayers3DConfig.hideOverlayArmor && armor[3] != null)) {
             renderer.modelBipedMain.bipedHeadwear.showModel = false;
+        }
+
+        // The modern overlay parts do not exist when modern skin support is disabled.
+        if (!ext.isModern()) return;
+
         if (((ISkinLayerExtender) player).wawelAuth$getHideJacket()) ext.getBodyWear().showModel = false;
         if (((ISkinLayerExtender) player).wawelAuth$getHideLeftSleeve()) ext.getLeftArmWear().showModel = false;
         if (((ISkinLayerExtender) player).wawelAuth$getHideRightSleeve()) ext.getRightArmWear().showModel = false;
@@ -125,14 +132,10 @@ public final class SkinResolverClientHandler {
         if (((ISkinLayerExtender) player).wawelAuth$getHideRightPants()) ext.getRightLegWear().showModel = false;
 
         if (SkinLayers3DConfig.hideOverlayArmor) {
-            ItemStack[] armor = player.inventory.armorInventory;
-
-            ItemStack helmet = armor[3];
             ItemStack chest = armor[2];
             ItemStack legs = armor[1];
             ItemStack boots = armor[0];
 
-            if (helmet != null) renderer.modelBipedMain.bipedHeadwear.showModel = false;
             if (chest != null) {
                 ext.getBodyWear().showModel = false;
                 ext.getLeftArmWear().showModel = false;
@@ -152,6 +155,10 @@ public final class SkinResolverClientHandler {
         IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
 
         renderer.modelBipedMain.bipedHeadwear.showModel = true;
+
+        // The modern overlay parts do not exist when modern skin support is disabled.
+        if (!ext.isModern()) return;
+
         ext.getBodyWear().showModel = true;
         ext.getLeftArmWear().showModel = true;
         ext.getRightArmWear().showModel = true;

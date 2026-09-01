@@ -270,6 +270,12 @@ public class Mixins extends FentMixins {
             .side(MiscUtil.Side.CLIENT)
             .build();
 
+        registry.mixin("MixinAetherItemRenderer")
+            .modid("aether_legacy")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+
         registry.mixin("MixinDynmapForgePlayer")
             .modid("dynmap")
             .extraModid("Dynmap")
