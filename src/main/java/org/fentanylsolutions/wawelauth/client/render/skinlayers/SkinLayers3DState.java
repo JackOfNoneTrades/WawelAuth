@@ -1,6 +1,7 @@
 package org.fentanylsolutions.wawelauth.client.render.skinlayers;
 
 import net.minecraft.util.ResourceLocation;
+
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 
 /**

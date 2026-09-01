@@ -1,12 +1,16 @@
 package org.fentanylsolutions.wawelauth.client.render;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.EventPriority;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
-import cpw.mods.fml.common.network.FMLNetworkEvent;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.HAT;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.JACKET;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_PANTS;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_SLEEVE;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_PANTS;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE;
+
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.renderer.entity.RenderPlayer;
@@ -16,21 +20,19 @@ import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.world.WorldEvent;
+
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.HAT;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.JACKET;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_PANTS;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_SLEEVE;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_PANTS;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE;
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.eventhandler.EventPriority;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
+import cpw.mods.fml.common.network.FMLNetworkEvent;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 /**
  * Drives WawelTextureResolver lifecycle: tick sweep, invalidate on join, clear on disconnect.

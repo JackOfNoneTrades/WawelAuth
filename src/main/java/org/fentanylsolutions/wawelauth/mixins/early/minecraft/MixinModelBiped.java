@@ -1,12 +1,22 @@
 package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 
-import cpw.mods.fml.common.Loader;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.CAPE;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.HAT;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.JACKET;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_PANTS;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_SLEEVE;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_PANTS;
+import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE;
+
+import java.util.UUID;
+
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
@@ -21,16 +31,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.UUID;
-
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.CAPE;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.HAT;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.JACKET;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_PANTS;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.LEFT_SLEEVE;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_PANTS;
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE;
-
+import cpw.mods.fml.common.Loader;
 
 /**
  * Injects modern 64x64 skin support into vanilla ModelBiped.
@@ -47,42 +48,64 @@ import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerMod
 public abstract class MixinModelBiped extends ModelBase implements IModelBipedModernExt {
 
     // -- Vanilla fields --
-    @Shadow public ModelRenderer bipedHead;
-    @Shadow public ModelRenderer bipedHeadwear;
-    @Shadow public ModelRenderer bipedBody;
-    @Shadow public ModelRenderer bipedRightArm;
-    @Shadow public ModelRenderer bipedLeftArm;
-    @Shadow public ModelRenderer bipedRightLeg;
-    @Shadow public ModelRenderer bipedLeftLeg;
-    @Shadow public ModelRenderer bipedCloak;
+    @Shadow
+    public ModelRenderer bipedHead;
+    @Shadow
+    public ModelRenderer bipedHeadwear;
+    @Shadow
+    public ModelRenderer bipedBody;
+    @Shadow
+    public ModelRenderer bipedRightArm;
+    @Shadow
+    public ModelRenderer bipedLeftArm;
+    @Shadow
+    public ModelRenderer bipedRightLeg;
+    @Shadow
+    public ModelRenderer bipedLeftLeg;
+    @Shadow
+    public ModelRenderer bipedCloak;
 
     // -- Overlay layers --
-    @Unique private ModelRenderer jacket;
-    @Unique private ModelRenderer rightPants;
-    @Unique private ModelRenderer leftPants;
+    @Unique
+    private ModelRenderer jacket;
+    @Unique
+    private ModelRenderer rightPants;
+    @Unique
+    private ModelRenderer leftPants;
 
     // -- Classic (4px) arm variants --
-    @Unique private ModelRenderer classicRightArm;
-    @Unique private ModelRenderer classicLeftArm;
-    @Unique private ModelRenderer classicRightSleeve;
-    @Unique private ModelRenderer classicLeftSleeve;
+    @Unique
+    private ModelRenderer classicRightArm;
+    @Unique
+    private ModelRenderer classicLeftArm;
+    @Unique
+    private ModelRenderer classicRightSleeve;
+    @Unique
+    private ModelRenderer classicLeftSleeve;
 
     // -- Slim (3px) arm variants --
-    @Unique private ModelRenderer slimRightArm;
-    @Unique private ModelRenderer slimLeftArm;
-    @Unique private ModelRenderer slimRightSleeve;
-    @Unique private ModelRenderer slimLeftSleeve;
+    @Unique
+    private ModelRenderer slimRightArm;
+    @Unique
+    private ModelRenderer slimLeftArm;
+    @Unique
+    private ModelRenderer slimRightSleeve;
+    @Unique
+    private ModelRenderer slimLeftSleeve;
 
     // -- State --
-    @Unique private boolean modernEnabled = false;
-    @Unique private boolean currentSlim = false;
+    @Unique
+    private boolean modernEnabled = false;
+    @Unique
+    private boolean currentSlim = false;
 
     // -- 3D skin layers state --
-    @Unique private UUID currentRenderingPlayerUuid = null;
+    @Unique
+    private UUID currentRenderingPlayerUuid = null;
 
     @Override
     public void initModern() {
-        ModelBiped self = (ModelBiped)(Object) this;
+        ModelBiped self = (ModelBiped) (Object) this;
 
         float scale = 0.0F;
         float overlay = 0.25F;
@@ -192,9 +215,11 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
             && !Loader.isModLoaded("SmartMoving");
     }
 
-    @Unique boolean[] partsEnabled = new boolean[7];
+    @Unique
+    boolean[] partsEnabled = new boolean[7];
     // boots[0] | legs[1] | chest[2] | helmet[3]
-    @Unique boolean[] armorEquipped = new boolean[4];
+    @Unique
+    boolean[] armorEquipped = new boolean[4];
 
     @Override
     public void renderPart3D(SkinLayersHelper.EnumPlayerModelParts part, float scale) {
@@ -209,12 +234,7 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
             try {
                 GL11.glEnable(GL11.GL_BLEND);
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-                renderMesh(
-                    state3d.meshFromPart(part),
-                    this.baseRendererFromPart(part),
-                    scale,
-                    partSaved,
-                    part);
+                renderMesh(state3d.meshFromPart(part), this.baseRendererFromPart(part), scale, partSaved, part);
             } finally {
                 GL11.glPopAttrib();
             }
@@ -226,7 +246,7 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
         float headPitch, float scaleFactor, CallbackInfo ci) {
         if (!is3DEnabled()) return;
 
-        //TODO: render 3d layers with armor, somehow
+        // TODO: render 3d layers with armor, somehow
 
         if (entity instanceof EntityPlayer player) {
             ItemStack[] armor = player.inventory.armorInventory;
@@ -256,11 +276,9 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
             if (state3d.leftSleeveMesh != null && SkinLayers3DConfig.enableLeftSleeve3D && !armorEquipped[2])
                 this.hidePart(LEFT_SLEEVE, true);
             if (state3d.rightPantsMesh != null && SkinLayers3DConfig.enableRightPants3D
-                && (!armorEquipped[1] || !armorEquipped[0]))
-                this.hidePart(RIGHT_PANTS, true);
+                && (!armorEquipped[1] || !armorEquipped[0])) this.hidePart(RIGHT_PANTS, true);
             if (state3d.leftPantsMesh != null && SkinLayers3DConfig.enableLeftPants3D
-                && (!armorEquipped[1] || !armorEquipped[0]))
-                this.hidePart(LEFT_PANTS, true);
+                && (!armorEquipped[1] || !armorEquipped[0])) this.hidePart(LEFT_PANTS, true);
         }
     }
 
@@ -282,13 +300,13 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
 
         boolean child = this.isChild;
 
-        if(child) {
+        if (child) {
             GL11.glPushMatrix();
             GL11.glScalef(1.0F / 2.0F, 1.0F / 2.0F, 1.0F / 2.0F);
             GL11.glTranslatef(0.0F, 24.0F * scaleFactor, 0.0F);
         }
         renderAll3DLayers(scaleFactor, partsEnabled);
-        if(child) GL11.glPopMatrix();
+        if (child) GL11.glPopMatrix();
     }
 
     @Unique
@@ -347,7 +365,8 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
      * Render a 3D mesh if available and enabled.
      */
     @Unique
-    private void renderMesh(SkinLayers3DMesh mesh, ModelRenderer source, float scaleFactor, boolean enabled, SkinLayersHelper.EnumPlayerModelParts part) {
+    private void renderMesh(SkinLayers3DMesh mesh, ModelRenderer source, float scaleFactor, boolean enabled,
+        SkinLayersHelper.EnumPlayerModelParts part) {
         if (enabled && mesh != null && mesh.isCompiled() && source != null) {
             mesh.setPosition(source.rotationPointX, source.rotationPointY, source.rotationPointZ);
             mesh.setOffset(source.offsetX, source.offsetY, source.offsetZ);
@@ -442,13 +461,13 @@ public abstract class MixinModelBiped extends ModelBase implements IModelBipedMo
 
     @Override
     public SkinLayersHelper.EnumPlayerModelParts partFromRenderer(ModelRenderer renderer) {
-        if(renderer == this.bipedCloak) return CAPE;
-        if(renderer == this.jacket) return JACKET;
-        if(renderer == this.slimLeftSleeve || renderer == this.classicLeftSleeve) return LEFT_SLEEVE;
-        if(renderer == this.slimRightSleeve || renderer == this.classicRightSleeve) return RIGHT_SLEEVE;
-        if(renderer == this.leftPants) return LEFT_PANTS;
-        if(renderer == this.rightPants) return RIGHT_PANTS;
-        if(renderer == this.bipedHeadwear) return HAT;
+        if (renderer == this.bipedCloak) return CAPE;
+        if (renderer == this.jacket) return JACKET;
+        if (renderer == this.slimLeftSleeve || renderer == this.classicLeftSleeve) return LEFT_SLEEVE;
+        if (renderer == this.slimRightSleeve || renderer == this.classicRightSleeve) return RIGHT_SLEEVE;
+        if (renderer == this.leftPants) return LEFT_PANTS;
+        if (renderer == this.rightPants) return RIGHT_PANTS;
+        if (renderer == this.bipedHeadwear) return HAT;
         return null;
     }
 

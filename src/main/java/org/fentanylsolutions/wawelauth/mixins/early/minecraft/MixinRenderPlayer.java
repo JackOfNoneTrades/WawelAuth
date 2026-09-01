@@ -1,9 +1,12 @@
 package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 
+import java.util.UUID;
+
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
+
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.SkinModelHelper;
@@ -16,8 +19,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.util.UUID;
 
 /**
  * Hooks into RenderPlayer to initialize the modern 64x64 model,
@@ -37,8 +38,7 @@ public class MixinRenderPlayer {
      */
     @Inject(method = "<init>", at = @At("RETURN"))
     private void wawelauth$initModernModel(CallbackInfo ci) {
-        if (SkinLayers3DConfig.modernSkinSupport)
-            ((IModelBipedModernExt) this.modelBipedMain).initModern();
+        if (SkinLayers3DConfig.modernSkinSupport) ((IModelBipedModernExt) this.modelBipedMain).initModern();
     }
 
     /**

@@ -1,9 +1,10 @@
 package org.fentanylsolutions.wawelauth.client.render;
 
-import net.minecraft.client.model.ModelRenderer;
-import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
-
 import java.util.UUID;
+
+import net.minecraft.client.model.ModelRenderer;
+
+import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 
 /**
  * Duck interface injected into {@link net.minecraft.client.model.ModelBiped} via mixin.
@@ -35,9 +36,13 @@ public interface IModelBipedModernExt {
     void setCurrentPlayerUuid(UUID uuid);
 
     void renderPart3D(SkinLayersHelper.EnumPlayerModelParts part, float scale);
+
     ModelRenderer rendererFromPart(SkinLayersHelper.EnumPlayerModelParts part);
+
     ModelRenderer baseRendererFromPart(SkinLayersHelper.EnumPlayerModelParts part);
+
     SkinLayersHelper.EnumPlayerModelParts partFromRenderer(ModelRenderer renderer);
+
     default void hidePart(SkinLayersHelper.EnumPlayerModelParts part, boolean value) {
         if (!this.isModern() && part.isModern()) return;
         this.rendererFromPart(part).showModel = !value;

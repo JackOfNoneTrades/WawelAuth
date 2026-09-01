@@ -1,10 +1,11 @@
 package org.fentanylsolutions.wawelauth.api;
 
-import net.minecraft.entity.player.EntityPlayer;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersConfig;
-
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
+import net.minecraft.entity.player.EntityPlayer;
+
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersConfig;
 
 public class SkinLayersHelper {
 
@@ -35,7 +36,8 @@ public class SkinLayersHelper {
         private final Consumer<Boolean> partSetter;
         private final boolean partIsModern;
 
-        EnumPlayerModelParts(int partId, String partName, Supplier<Boolean> partGetter, Consumer<Boolean> partSetter, boolean partIsModern) {
+        EnumPlayerModelParts(int partId, String partName, Supplier<Boolean> partGetter, Consumer<Boolean> partSetter,
+            boolean partIsModern) {
             this.partId = partId;
             this.partMask = (byte) (1 << partId);
             this.partName = partName;
