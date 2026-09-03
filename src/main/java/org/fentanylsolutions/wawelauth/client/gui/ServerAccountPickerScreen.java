@@ -32,6 +32,8 @@ import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderProxySupport;
 import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.api.layout.IViewport;
+import com.cleanroommc.modularui.api.layout.IViewportStack;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.ColorType;
 import com.cleanroommc.modularui.drawable.Rectangle;
@@ -39,7 +41,9 @@ import com.cleanroommc.modularui.drawable.UITexture;
 import com.cleanroommc.modularui.factory.ClientGUI;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
+import com.cleanroommc.modularui.theme.WidgetThemeEntry;
 import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.utils.HoveredWidgetList;
 import com.cleanroommc.modularui.widget.Widget;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.Dialog;
@@ -68,6 +72,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         MANAGE_PROVIDER_ICON_HOVER_COLOR_TYPE);
     private static final int ACCOUNT_LABEL_MAX_WIDTH_PX = 153;
     private static final int ACCOUNT_ENTRY_HEIGHT = 16;
+    private static final float ACCOUNT_FACE_IDLE_ALPHA = 0.6f;
     private static final int ACCOUNT_LIST_TOP_MARGIN = 4;
     private static final int ACCOUNT_LIST_MAX_VISIBLE_ROWS = 8;
     private static final int CONTENT_PADDING = 6;
@@ -244,7 +249,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             }
         });
 
-        ListWidget<IWidget, ?> accountList = new ListWidget<>();
+        ListWidget<IWidget, ?> accountList = new AccountListWidget();
         WawelAuthStyle.styleList(accountList);
         accountList.widthRelOffset(1.0f, CONTENT_WIDTH_OFFSET)
             .height(listHeight);
@@ -564,7 +569,22 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         String providerName = ProviderDisplayName.displayName(account.getProviderName());
         boolean isSelected = selectedAccountId == account.getId();
 
-        ButtonWidget<?> selectButton = new ButtonWidget<>();
+        ButtonWidget<?> manageButton = new ButtonWidget<>();
+        WawelAuthStyle.iconButton(manageButton);
+        manageButton.size(ACCOUNT_ENTRY_HEIGHT, ACCOUNT_ENTRY_HEIGHT)
+            .background(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_IDLE))
+            .hoverBackground(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_HOVER))
+            .overlay(MANAGE_PROVIDER_ICON)
+            .hoverOverlay(MANAGE_PROVIDER_ICON_HOVER)
+            .addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.manage_account"))
+            .onMousePressed(mouseButton -> {
+                GuiTransitionScheduler.transition(
+                    panel,
+                    () -> AccountManagerScreen.openForProvider(account.getProviderName(), account.getId()));
+                return true;
+            });
+
+        AccountSelectButton selectButton = new AccountSelectButton(manageButton);
         WawelAuthStyle.rowButton(selectButton, () -> isSelected);
         selectButton.expanded()
             .height(ACCOUNT_ENTRY_HEIGHT);
@@ -597,7 +617,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             .heightRel(1.0f)
             .color(
                 () -> isSelected ? WawelAuthStyle.THEME_LIGHTER
-                    : selectButton.isHovering() ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY);
+                    : selectButton.isRowHovering() ? WawelAuthStyle.THEME_LIGHTER : WawelAuthStyle.TEXT_SECONDARY);
         label.addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.tooltip.account", fullLabel));
         label.addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.tooltip.provider", providerName));
 
@@ -613,7 +633,9 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .child(nonHoverable(2, 1));
         if (account.getProfileUuid() != null) {
-            innerRow.child(createFaceWidget(profileName, account.getProfileUuid(), account.getProviderName()));
+            innerRow.child(
+                createFaceWidget(profileName, account.getProfileUuid(), account.getProviderName())
+                    .alpha(() -> isSelected || selectButton.isRowHovering() ? 1.0 : ACCOUNT_FACE_IDLE_ALPHA));
             innerRow.child(nonHoverable(2, 1));
         }
         innerRow.child(dot)
@@ -626,21 +648,6 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
             panel.closeIfOpen();
             return true;
         });
-
-        ButtonWidget<?> manageButton = new ButtonWidget<>();
-        WawelAuthStyle.iconButton(manageButton);
-        manageButton.size(ACCOUNT_ENTRY_HEIGHT, ACCOUNT_ENTRY_HEIGHT)
-            .background(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_IDLE))
-            .hoverBackground(WawelAuthStyle.rect(WawelAuthStyle.BUTTON_HOVER))
-            .overlay(MANAGE_PROVIDER_ICON)
-            .hoverOverlay(MANAGE_PROVIDER_ICON_HOVER)
-            .addTooltipLine(GuiText.tr("wawelauth.gui.server_picker.manage_account"))
-            .onMousePressed(mouseButton -> {
-                GuiTransitionScheduler.transition(
-                    panel,
-                    () -> AccountManagerScreen.openForProvider(account.getProviderName(), account.getId()));
-                return true;
-            });
 
         Row entryRow = new Row();
         entryRow.widthRel(1.0f)
@@ -716,6 +723,39 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         }
     }
 
+    private static class AccountSelectButton extends ButtonWidget<AccountSelectButton> {
+
+        private final ButtonWidget<?> manageButton;
+
+        private AccountSelectButton(ButtonWidget<?> manageButton) {
+            this.manageButton = manageButton;
+        }
+
+        private boolean isRowHovering() {
+            return super.isHovering() || manageButton.isHovering();
+        }
+
+        @Override
+        public IDrawable getCurrentBackground(WidgetThemeEntry<?> widgetTheme) {
+            return manageButton.isHovering() ? getHoverBackground() : super.getCurrentBackground(widgetTheme);
+        }
+    }
+
+    /**
+     * ModularUI 2.3.x tests an absolute mouse position against local scrollbar bounds before walking scroll-widget
+     * children. That creates a dead vertical strip whose screen position depends on the panel offset. Account rows
+     * already reserve the scrollbar width, so walking them whenever the list itself is hit is safe here.
+     */
+    private static class AccountListWidget extends ListWidget<IWidget, AccountListWidget> {
+
+        @Override
+        public void getWidgetsAt(IViewportStack stack, HoveredWidgetList widgets, int mouseX, int mouseY) {
+            if (widgets.peek() == this) {
+                IViewport.getChildrenAt(this, stack, widgets, mouseX, mouseY);
+            }
+        }
+    }
+
     private static AccountStatus getLiveStatus(ClientAccount account) {
         if (account == null) return null;
         WawelClient client = WawelClient.instance();
@@ -736,7 +776,7 @@ public class ServerAccountPickerScreen extends ParentAwareModularScreen {
         return account.getProfileName();
     }
 
-    private static Widget<?> createFaceWidget(String displayName, java.util.UUID profileUuid, String providerName) {
+    private static FaceWidget createFaceWidget(String displayName, java.util.UUID profileUuid, String providerName) {
         return new FaceWidget(displayName, profileUuid, providerName).size(8, 8);
     }
 

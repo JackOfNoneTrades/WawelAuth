@@ -1,6 +1,7 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
 import java.util.UUID;
+import java.util.function.DoubleSupplier;
 
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.util.ResourceLocation;
@@ -28,7 +29,7 @@ public class FaceWidget extends Widget<FaceWidget> {
     private final UUID profileUuid;
     private final String displayName;
     private final String providerName;
-    private float alpha = 1.0f;
+    private DoubleSupplier alphaSupplier = () -> 1.0;
 
     public FaceWidget(String displayName, UUID profileUuid) {
         this(displayName, profileUuid, null);
@@ -41,7 +42,12 @@ public class FaceWidget extends Widget<FaceWidget> {
     }
 
     public FaceWidget alpha(float alpha) {
-        this.alpha = alpha;
+        this.alphaSupplier = () -> alpha;
+        return this;
+    }
+
+    public FaceWidget alpha(DoubleSupplier alphaSupplier) {
+        this.alphaSupplier = alphaSupplier;
         return this;
     }
 
@@ -72,7 +78,9 @@ public class FaceWidget extends Widget<FaceWidget> {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             RenderHelper.disableStandardItemLighting();
 
-            WawelFaceRendererClient.drawFace(skin, 0, 0, getArea().width, getArea().height, alpha);
+            float alpha = (float) alphaSupplier.getAsDouble();
+            WawelFaceRendererClient
+                .drawFace(skin, 0, 0, getArea().width, getArea().height, Math.max(0.0f, Math.min(1.0f, alpha)));
         } finally {
             GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             GL11.glPopAttrib();
