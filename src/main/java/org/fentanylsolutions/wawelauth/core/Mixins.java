@@ -276,6 +276,11 @@ public class Mixins extends FentMixins {
             .side(MiscUtil.Side.CLIENT)
             .build();
 
+        registry.mixin("MixinMinecraftFoamFix")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+
         registry.mixin("MixinDynmapForgePlayer")
             .modid("dynmap")
             .extraModid("Dynmap")
