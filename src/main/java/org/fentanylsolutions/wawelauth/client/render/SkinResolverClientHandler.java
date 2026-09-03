@@ -119,6 +119,8 @@ public final class SkinResolverClientHandler {
 
     @SubscribeEvent
     public void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
+        if (EarsCompat.isRendererActive()) return;
+
         EntityPlayer player = event.entityPlayer;
         RenderPlayer renderer = event.renderer;
         IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
@@ -152,6 +154,8 @@ public final class SkinResolverClientHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
     public void onRenderPlayerPost(RenderPlayerEvent.Post event) {
+        if (EarsCompat.isRendererActive()) return;
+
         RenderPlayer renderer = event.renderer;
         IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
 

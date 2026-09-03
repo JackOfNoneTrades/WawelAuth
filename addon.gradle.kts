@@ -74,6 +74,28 @@ tasks.withType<JavaExec>().configureEach {
     }
 }
 
+// RFG prepares runObfClient's mod folder under run/obfuscated, but launches it
+// with run/client as the game directory. Keep the obfuscated test instance
+// isolated from the deobfuscated runs and preserve manually staged compat mods.
+val obfuscatedRunDirectory = layout.projectDirectory.dir("run/obfuscated")
+val obfuscatedExtraModsDirectory = layout.projectDirectory.dir("run/obfuscated-extra-mods")
+
+tasks.named<Copy>("prepareObfModsFolder").configure {
+    from(obfuscatedExtraModsDirectory)
+}
+
+tasks.named<JavaExec>("runObfClient").configure {
+    workingDir(obfuscatedRunDirectory)
+    doFirst("wawelAuthUseObfuscatedRunDirectory") {
+        val launchArgs = (args ?: emptyList()).toMutableList()
+        val gameDirFlag = launchArgs.indexOf("--gameDir")
+        if (gameDirFlag >= 0 && gameDirFlag + 1 < launchArgs.size) {
+            launchArgs[gameDirFlag + 1] = obfuscatedRunDirectory.asFile.absolutePath
+        }
+        setArgs(launchArgs)
+    }
+}
+
 val minecraftExtension = project.extensions.getByType(MinecraftExtension::class.java)
 val useDependencyAccessTransformers = minecraftExtension.useDependencyAccessTransformers
 

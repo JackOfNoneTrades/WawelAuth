@@ -4,14 +4,17 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.imageio.ImageIO;
 
 import net.minecraft.client.renderer.IImageBuffer;
-import net.minecraft.client.renderer.texture.SimpleTexture;
+import net.minecraft.client.renderer.ThreadDownloadImageData;
 import net.minecraft.client.renderer.texture.TextureUtil;
+import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
+import net.minecraft.client.resources.data.TextureMetadataSection;
 import net.minecraft.util.ResourceLocation;
 
 import org.apache.commons.io.FileUtils;
@@ -25,7 +28,7 @@ import org.fentanylsolutions.wawelauth.wawelclient.http.ProviderRoutedHttp;
  * A ThreadDownloadImageData variant that can opt into an exact provider proxy
  * route when the texture URL was freshly seen in one provider response.
  */
-public class ProviderThreadDownloadImageData extends SimpleTexture {
+public class ProviderThreadDownloadImageData extends ThreadDownloadImageData {
 
     private static final Logger LOGGER = LogManager.getLogger();
     private static final AtomicInteger THREAD_COUNTER = new AtomicInteger(0);
@@ -37,7 +40,6 @@ public class ProviderThreadDownloadImageData extends SimpleTexture {
     private final String providerName;
     public BufferedImage bufferedImage;
     private Thread imageThread;
-    private boolean textureUploaded;
 
     public ProviderThreadDownloadImageData(File cacheFile, String imageUrl, ResourceLocation textureLocation,
         IImageBuffer imageBuffer) {
@@ -51,7 +53,7 @@ public class ProviderThreadDownloadImageData extends SimpleTexture {
 
     public ProviderThreadDownloadImageData(File cacheFile, String imageUrl, ResourceLocation textureLocation,
         IImageBuffer imageBuffer, ProviderProxySettings proxySettings, String providerName) {
-        super(textureLocation);
+        super(cacheFile, imageUrl, textureLocation, imageBuffer);
         this.cacheFile = cacheFile;
         this.imageUrl = imageUrl;
         this.imageBuffer = imageBuffer;
@@ -59,35 +61,16 @@ public class ProviderThreadDownloadImageData extends SimpleTexture {
         this.providerName = providerName;
     }
 
-    private void checkTextureUploaded() {
-        if (!textureUploaded && bufferedImage != null) {
-            if (textureLocation != null) {
-                deleteGlTexture();
-            }
-
-            TextureUtil.uploadTextureImage(super.getGlTextureId(), bufferedImage);
-            textureUploaded = true;
-        }
-    }
-
     @Override
-    public int getGlTextureId() {
-        checkTextureUploaded();
-        return super.getGlTextureId();
-    }
-
     public void setBufferedImage(BufferedImage bufferedImage) {
         this.bufferedImage = bufferedImage;
-
-        if (imageBuffer != null) {
-            imageBuffer.func_152634_a();
-        }
+        super.setBufferedImage(bufferedImage);
     }
 
     @Override
     public void loadTexture(IResourceManager resourceManager) throws IOException {
         if (bufferedImage == null && textureLocation != null) {
-            super.loadTexture(resourceManager);
+            loadFallbackTexture(resourceManager);
         }
 
         if (imageThread != null) {
@@ -98,11 +81,11 @@ public class ProviderThreadDownloadImageData extends SimpleTexture {
             LOGGER.debug("Loading http texture from local cache ({})", cacheFile);
 
             try {
-                bufferedImage = ImageIO.read(cacheFile);
-
+                BufferedImage cachedImage = ImageIO.read(cacheFile);
                 if (imageBuffer != null) {
-                    setBufferedImage(imageBuffer.parseUserSkin(bufferedImage));
+                    cachedImage = imageBuffer.parseUserSkin(cachedImage);
                 }
+                setBufferedImage(cachedImage);
             } catch (IOException e) {
                 LOGGER.error("Couldn't load skin " + cacheFile, e);
                 startDownload();
@@ -111,6 +94,34 @@ public class ProviderThreadDownloadImageData extends SimpleTexture {
         }
 
         startDownload();
+    }
+
+    /**
+     * Load the placeholder without invoking ThreadDownloadImageData's downloader. Calling super.loadTexture here would
+     * start a second, non-provider-aware HTTP request.
+     */
+    private void loadFallbackTexture(IResourceManager resourceManager) throws IOException {
+        deleteGlTexture();
+        IResource resource = resourceManager.getResource(textureLocation);
+        try (InputStream input = resource.getInputStream()) {
+            BufferedImage image = ImageIO.read(input);
+            boolean blur = false;
+            boolean clamp = false;
+
+            if (resource.hasMetadata()) {
+                try {
+                    TextureMetadataSection metadata = (TextureMetadataSection) resource.getMetadata("texture");
+                    if (metadata != null) {
+                        blur = metadata.getTextureBlur();
+                        clamp = metadata.getTextureClamp();
+                    }
+                } catch (RuntimeException e) {
+                    LOGGER.warn("Failed reading metadata of: " + textureLocation, e);
+                }
+            }
+
+            TextureUtil.uploadTextureImageAllocate(getGlTextureId(), image, blur, clamp);
+        }
     }
 
     protected void startDownload() {

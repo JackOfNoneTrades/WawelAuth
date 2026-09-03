@@ -124,6 +124,10 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.CLIENT)
             .build();
+        registry.mixin("MixinImageBufferDownloadEars")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
         registry.mixin("MixinSkinManager")
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.CLIENT)
@@ -149,6 +153,10 @@ public class Mixins extends FentMixins {
 
         // Client Mixins: 3D skin layers
         registry.mixin("MixinTileEntitySkullRenderer")
+            .phase(MixinUtil.Phase.EARLY)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+        registry.mixin("MixinLocalTextureLoaderEars")
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.CLIENT)
             .build();
@@ -272,6 +280,18 @@ public class Mixins extends FentMixins {
 
         registry.mixin("MixinAetherItemRenderer")
             .modid("aether_legacy")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+
+        registry.mixin("MixinEarsLegacyHelper")
+            .modid("ears")
+            .phase(MixinUtil.Phase.LATE)
+            .side(MiscUtil.Side.CLIENT)
+            .build();
+
+        registry.mixin("MixinFoamFixEarsLegacyHelper")
+            .modid("foamfix")
             .phase(MixinUtil.Phase.LATE)
             .side(MiscUtil.Side.CLIENT)
             .build();

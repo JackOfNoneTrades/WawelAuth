@@ -3,8 +3,10 @@ package org.fentanylsolutions.wawelauth.mixins.early.minecraft;
 import java.lang.reflect.Field;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.launchwrapper.Launch;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.client.render.EarsCompat;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,11 +14,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Disables FoamFix's bundled 1.8 skin backport before mod initialization.
+ * Prevents FoamFix's bundled Ears copy from loading alongside standalone Ears, and avoids loading it in an MCP-named
+ * development environment that its transformer does not support.
  *
  * FoamFix excludes its own classes from coremod transformation, so this has to run from an early Minecraft lifecycle
- * hook rather than mix directly into FoamFix. WawelAuth owns the same skin parsing, model, and render paths; allowing
- * both to run replaces WawelAuth's player model and renders a second first-person overlay.
+ * hook rather than mix directly into FoamFix. FoamFix 1.0.4 recognizes older standalone Ears builds but not the newer
+ * Plateau distribution, which would otherwise cause both copies to transform the player renderer.
  */
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraftFoamFix {
@@ -25,7 +28,11 @@ public abstract class MixinMinecraftFoamFix {
     private static final String TRANSFORMER_CLASS = "pl.asie.foamfix.bugfixmod.coremod.BugfixModClassTransformer";
 
     @Inject(method = "startGame", at = @At("HEAD"))
-    private void wawelauth$disableFoamFixModernSkinSupport(CallbackInfo ci) {
+    private void wawelauth$deduplicateFoamFixEars(CallbackInfo ci) {
+        boolean standaloneInstalled = EarsCompat.isStandaloneInstalled();
+        boolean deobfuscatedEnvironment = Boolean.TRUE.equals(Launch.blackboard.get("fml.deobfuscatedEnvironment"));
+        if (!standaloneInstalled && !deobfuscatedEnvironment) return;
+
         Class<?> transformerClass;
         try {
             transformerClass = Class.forName(TRANSFORMER_CLASS);
@@ -38,22 +45,20 @@ public abstract class MixinMinecraftFoamFix {
                 .get(null);
             if (transformer == null) return;
 
-            Object settings = transformerClass.getField("settings")
-                .get(transformer);
-            if (settings == null) return;
-
-            settings.getClass()
-                .getField("mc18SkinSupport")
-                .setBoolean(settings, false);
-
             // FoamFix 1.0.4 caches the transformer decision separately from the config value.
             setFieldIfPresent(transformerClass, transformer, "applyEarsPatch", Boolean.FALSE);
             // Older builds store the derived transformer gate on their settings object.
-            setFieldIfPresent(settings.getClass(), settings, "helloMmcg", false);
+            Object settings = transformerClass.getField("settings")
+                .get(transformer);
+            if (settings != null) setFieldIfPresent(settings.getClass(), settings, "helloMmcg", false);
 
-            WawelAuth.LOG.info("Disabled FoamFix mc18SkinSupport because WawelAuth provides modern skin support");
+            if (standaloneInstalled) {
+                WawelAuth.LOG.info("Disabled FoamFix's bundled Ears renderer because standalone Ears is present");
+            } else {
+                WawelAuth.LOG.info("Disabled FoamFix's bundled Ears renderer in the deobfuscated development client");
+            }
         } catch (ReflectiveOperationException | RuntimeException e) {
-            WawelAuth.LOG.error("Failed to disable FoamFix mc18SkinSupport", e);
+            WawelAuth.LOG.error("Failed to disable FoamFix's duplicate Ears renderer", e);
         }
     }
 

@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
 
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.client.render.EarsCompat;
 import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
 import org.fentanylsolutions.wawelauth.client.render.SkinModelHelper;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
@@ -38,7 +39,9 @@ public class MixinRenderPlayer {
      */
     @Inject(method = "<init>", at = @At("RETURN"))
     private void wawelauth$initModernModel(CallbackInfo ci) {
-        if (SkinLayers3DConfig.modernSkinSupport) ((IModelBipedModernExt) this.modelBipedMain).initModern();
+        if (SkinLayers3DConfig.modernSkinSupport && !EarsCompat.isRendererActive()) {
+            ((IModelBipedModernExt) this.modelBipedMain).initModern();
+        }
     }
 
     /**
@@ -52,6 +55,12 @@ public class MixinRenderPlayer {
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         UUID uuid = player.getUniqueID();
         ext.setCurrentPlayerUuid(uuid);
+
+        if (EarsCompat.isRendererActive()) {
+            EarsCompat.applySkinModel((RenderPlayer) (Object) this, player);
+            SkinLayers3DSetup.updateState(uuid, null);
+            return;
+        }
 
         if (!SkinLayers3DConfig.modernSkinSupport) {
             ext.setSlim(false);
@@ -84,6 +93,20 @@ public class MixinRenderPlayer {
     }
 
     /**
+     * Ears selects its arm model at the start of this method using Mojang's legacy lookup. Run after that hook and
+     * before vanilla renders the model so WawelAuth's provider-aware slim metadata wins.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/client/entity/AbstractClientPlayer;DDDFF)V",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V"))
+    private void wawelauth$applyEarsSkinModel(AbstractClientPlayer player, double x, double y, double z, float yaw,
+        float partialTicks, CallbackInfo ci) {
+        EarsCompat.applySkinModel((RenderPlayer) (Object) this, player);
+    }
+
+    /**
      * Set slim/classic before first-person arm rendering.
      */
     @Inject(method = "renderFirstPersonArm", at = @At("HEAD"))
@@ -92,6 +115,14 @@ public class MixinRenderPlayer {
         UUID uuid = player.getUniqueID();
         ext.setCurrentPlayerUuid(uuid);
         SkinLayers3DState state;
+
+        if (EarsCompat.isRendererActive()) {
+            if (player instanceof AbstractClientPlayer clientPlayer) {
+                EarsCompat.applySkinModel((RenderPlayer) (Object) this, clientPlayer);
+            }
+            SkinLayers3DSetup.updateState(uuid, null);
+            return;
+        }
 
         if (!SkinLayers3DConfig.modernSkinSupport) {
             ext.setSlim(false);
@@ -131,6 +162,13 @@ public class MixinRenderPlayer {
             target = "Lnet/minecraft/client/model/ModelRenderer;render(F)V",
             shift = At.Shift.BEFORE))
     private void wawelauth$renderFirstPersonSleevePre(EntityPlayer player, CallbackInfo ci) {
+        if (EarsCompat.isRendererActive()) {
+            if (player instanceof AbstractClientPlayer clientPlayer) {
+                EarsCompat.applySkinModel((RenderPlayer) (Object) this, clientPlayer);
+            }
+            return;
+        }
+
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         ext.renderPart3D(SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE, 0.0625F);
     }
@@ -140,6 +178,8 @@ public class MixinRenderPlayer {
      */
     @Inject(method = "renderFirstPersonArm", at = @At(value = "TAIL"))
     private void wawelauth$renderFirstPersonSleevePost(EntityPlayer player, CallbackInfo ci) {
+        if (EarsCompat.isRendererActive()) return;
+
         IModelBipedModernExt ext = (IModelBipedModernExt) this.modelBipedMain;
         ext.hidePart(SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE, false);
     }
