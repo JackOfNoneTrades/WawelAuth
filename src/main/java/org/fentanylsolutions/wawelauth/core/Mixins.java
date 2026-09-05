@@ -1,5 +1,9 @@
 package org.fentanylsolutions.wawelauth.core;
 
+import static org.fentanylsolutions.fentlib.util.MiscUtil.Side.BOTH;
+import static org.fentanylsolutions.fentlib.util.MiscUtil.Side.CLIENT;
+import static org.fentanylsolutions.fentlib.util.MiscUtil.Side.SERVER;
+
 import org.fentanylsolutions.fentlib.core.FentMixins;
 import org.fentanylsolutions.fentlib.util.MiscUtil;
 import org.fentanylsolutions.fentlib.util.MixinUtil;
@@ -8,338 +12,112 @@ public class Mixins extends FentMixins {
 
     private static final Mixins INSTANCE = new Mixins();
 
-    @Override
-    protected void registerMixins(MixinUtil.Registry registry) {
-        // Minecraft Accessors
-        registry.mixin("AccessorUserList")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("AccessorUserListEntry")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
+    /// ==========================================
+    /// E A R L Y M I X I N S
+    /// ==========================================
+    protected void registerEarlyMixins(MixinUtil.Registry registry) {
+        // Modern Skin Support
+        earlyMixin(BOTH, registry, "modernskinsupport.MixinEntityPlayer");
+        earlyMixin(BOTH, registry, "modernskinsupport.MixinGameSettings");
+        earlyMixin(CLIENT, registry, "modernskinsupport.MixinImageBufferDownload");
+        earlyMixin(CLIENT, registry, "modernskinsupport.MixinRenderPlayer");
+        earlyMixin(CLIENT, registry, "modernskinsupport.MixinAbstractClientPlayer");
+        earlyMixin(CLIENT, registry, "modernskinsupport.MixinTileEntitySkullRenderer");
+
+        // Accessors
+        earlyMixin(SERVER, registry, "AccessorUserList");
+        earlyMixin(SERVER, registry, "AccessorUserListEntry");
+        earlyMixin(CLIENT, registry, "AccessorMinecraft");
+        earlyMixin(CLIENT, registry, "AccessorGuiMainMenu");
 
         // Minecraft Mixins
-        registry.mixin("MixinNetHandlerLoginServerAuthThread")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinCommandWhitelist")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinCommandBase")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinCommandOp")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinCommandDeOp")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinCommandBanPlayer")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinCommandPardonPlayer")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinServerConfigurationManagerJoinSync")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.SERVER)
-            .build();
+        earlyMixin(SERVER, registry, "MixinNetHandlerLoginServerAuthThread");
+        earlyMixin(SERVER, registry, "MixinCommandWhitelist");
+        earlyMixin(SERVER, registry, "MixinCommandBase");
+        earlyMixin(SERVER, registry, "MixinCommandOp");
+        earlyMixin(SERVER, registry, "MixinCommandDeOp");
+        earlyMixin(SERVER, registry, "MixinCommandBanPlayer");
+        earlyMixin(SERVER, registry, "MixinCommandPardonPlayer");
+        earlyMixin(SERVER, registry, "MixinServerConfigurationManagerJoinSync");
 
-        registry.mixin("MixinEntityPlayer")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.BOTH)
-            .build();
-        registry.mixin("MixinGameSettings")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
+        // Session handoff + server data extension
+        earlyMixin(CLIENT, registry, "MixinGuiConnecting");
+        earlyMixin(CLIENT, registry, "MixinNetworkManagerGameplayProxy");
+        earlyMixin(CLIENT, registry, "MixinMinecraftSingleplayerAccount");
+        earlyMixin(CLIENT, registry, "MixinNetHandlerLoginClient");
+        earlyMixin(CLIENT, registry, "MixinServerData");
+        earlyMixin(CLIENT, registry, "MixinServerListDiagnostics");
+        earlyMixin(CLIENT, registry, "MixinNetHandlerPlayClientJoinSync");
 
-        // Client Accessors
-        registry.mixin("AccessorMinecraft")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("AccessorGuiMainMenu")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
+        // GUI integration
+        earlyMixin(CLIENT, registry, "MixinServerListEntryNormal");
+        earlyMixin(CLIENT, registry, "MixinGuiMultiplayer");
+        earlyMixin(CLIENT, registry, "MixinGuiSelectWorld");
+        earlyMixin(CLIENT, registry, "MixinGuiChat");
+        earlyMixin(CLIENT, registry, "MixinSkinManager");
 
-        // Client Mixins: session handoff + server data extension
-        registry.mixin("MixinGuiConnecting")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinNetworkManagerGameplayProxy")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinMinecraftSingleplayerAccount")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinNetHandlerLoginClient")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinServerData")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinServerListDiagnostics")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinNetHandlerPlayClientJoinSync")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
+        // Authlib: texture verification + profile fetching
+        earlyMixin("authlib", CLIENT, registry, "MixinYggdrasilMinecraftSessionService");
+        earlyMixin("authlib", CLIENT, registry, "MixinYggdrasilGameProfileRepository");
+    }
 
-        // Client Mixins: GUI integration
-        registry.mixin("MixinServerListEntryNormal")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinGuiMultiplayer")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinGuiSelectWorld")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinGuiChat")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinImageBufferDownload")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinImageBufferDownloadEars")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinSkinManager")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
+    /// ==========================================
+    /// L A T E M I X I N S
+    /// ==========================================
+    public void registerLateMixins(MixinUtil.Registry registry) {
+        lateMixin("serverutilities", CLIENT, registry, "MixinPlayerHeadIcon");
+        lateMixin("serverutilities", CLIENT, registry, "MixinTabSkinCache");
+        lateMixin("serverutilities", CLIENT, registry, "AccessorGuiManagePlayersButtonBase");
+        lateMixin("serverutilities", CLIENT, registry, "MixinGuiManagePlayerButtons");
+        lateMixin("serverutilities", CLIENT, registry, "MixinGuiTransferOwnershipButton");
+        lateMixin("serverutilities", SERVER, registry, "MixinUniverse");
+        lateMixin("serverutilities", SERVER, registry, "MixinForgePlayer");
+        lateMixin("serverutilities", SERVER, registry, "MixinForgeTeam");
+        lateMixin("serverutilities", SERVER, registry, "MixinNetNameSync");
+        lateMixin("betterquesting", SERVER, registry, "MixinNetPartySync");
+        lateMixin("betterquesting", SERVER, registry, "MixinNetPartyAction");
+        lateMixin("betterquesting", SERVER, registry, "MixinQuestCommandBase");
+        lateMixin("betterquesting", SERVER, registry, "MixinBQCommandAdmin");
+        lateMixin("betterquesting", SERVER, registry, "MixinBQCopyProgress");
+        lateMixin("betterquesting", CLIENT, registry, "MixinGuiPartyInvite");
+        lateMixin("betterquesting", CLIENT, registry, "MixinGuiPartyManage");
+        lateMixin("etfuturum", CLIENT, registry, "MixinTileEntityFancySkullRenderer");
+        lateMixin("aether_legacy", CLIENT, registry, "MixinAetherItemRenderer");
+        lateMixin("dynmap", SERVER, registry, "MixinDynmapForgePlayer");
+        lateMixin("dynmap", SERVER, registry, "AccessorPlayerFaces");
+        lateMixin("dynmap", SERVER, registry, "MixinDynmapLoadPlayerImages");
+        lateMixin("Botania", CLIENT, registry, "MixinClientProxy");
+        lateMixin("chatbubbles", CLIENT, registry, "MixinChatBubblesMod");
+        lateMixin("chatbubbles", CLIENT, registry, "MixinLiteModChatBubbles");
+    }
 
-        // Client Mixins: modern skin rendering
-        registry.mixin("MixinModelBiped")
+    private void earlyMixin(MiscUtil.Side side, MixinUtil.Registry registry, String name) {
+        registry.mixin(name)
             .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
+            .side(side)
             .build();
-        registry.mixin("MixinRenderPlayer")
+    }
+
+    private void earlyMixin(String modid, MiscUtil.Side side, MixinUtil.Registry registry, String name) {
+        registry.mixin(name)
             .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
+            .modid(modid)
+            .side(side)
             .build();
-        registry.mixin("MixinAbstractClientPlayer")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinRenderingRegistry")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
+    }
 
-        // Client Mixins: 3D skin layers
-        registry.mixin("MixinTileEntitySkullRenderer")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
+    private void lateMixin(String modid, MiscUtil.Side side, MixinUtil.Registry registry, String name) {
+        registry.mixin(name)
+            .phase(MixinUtil.Phase.LATE)
+            .modid(modid)
+            .side(side)
             .build();
-        registry.mixin("MixinLocalTextureLoaderEars")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
+    }
 
-        // Authlib Mixins: texture verification + profile fetching
-        registry.mixin("MixinYggdrasilMinecraftSessionService")
-            .modid("authlib")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinYggdrasilGameProfileRepository")
-            .modid("authlib")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.BOTH)
-            .build();
-
-        // Compat
-        registry.mixin("MixinPlayerHeadIcon")
-            .modid("serverutilities")
-            .extraModid("ServerUtilities")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinTabSkinCache")
-            .modid("serverutilities")
-            .extraModid("ServerUtilities")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("AccessorGuiManagePlayersButtonBase")
-            .modid("serverutilities")
-            .extraModid("ServerUtilities")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinGuiManagePlayerButtons")
-            .modid("serverutilities")
-            .extraModid("ServerUtilities")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinGuiTransferOwnershipButton")
-            .modid("serverutilities")
-            .extraModid("ServerUtilities")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinUniverse")
-            .modid("serverutilities")
-            .extraModid("ServerUtilities")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinForgePlayer")
-            .modid("serverutilities")
-            .extraModid("ServerUtilities")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinForgeTeam")
-            .modid("serverutilities")
-            .extraModid("ServerUtilities")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-
-        registry.mixin("MixinNetNameSync")
-            .modid("betterquesting")
-            .extraModid("BetterQuesting")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinNetPartySync")
-            .modid("betterquesting")
-            .extraModid("BetterQuesting")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinNetPartyAction")
-            .modid("betterquesting")
-            .extraModid("BetterQuesting")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinQuestCommandBase")
-            .modid("betterquesting")
-            .extraModid("BetterQuesting")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinBQCommandAdmin")
-            .modid("betterquesting")
-            .extraModid("BetterQuesting")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinBQCopyProgress")
-            .modid("betterquesting")
-            .extraModid("BetterQuesting")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinGuiPartyInvite")
-            .modid("betterquesting")
-            .extraModid("BetterQuesting")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinGuiPartyManage")
-            .modid("betterquesting")
-            .extraModid("BetterQuesting")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
-        registry.mixin("MixinTileEntityFancySkullRenderer")
-            .modid("etfuturum")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
-        registry.mixin("MixinAetherItemRenderer")
-            .modid("aether_legacy")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
-        registry.mixin("MixinEarsLegacyHelper")
-            .modid("ears")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
-        registry.mixin("MixinFoamFixEarsLegacyHelper")
-            .modid("foamfix")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
-        registry.mixin("MixinMinecraftFoamFix")
-            .phase(MixinUtil.Phase.EARLY)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
-        registry.mixin("MixinDynmapForgePlayer")
-            .modid("dynmap")
-            .extraModid("Dynmap")
-            .extraModid("gtnh-web-map")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("AccessorPlayerFaces")
-            .modid("dynmap")
-            .extraModid("Dynmap")
-            .extraModid("gtnh-web-map")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-        registry.mixin("MixinDynmapLoadPlayerImages")
-            .modid("dynmap")
-            .extraModid("Dynmap")
-            .extraModid("gtnh-web-map")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.SERVER)
-            .build();
-
-        registry.mixin("MixinClientProxy")
-            .modid("Botania")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
-        registry.mixin("MixinChatBubblesMod")
-            .modid("chatbubbles")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-        registry.mixin("MixinLiteModChatBubbles")
-            .modid("chatbubbles")
-            .phase(MixinUtil.Phase.LATE)
-            .side(MiscUtil.Side.CLIENT)
-            .build();
-
+    @Override
+    protected void registerMixins(MixinUtil.Registry registry) {
+        registerEarlyMixins(registry);
+        registerLateMixins(registry);
     }
 
     public static java.util.List<String> getEarlyMixinsForLoader() {

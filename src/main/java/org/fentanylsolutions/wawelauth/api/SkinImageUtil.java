@@ -20,9 +20,7 @@ public final class SkinImageUtil {
     public static BufferedImage convertLegacySkin(BufferedImage image) {
         int w = image.getWidth();
         int h = image.getHeight();
-        if (h * 2 != w) {
-            return image;
-        }
+        if (h * 2 != w) return image;
 
         int scale = w / 64;
         BufferedImage converted = new BufferedImage(w, w, BufferedImage.TYPE_INT_ARGB);

@@ -22,7 +22,6 @@ import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.client.render.IProviderAwareSkinManager;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.SkinTextureState;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.BuiltinProviders;
 import org.fentanylsolutions.wawelauth.wawelclient.SessionBridge;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
@@ -44,16 +43,11 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class WawelTextureResolver {
 
-    private static final ResourceLocation LEGACY_STEVE = new ResourceLocation("textures/entity/steve.png");
     private static final ResourceLocation MODERN_STEVE = new ResourceLocation("wawelauth", "textures/steve_64.png");
     private static final ResourceLocation DEFAULT_CAPE = new ResourceLocation("wawelauth", "textures/capeFallback.png");
 
     public static ResourceLocation getDefaultSkin() {
-        return SkinLayers3DConfig.modernSkinSupport ? MODERN_STEVE : LEGACY_STEVE;
-    }
-
-    public static ResourceLocation getLegacyDefaultSkin() {
-        return LEGACY_STEVE;
+        return MODERN_STEVE;
     }
 
     public static ResourceLocation getDefaultCape() {
@@ -122,7 +116,7 @@ public class WawelTextureResolver {
         for (ClientProvider provider : providers) {
             if (provider == null) continue;
             ResourceLocation skin = getSkin(profileId, displayName, provider, false);
-            if (skin != null && !skin.equals(getDefaultSkin()) && !skin.equals(getLegacyDefaultSkin())) {
+            if (skin != null && !skin.equals(getDefaultSkin())) {
                 return skin;
             }
         }

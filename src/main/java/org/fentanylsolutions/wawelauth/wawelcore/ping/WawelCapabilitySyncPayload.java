@@ -2,7 +2,7 @@ package org.fentanylsolutions.wawelauth.wawelcore.ping;
 
 import java.nio.charset.StandardCharsets;
 
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

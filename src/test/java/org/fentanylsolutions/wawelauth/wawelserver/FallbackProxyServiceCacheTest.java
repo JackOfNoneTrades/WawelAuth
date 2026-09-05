@@ -3,7 +3,7 @@ package org.fentanylsolutions.wawelauth.wawelserver;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.junit.Assert;
 import org.junit.Test;
 

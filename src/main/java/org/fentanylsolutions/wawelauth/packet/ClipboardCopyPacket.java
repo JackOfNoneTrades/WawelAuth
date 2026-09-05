@@ -38,17 +38,13 @@ public final class ClipboardCopyPacket implements IMessage {
 
         @Override
         public IMessage onMessage(ClipboardCopyPacket message, MessageContext ctx) {
-            if (!ctx.side.isClient()) {
-                return null;
-            }
+            if (!ctx.side.isClient()) return null;
+
             String text = message.text == null ? "" : message.text.trim();
-            if (text.isEmpty() || text.length() > MAX_TEXT_LENGTH) {
-                return null;
-            }
+            if (text.isEmpty() || text.length() > MAX_TEXT_LENGTH) return null;
+
             for (int i = 0; i < text.length(); i++) {
-                if (text.charAt(i) < ' ') {
-                    return null;
-                }
+                if (text.charAt(i) < ' ') return null;
             }
             ClipboardHelper.showCopyPrompt(text, message.description == null ? "" : message.description);
             return null;

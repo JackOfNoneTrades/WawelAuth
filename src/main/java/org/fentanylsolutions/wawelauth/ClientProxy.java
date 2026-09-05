@@ -6,6 +6,8 @@ import net.minecraftforge.common.MinecraftForge;
 
 import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
 import org.fentanylsolutions.wawelauth.client.WindowDropHandler;
+import org.fentanylsolutions.wawelauth.client.compat.EtFuturumCompat;
+import org.fentanylsolutions.wawelauth.client.compat.SmartMovingCompat;
 import org.fentanylsolutions.wawelauth.client.gui.GuiSkinCustomizationHandler;
 import org.fentanylsolutions.wawelauth.client.gui.WawelAuthKeybind;
 import org.fentanylsolutions.wawelauth.client.gui.WawelAuthTooltipStyle;
@@ -66,6 +68,11 @@ public class ClientProxy extends CommonProxy {
     @Override
     public void postInit(FMLPostInitializationEvent event) {
         MinecraftForge.EVENT_BUS.register(new GuiSkinCustomizationHandler());
+
+        /// CLIENTSIDE COMPAT
+        EtFuturumCompat.init();
+        SmartMovingCompat.init();
+
     }
 
     @Override

@@ -13,7 +13,7 @@ import java.util.List;
 import javax.net.ssl.SSLEngine;
 
 import org.fentanylsolutions.wawelauth.Config;
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
