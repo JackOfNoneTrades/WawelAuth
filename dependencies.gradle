@@ -53,6 +53,7 @@ def fplibDepLoaderVersion = "1.12.2"
 
 dependencies {
     deploader("com.falsepattern:falsepatternlib-mc1.7.10:${fplibDepLoaderVersion}:deploader") // LGPL 3.0
+    compileOnly("com.falsepattern:falsepatternlib-mc1.7.10:${fplibDepLoaderVersion}:deploader")
     shadowImplementation("com.falsepattern:falsepatternlib-mc1.7.10:${fplibDepLoaderVersion}:deploader_stub") // LGPL 3.0
 
     // Pure runtime
@@ -84,12 +85,14 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:twilightforest:2.7.40:dev")
     compileOnly("com.github.GTNewHorizons:Botania:1.13.34-GTNH:dev")
 
-    // Downloaded by DepLoader in the regular jar and bundled in the fat jar.
+    // Downloaded by DepLoader in slim jars and bundled in default jars.
     fatImplementation("org.bouncycastle:bcprov-jdk15to18:${bouncyCastleVersion}")
     fatImplementation("org.bouncycastle:bcpkix-jdk15to18:${bouncyCastleVersion}")
     fatImplementation("org.xerial:sqlite-jdbc:${sqliteJdbcVersion}")
     // Since 3.53.0.0, sqlite-jdbc publishes Android natives as a separate artifact.
+    // Fat and Android jars embed these; slim jars select natives through the programmatic API.
     fatImplementation("org.xerial:sqlite-jdbc:${sqliteJdbcVersion}:natives-android")
+    androidNatives("org.xerial:sqlite-jdbc:${sqliteJdbcVersion}:natives-android") { transitive = false }
 
     // Test
     testImplementation("junit:junit:4.13.2")

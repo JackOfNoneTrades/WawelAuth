@@ -127,6 +127,10 @@ shadedDevJar.configure {
 // custom configurations here and let dependencies.gradle populate them later.
 val depLoaderBootstrap = configurations.maybeCreate("deploader")
 val fatImplementation = configurations.maybeCreate("fatImplementation")
+val androidNatives = configurations.maybeCreate("androidNatives").apply {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
 
 val sourceSets = extensions.getByType<SourceSetContainer>()
 val mainSourceSet = sourceSets.named("main").get()
@@ -234,6 +238,9 @@ tasks.named<ProcessResources>("processResources").configure {
             "sqliteJdbcVersion" to sqliteJdbcVersion,
         )
     }
+    filesMatching("META-INF/wawelauth-sqlite.properties") {
+        expand("sqliteJdbcVersion" to sqliteJdbcVersion)
+    }
     // DepLoader's small bootstrap jar is embedded; FalsePatternLib itself is
     // neither bundled nor required as an installed mod.
     from(depLoaderBootstrap) {
@@ -299,8 +306,37 @@ val curseForgeFatJar = tasks.register<Jar>("curseForgeFatJar") {
     description = "Builds the fully bundled default CurseForge jar without launcher account import."
 }
 
+val androidJar = tasks.register<Jar>("androidJar") {
+    group = "build"
+    description = "Builds the full-featured slim jar with embedded Android SQLite natives."
+    notCompatibleWithConfigurationCache("Repackages the slim jar with Android native resources.")
+    dependsOn(reobfJar)
+    archiveBaseName.set(baseJar.flatMap { it.archiveBaseName })
+    archiveVersion.set(providers.provider { projectVersionString() })
+    archiveClassifier.set("android")
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    from(reobfJar.flatMap { it.archiveFile }.map { zipTree(it) }) {
+        exclude("META-INF/MANIFEST.MF")
+    }
+    from(providers.provider { androidNatives.map(::zipTree) }) {
+        include("org/sqlite/native/Linux-Android/**")
+    }
+    manifest {
+        attributes(
+            "FMLCorePluginContainsFMLMod" to "true",
+            "FMLCorePlugin" to "${wawelProp("modGroup")}.core.EarlyMixinLoader",
+            "TweakClass" to "org.spongepowered.asm.launch.MixinTweaker",
+            "MixinConfigs" to "mixins.${wawelProp("modId")}.json",
+            "ForceLoadAsMod" to "true",
+            "Multi-Release" to "true",
+        )
+    }
+}
+
 tasks.named("assemble").configure {
-    dependsOn(fatJar, fatDevJar, reobfCurseForgeJar, curseForgeFatJar)
+    dependsOn(fatJar, fatDevJar, reobfCurseForgeJar, curseForgeFatJar, androidJar)
 }
 
 fun replaceOutgoingJar(configurationName: String, jarTask: TaskProvider<out Jar>) {
@@ -326,14 +362,15 @@ plugins.withId("maven-publish") {
 
 val verifyDistributionJars = tasks.register("verifyDistributionJars") {
     group = "verification"
-    description = "Verifies default jars are bundled and slim jars retain DepLoader metadata."
+    description = "Verifies bundled, slim, and full-featured Android distributions."
     notCompatibleWithConfigurationCache("Scans distribution jar contents.")
-    dependsOn(fatJar, fatDevJar, reobfJar, shadedDevJar)
+    dependsOn(fatJar, fatDevJar, reobfJar, shadedDevJar, androidJar)
     inputs.files(
         fatJar.flatMap { it.archiveFile },
         fatDevJar.flatMap { it.archiveFile },
         reobfJar.flatMap { it.archiveFile },
         shadedDevJar.flatMap { it.archiveFile },
+        androidJar.flatMap { it.archiveFile },
     )
 
     doLast {
@@ -358,19 +395,64 @@ val verifyDistributionJars = tasks.register("verifyDistributionJars") {
             bundledEntries.forEach { required ->
                 check(required in entries) { "Bundled archive ${archive.name} is missing $required" }
             }
+            listOf("arm", "aarch64", "x86", "x86_64").forEach { arch ->
+                val native = "org/sqlite/native/Linux-Android/$arch/libsqlitejdbc.so"
+                check(native in entries) { "Bundled archive ${archive.name} is missing $native" }
+            }
             check(dependencyDescriptor !in entries) {
                 "Bundled archive ${archive.name} still contains $dependencyDescriptor"
             }
         }
 
-        listOf(reobfJar.get(), shadedDevJar.get()).forEach { task ->
+        listOf(reobfJar.get(), shadedDevJar.get(), androidJar.get()).forEach { task ->
             val archive = task.archiveFile.get().asFile
             val entries = entriesOf(archive)
             check(dependencyDescriptor in entries) {
                 "Slim archive ${archive.name} is missing $dependencyDescriptor"
             }
+            check("fplib_deploader.jar" in entries && "com/falsepattern/deploader/DependencyLoaderImpl.class" !in entries) {
+                "Slim archive ${archive.name} must expose the loader API only through the embedded bootstrap jar"
+            }
+            ZipFile(archive).use { zip ->
+                val descriptor = zip.getInputStream(zip.getEntry(dependencyDescriptor))
+                    .bufferedReader().use { it.readText() }
+                check("org.xerial:sqlite-jdbc:" !in descriptor) {
+                    "Slim archive ${archive.name} must load SQLite through the programmatic API"
+                }
+                val versionEntry = zip.getEntry("META-INF/wawelauth-sqlite.properties")
+                check(versionEntry != null) { "Slim archive ${archive.name} is missing its SQLite version" }
+                val version = java.util.Properties().apply {
+                    zip.getInputStream(versionEntry).use { load(it) }
+                }
+                check(version.getProperty("version") == sqliteJdbcVersion) {
+                    "Slim archive ${archive.name} has an incorrect SQLite version"
+                }
+            }
             bundledEntries.forEach { forbidden ->
                 check(forbidden !in entries) { "Slim archive ${archive.name} unexpectedly contains $forbidden" }
+            }
+        }
+
+        val androidArchive = androidJar.get().archiveFile.get().asFile
+        val androidEntries = entriesOf(androidArchive)
+        listOf("arm", "aarch64", "x86", "x86_64").forEach { arch ->
+            val native = "org/sqlite/native/Linux-Android/$arch/libsqlitejdbc.so"
+            check(native in androidEntries) { "Android archive ${androidArchive.name} is missing $native" }
+        }
+        ZipFile(androidArchive).use { android ->
+            ZipFile(reobfJar.get().archiveFile.get().asFile).use { slim ->
+                // Preserve the unrestricted implementation and its UI, not the CurseForge replacements.
+                listOf(
+                    "org/fentanylsolutions/wawelauth/wawelclient/ClientStartupExtensions.class",
+                    "org/fentanylsolutions/wawelauth/wawelclient/LauncherAccountImport.class",
+                    "assets/wawelauth/lang/en_US.lang",
+                    dependencyDescriptor,
+                ).forEach { name ->
+                    check(name in androidEntries) { "Android archive ${androidArchive.name} is missing $name" }
+                    check(android.getInputStream(android.getEntry(name)).readBytes().contentEquals(
+                        slim.getInputStream(slim.getEntry(name)).readBytes(),
+                    )) { "Android archive changed unrestricted slim entry $name" }
+                }
             }
         }
     }
