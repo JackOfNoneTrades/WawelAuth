@@ -1,6 +1,5 @@
 package org.fentanylsolutions.wawelauth.client.gui;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -13,6 +12,7 @@ import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.EnumChatFormatting;
@@ -22,14 +22,15 @@ import org.fentanylsolutions.fentlib.gui.PanoramaOverlayRenderer;
 import org.fentanylsolutions.fentlib.util.FileUtil;
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.api.SkinImageUtil;
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.ClipboardHelper;
 import org.fentanylsolutions.wawelauth.client.compat.EtFuturumCompat;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyEntityClientPlayerMP;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyWorldClient;
 import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
+import org.fentanylsolutions.wawelauth.client.render.EarsCompat;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
 import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
 import org.fentanylsolutions.wawelauth.wawelclient.LocalAuthProviderResolver;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
@@ -1621,6 +1622,12 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240.0F, 240.0F);
+        if (backView) {
+            GL11.glPushMatrix();
+            GL11.glRotatef(180.0F, 0.0F, 1.0F, 0.0F);
+            RenderHelper.enableStandardItemLighting();
+            GL11.glPopMatrix();
+        }
         entity.stabilizeCapePhysics();
 
         Minecraft mc = Minecraft.getMinecraft();
@@ -1857,18 +1864,37 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         Dialog<Boolean> dialog = new Dialog<>("wawelauth_texture_upload");
         dialog.setCloseOnOutOfBoundsClick(false);
 
-        ResourceLocation previewTexture = null;
+        TextureUploadPreview preview = null;
         if (file != null) {
             try {
-                previewTexture = registerTexturePreview(file, textureType);
+                preview = TextureUploadPreview.create(file, textureType);
             } catch (Exception e) {
                 previewWarning[0] = GuiText.tr("wawelauth.gui.account_manager.preview_unavailable", e.getMessage());
                 WawelAuth.debug("Texture preview failed: " + e.getMessage());
             }
         }
 
-        PlayerPreviewEntity frontEntity = createTextureUploadPreviewEntity(textureType, previewTexture);
-        PlayerPreviewEntity backEntity = createTextureUploadPreviewEntity(textureType, previewTexture);
+        final TextureUploadPreview dialogPreview = preview;
+        final UUID previewProfileId = skin ? UUID.randomUUID() : selectedProfileId();
+        dialog.onCloseAction(() -> {
+            if (dialogPreview != null) {
+                dialogPreview.close();
+            }
+            if (skin) {
+                SkinLayers3DSetup.updateState(previewProfileId, null);
+                EarsCompat.removeCachedSkin(previewProfileId);
+            }
+        });
+
+        ResourceLocation previewTexture = dialogPreview != null ? dialogPreview.getLocation() : null;
+        PlayerPreviewEntity frontEntity = createTextureUploadPreviewEntity(
+            textureType,
+            previewTexture,
+            previewProfileId);
+        PlayerPreviewEntity backEntity = createTextureUploadPreviewEntity(
+            textureType,
+            previewTexture,
+            previewProfileId);
         applyTextureUploadPreviewModel(frontEntity, backEntity);
         applyCapePreviewMode(frontEntity, dialogPreviewMode[0]);
         applyCapePreviewMode(backEntity, dialogPreviewMode[0]);
@@ -1905,7 +1931,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .height(14)
                     .color(WawelAuthStyle.THEME_LIGHTER))
             .child(new Widget<>().size(1, 5))
-            .child(textureUploadPreviewPanel(frontEntity, backEntity, dialogPreviewMode))
+            .child(textureUploadPreviewPanel(frontEntity, backEntity, dialogPreviewMode, dialogPreview))
             .child(new Widget<>().size(1, 8))
             .child(
                 new TextWidget<>(IKey.dynamic(() -> GuiText.ellipsizeToPixelWidth(statusText[0], maxTextWidthPx)))
@@ -1961,7 +1987,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private Widget<?> textureUploadPreviewPanel(PlayerPreviewEntity frontEntity, PlayerPreviewEntity backEntity,
-        PreviewBackMode[] previewMode) {
+        PreviewBackMode[] previewMode, TextureUploadPreview preview) {
         return new Column().widthRel(1.0f)
             .height(TEXTURE_DIALOG_PREVIEW_HEIGHT)
             .background(WawelAuthStyle.rect(PREVIEW_PANEL_BACKGROUND_COLOR))
@@ -1971,9 +1997,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
                     .height(TEXTURE_DIALOG_ENTITY_ROW_HEIGHT)
                     .mainAxisAlignment(Alignment.MainAxis.CENTER)
                     .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                    .child(textureUploadEntityWidget(frontEntity, false))
+                    .child(textureUploadEntityWidget(frontEntity, false, preview))
                     .child(new Widget<>().size(6, TEXTURE_DIALOG_ENTITY_HEIGHT))
-                    .child(textureUploadEntityWidget(backEntity, true)))
+                    .child(textureUploadEntityWidget(backEntity, true, preview)))
             .child(
                 new Row().widthRel(1.0f)
                     .height(PREVIEW_MODE_BUTTON_SIZE)
@@ -2011,11 +2037,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         return button;
     }
 
-    private Widget<?> textureUploadEntityWidget(PlayerPreviewEntity entity, boolean backView) {
+    private Widget<?> textureUploadEntityWidget(PlayerPreviewEntity entity, boolean backView,
+        TextureUploadPreview preview) {
         return new EntityDisplayWidget(() -> entity) {
 
             @Override
             public void draw(GuiContext context, int x, int y, int width, int height, WidgetTheme widgetTheme) {
+                if (preview != null) {
+                    preview.tick();
+                }
                 applyTextureUploadPreviewModel(entity, null);
                 drawPreviewEntity(
                     context,
@@ -2059,12 +2089,10 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private PlayerPreviewEntity createTextureUploadPreviewEntity(TextureType textureType,
-        ResourceLocation previewTexture) {
+        ResourceLocation previewTexture, UUID previewProfileId) {
         ClientAccount account = state.selectedAccount;
-        UUID profileId = account != null && account.getProfileUuid() != null ? account.getProfileUuid()
-            : new UUID(0L, 0L);
         String profileName = account != null && account.getProfileName() != null ? account.getProfileName() : "?";
-        PlayerPreviewEntity entity = new PlayerPreviewEntity(new GameProfile(profileId, profileName));
+        PlayerPreviewEntity entity = new PlayerPreviewEntity(new GameProfile(previewProfileId, profileName));
         if (textureType == TextureType.SKIN) {
             entity.setForcedSkin(previewTexture);
         } else if (textureType == TextureType.CAPE) {
@@ -2077,6 +2105,11 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             entity.setForcedSkinModel(account.getLocalSkinModel());
         }
         return entity;
+    }
+
+    private UUID selectedProfileId() {
+        ClientAccount account = state.selectedAccount;
+        return account != null && account.getProfileUuid() != null ? account.getProfileUuid() : new UUID(0L, 0L);
     }
 
     private void applyTextureUploadPreviewModel(PlayerPreviewEntity frontEntity, PlayerPreviewEntity backEntity) {
@@ -2111,15 +2144,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             .getSkin(account.getProfileUuid(), profileName, provider, false);
         client.getTextureResolver()
             .getCape(account.getProfileUuid(), profileName, provider, false);
-    }
-
-    private ResourceLocation registerTexturePreview(File file, TextureType textureType) throws Exception {
-        BufferedImage image = LocalTextureLoader.readImage(file);
-        if (textureType == TextureType.SKIN) {
-            image = SkinImageUtil.convertLegacySkin(image);
-        }
-        String key = "upload_preview/" + textureType.getApiName() + "/" + System.nanoTime();
-        return LocalTextureLoader.registerBufferedImage(new ResourceLocation("wawelauth", key), image);
     }
 
     private void attemptPendingTextureUpload(Dialog<Boolean> dialog, String[] statusText) {

@@ -76,6 +76,16 @@ public final class LocalTextureLoader {
         return location != null ? imageCache.get(location) : null;
     }
 
+    public static void unregisterBufferedImage(ResourceLocation location) {
+        if (location == null) {
+            return;
+        }
+        imageCache.remove(location);
+        Minecraft.getMinecraft()
+            .getTextureManager()
+            .deleteTexture(location);
+    }
+
     public static void clearImageCache() {
         imageCache.clear();
     }

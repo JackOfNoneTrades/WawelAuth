@@ -117,6 +117,27 @@ public final class EarsCompat {
         }
     }
 
+    /** Remove metadata belonging to a short-lived upload-preview player. */
+    @SuppressWarnings("unchecked")
+    public static void removeCachedSkin(UUID uuid) {
+        Provider active = getProvider();
+        if (active == Provider.NONE || uuid == null) return;
+
+        try {
+            ensureLegacyFields(active);
+            Map<UUID, String> urls = (Map<UUID, String>) skinUrls.get(null);
+            synchronized (urls) {
+                urls.remove(uuid);
+                ((Set<?>) slimUsers.get(null)).remove(uuid);
+            }
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            if (!cacheFailureLogged) {
+                cacheFailureLogged = true;
+                WawelAuth.LOG.error("Failed to remove WawelAuth preview metadata from " + active.displayName, e);
+            }
+        }
+    }
+
     /**
      * Allow Ears to preserve its metadata and associate it with WawelAuth's provider-aware texture object.
      *
