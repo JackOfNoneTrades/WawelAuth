@@ -5,6 +5,7 @@ import java.awt.image.DataBufferInt;
 
 import net.minecraft.client.renderer.ImageBufferDownload;
 
+import org.fentanylsolutions.wawelauth.config.SkinLayersConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -86,14 +87,17 @@ public abstract class MixinImageBufferDownload {
             copyRegion(image, this.imageData, this.imageWidth, 0, 0, Math.min(srcW, 64), copyH, 0, 0);
         }
 
-        // Alpha fixups: base parts forced opaque.
-        // Matches modern behavior: notch transparency hack only for legacy skins.
-        this.setAreaOpaque(0, 0, 32, 16); // Head
+        // Notch hack for legacy hat area
         if (legacy) {
-            this.setAreaTransparent(32, 0, 64, 32); // Notch hack for legacy hat area
+            this.setAreaTransparent(32, 0, 64, 32);
         }
-        this.setAreaOpaque(0, 16, 64, 32); // Body + arms + legs row
-        this.setAreaOpaque(16, 48, 48, 64); // Left arm + left leg bases
+
+        if (!SkinLayersConfig.enableBasePartTranslucency) {
+            // force base parts to be opaque
+            this.setAreaOpaque(0, 0, 32, 16); // Head
+            this.setAreaOpaque(0, 16, 64, 32); // Body + arms + legs row
+            this.setAreaOpaque(16, 48, 48, 64); // Left arm + left leg bases
+        }
 
         return out;
     }

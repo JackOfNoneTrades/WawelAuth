@@ -35,4 +35,9 @@ public class SkinLayersConfig {
     @Config.DefaultEnum("VOLUMETRIC")
     public static SkinLayersHelper.PartState hat;
 
+    @Config.Comment("Allows the base parts of the skin to be semi-translucent/transparent instead of completely black. Note that invisible skins will also work with this option enabled.")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean enableBasePartTranslucency = false;
+
 }

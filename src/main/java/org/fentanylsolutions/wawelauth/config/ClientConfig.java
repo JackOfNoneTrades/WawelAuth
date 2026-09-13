@@ -1,7 +1,6 @@
 package org.fentanylsolutions.wawelauth.config;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -35,13 +34,13 @@ public class ClientConfig {
     public static String[] disableCredentials = { "^Mojang$", "ely\\.by", "littleskin\\.cn" };
 
     @Config.Ignore
-    private static transient List<Pattern> compiledSkinPatterns;
+    private static List<Pattern> compiledSkinPatterns;
     @Config.Ignore
-    private static transient List<Pattern> compiledCapePatterns;
+    private static List<Pattern> compiledCapePatterns;
     @Config.Ignore
-    private static transient List<Pattern> compiledResetPatterns;
+    private static List<Pattern> compiledResetPatterns;
     @Config.Ignore
-    private static transient List<Pattern> compiledCredentialsPatterns;
+    private static List<Pattern> compiledCredentialsPatterns;
 
     public static boolean isSkinUploadDisabled(String providerName, String apiRoot) {
         return matchesAny(providerName, apiRoot, getSkinPatterns());
@@ -126,42 +125,4 @@ public class ClientConfig {
         return result;
     }
 
-    /**
-     * Returns the default provider, or null if empty/blank.
-     */
-    public static String getDefaultProviderOrNull() {
-        if (defaultProvider == null || defaultProvider.trim()
-            .isEmpty()) {
-            return null;
-        }
-        return defaultProvider;
-    }
-
-    /**
-     * Returns the disableSkinUpload patterns as a mutable list.
-     */
-    public static List<String> getDisableSkinUploadList() {
-        return new ArrayList<>(Arrays.asList(disableSkinUpload));
-    }
-
-    /**
-     * Returns the disableCapeUpload patterns as a mutable list.
-     */
-    public static List<String> getDisableCapeUploadList() {
-        return new ArrayList<>(Arrays.asList(disableCapeUpload));
-    }
-
-    /**
-     * Returns the disableTextureReset patterns as a mutable list.
-     */
-    public static List<String> getDisableTextureResetList() {
-        return new ArrayList<>(Arrays.asList(disableTextureReset));
-    }
-
-    /**
-     * Returns the disableCredentials patterns as a mutable list.
-     */
-    public static List<String> getDisableCredentialsList() {
-        return new ArrayList<>(Arrays.asList(disableCredentials));
-    }
 }

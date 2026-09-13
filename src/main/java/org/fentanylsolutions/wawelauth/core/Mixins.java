@@ -73,7 +73,7 @@ public class Mixins extends FentMixins {
         lateMixin("serverutilities", SERVER, registry, "MixinUniverse");
         lateMixin("serverutilities", SERVER, registry, "MixinForgePlayer");
         lateMixin("serverutilities", SERVER, registry, "MixinForgeTeam");
-        lateMixin("serverutilities", SERVER, registry, "MixinNetNameSync");
+        lateMixin("betterquesting", SERVER, registry, "MixinNetNameSync");
         lateMixin("betterquesting", SERVER, registry, "MixinNetPartySync");
         lateMixin("betterquesting", SERVER, registry, "MixinNetPartyAction");
         lateMixin("betterquesting", SERVER, registry, "MixinQuestCommandBase");
