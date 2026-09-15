@@ -56,12 +56,9 @@ public class WawelFaceRendererClient {
 
     private static ResourceLocation resolveBindableSkin(ResourceLocation skin) {
         ResourceLocation fallback = WawelTextureResolver.getDefaultSkin();
-        if (skin == null) {
-            return fallback;
-        }
-        if (skin.equals(fallback) || skin.equals(WawelTextureResolver.getLegacyDefaultSkin())) {
-            return skin;
-        }
+        if (skin == null) return fallback;
+
+        if (skin.equals(fallback)) return skin;
 
         ITextureObject textureObject = Minecraft.getMinecraft()
             .getTextureManager()

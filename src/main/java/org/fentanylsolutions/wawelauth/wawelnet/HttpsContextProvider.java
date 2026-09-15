@@ -51,7 +51,7 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.util.HexUtil;
 import org.fentanylsolutions.wawelauth.wawelcore.util.OwnerOnlyFileIO;
 

@@ -10,8 +10,8 @@ import java.util.UUID;
 
 import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.Config;
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.RegistrationPolicy;
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.PasswordHasher;
 import org.fentanylsolutions.wawelauth.wawelcore.data.TextureType;
 import org.fentanylsolutions.wawelauth.wawelcore.data.TokenState;

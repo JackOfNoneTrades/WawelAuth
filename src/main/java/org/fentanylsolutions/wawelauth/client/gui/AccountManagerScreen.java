@@ -17,6 +17,8 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.client.ForgeHooksClient;
+import net.minecraftforge.client.MinecraftForgeClient;
 
 import org.fentanylsolutions.fentlib.gui.PanoramaOverlayRenderer;
 import org.fentanylsolutions.fentlib.util.FileUtil;
@@ -28,9 +30,9 @@ import org.fentanylsolutions.wawelauth.client.compat.EtFuturumCompat;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyEntityClientPlayerMP;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyWorldClient;
 import org.fentanylsolutions.wawelauth.client.fakeworld.PreviewEntityRenderContext;
-import org.fentanylsolutions.wawelauth.client.render.EarsCompat;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers3d.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.config.ClientConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.IServerDataExt;
 import org.fentanylsolutions.wawelauth.wawelclient.LocalAuthProviderResolver;
 import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
@@ -40,7 +42,6 @@ import org.fentanylsolutions.wawelauth.wawelclient.data.AccountStatus;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientAccount;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ProviderType;
-import org.fentanylsolutions.wawelauth.wawelcore.config.ClientConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
 import org.fentanylsolutions.wawelauth.wawelcore.data.TextureType;
 import org.lwjgl.opengl.GL11;
@@ -70,6 +71,7 @@ import com.mojang.authlib.GameProfile;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
+@SuppressWarnings("UnstableApiUsage")
 @SideOnly(Side.CLIENT)
 public class AccountManagerScreen extends ParentAwareModularScreen {
 
@@ -373,6 +375,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
 
     private PlayerPreviewEntity previewFrontEntity;
     private PlayerPreviewEntity previewBackEntity;
+    private int savedPass;
     private WorldClient savedWorld;
     private EntityClientPlayerMP savedPlayer;
     private EntityLivingBase savedRenderViewEntity;
@@ -1649,6 +1652,9 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         entity.prevRotationYawHead = yaw;
         entity.rotationPitch = 0.0F;
 
+        savedPass = MinecraftForgeClient.getRenderPass();
+        ForgeHooksClient.setRenderPass(-1);
+
         savedWorld = mc.theWorld;
         savedPlayer = mc.thePlayer;
         savedRenderViewEntity = mc.renderViewEntity;
@@ -1665,6 +1671,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         savedRenderViewEntity = null;
         savedWorld = null;
         savedPlayer = null;
+        ForgeHooksClient.setRenderPass(savedPass);
     }
 
     private PreviewBackMode normalizeCapePreviewMode(PreviewBackMode mode) {
@@ -1685,14 +1692,15 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
     }
 
     private void applyCapePreviewMode(PlayerPreviewEntity entity, PreviewBackMode mode) {
-        if (entity == null) {
-            return;
-        }
+        if (entity == null) return;
 
         PreviewBackMode normalizedMode = normalizeCapePreviewMode(mode);
         boolean useElytra = normalizedMode == PreviewBackMode.ELYTRA;
         entity.setCapeVisible(normalizedMode != PreviewBackMode.NONE);
-        SkinLayersHelper.setSkinLayerHidden(entity, SkinLayersHelper.EnumPlayerModelParts.CAPE, useElytra);
+        SkinLayersHelper.setSkinLayerState(
+            entity,
+            SkinLayersHelper.EnumPlayerModelParts.CAPE,
+            useElytra ? SkinLayersHelper.PartState.DISABLED : SkinLayersHelper.PartState.FLAT);
         EtFuturumCompat.applyPreviewElytra(entity, useElytra);
     }
 
@@ -1882,7 +1890,6 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             }
             if (skin) {
                 SkinLayers3DSetup.updateState(previewProfileId, null);
-                EarsCompat.removeCachedSkin(previewProfileId);
             }
         });
 
@@ -2099,7 +2106,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             entity.setForcedCape(previewTexture);
         }
         entity.setCapeVisible(true);
-        SkinLayersHelper.setSkinLayerHidden(entity, SkinLayersHelper.EnumPlayerModelParts.CAPE, false);
+        SkinLayersHelper
+            .setSkinLayerState(entity, SkinLayersHelper.EnumPlayerModelParts.CAPE, SkinLayersHelper.PartState.FLAT);
         EtFuturumCompat.applyPreviewElytra(entity, false);
         if (account != null && ProviderDisplayName.isOfflineProvider(account.getProviderName())) {
             entity.setForcedSkinModel(account.getLocalSkinModel());

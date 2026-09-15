@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.KeyManager;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.PropertySigner;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.InviteDAO;

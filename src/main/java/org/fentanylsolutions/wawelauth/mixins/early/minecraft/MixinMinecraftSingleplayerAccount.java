@@ -19,9 +19,7 @@ public class MixinMinecraftSingleplayerAccount {
     private void wawelauth$activateSingleplayerAccount(String folderName, String worldName,
         WorldSettings worldSettingsIn, CallbackInfo ci) {
         WawelClient client = WawelClient.instance();
-        if (client == null) {
-            return;
-        }
+        if (client == null) return;
 
         ClientAccount account = SingleplayerAccountPersistence.resolveSelectedAccount(client.getAccountManager());
         if (account == null) {

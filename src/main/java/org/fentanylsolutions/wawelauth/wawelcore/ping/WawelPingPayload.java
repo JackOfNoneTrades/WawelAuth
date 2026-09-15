@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.fentanylsolutions.fentlib.util.StringUtil;
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.util.HexUtil;
 
 import com.google.gson.JsonArray;
