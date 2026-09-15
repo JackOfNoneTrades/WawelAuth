@@ -31,6 +31,8 @@ This mod also adds some other features, like an admin web panel, and animated ca
 
 > [!NOTE]
 > The regular and Maven `dev` jars bundle `sqlite-jdbc` and `org.bouncycastle` so they work in offline and downstream development environments. Lightweight `slim` and `slim-dev` jars using embedded DepLoader are also provided.
+> Slim jars download SQLite's Java classes and only the native bundle for the current platform (Windows, macOS, Linux, Android, or FreeBSD). Existing bundled libraries are reused.
+> Builds also produce `wawelauth-<version>-android.jar`: a slim variant with Android SQLite natives already embedded and the remaining libraries downloaded at startup. The regular slim jar also supports Android. The Android variant retains launcher session import and is not published to CurseForge.
 
 > [!NOTE]
 > `wawelauth-curseforge` releases do not have the ability to import launcher sessions.

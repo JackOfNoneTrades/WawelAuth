@@ -17,6 +17,15 @@ public class EarlyMixinLoader extends FentEarlyMixinLoader {
     static {
         DeploaderStub.bootstrap(false);
         DeploaderStub.runDepLoader();
+        Deps.load();
+    }
+
+    // Keep programmatic loader references behind a class loaded only after the stub bootstrap.
+    private static class Deps {
+
+        static void load() {
+            SqliteDependencies.load();
+        }
     }
 
     @Override
