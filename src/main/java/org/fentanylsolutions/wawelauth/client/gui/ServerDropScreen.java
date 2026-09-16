@@ -5,11 +5,11 @@ import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiMultiplayer;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.multiplayer.ServerData;
-import net.minecraft.client.multiplayer.ServerList;
 
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.fentlib.util.drop.GuiTransitionScheduler;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.wawelclient.ServerBindingPersistence;
 
 import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
@@ -219,10 +219,9 @@ public final class ServerDropScreen {
     private static void addServerAndOpen(String name, String address) {
         Minecraft mc = Minecraft.getMinecraft();
 
-        ServerList serverList = new ServerList(mc);
-        serverList.loadServerList();
-        serverList.addServerData(new ServerData(name, address));
-        serverList.saveServerList();
+        if (!ServerBindingPersistence.addServer(new ServerData(name, address))) {
+            return;
+        }
 
         WawelAuth.LOG.info("[ServerDropScreen] Added server '{}' ({})", name, address);
 

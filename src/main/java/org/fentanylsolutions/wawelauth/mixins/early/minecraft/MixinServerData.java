@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class MixinServerData implements IServerDataExt {
 
     @Unique
-    private long wawelAccountId = -1;
+    private long wawelAccountId;
 
     @Unique
     private String wawelProviderName;
@@ -39,7 +39,7 @@ public class MixinServerData implements IServerDataExt {
     private boolean wawelServerProxyEnabled;
 
     @Unique
-    private ProviderProxyType wawelServerProxyType = ProviderProxyType.SOCKS;
+    private ProviderProxyType wawelServerProxyType;
 
     @Unique
     private String wawelServerProxyHost;
@@ -54,7 +54,16 @@ public class MixinServerData implements IServerDataExt {
     private String wawelServerProxyPassword;
 
     @Unique
-    private ServerCapabilities wawelCapabilities = ServerCapabilities.empty();
+    private ServerCapabilities wawelCapabilities;
+
+    // Explicit initialization is required: field initializer merging can omit the
+    // account/proxy defaults, making unbound rows reload as phantom account 0.
+    @Inject(method = "<init>(Ljava/lang/String;Ljava/lang/String;)V", at = @At("RETURN"))
+    private void wawelauth$initializeDefaults(String name, String address, CallbackInfo ci) {
+        wawelAccountId = -1L;
+        wawelServerProxyType = ProviderProxyType.SOCKS;
+        wawelCapabilities = ServerCapabilities.empty();
+    }
 
     @Override
     public long getWawelAccountId() {

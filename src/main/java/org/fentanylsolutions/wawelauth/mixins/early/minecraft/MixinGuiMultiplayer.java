@@ -76,7 +76,9 @@ public abstract class MixinGuiMultiplayer extends GuiScreen implements IServerTo
     @Inject(method = "initGui", at = @At("RETURN"))
     private void wawelauth$onInitGui(CallbackInfo ci) {
         GuiMultiplayer self = (GuiMultiplayer) (Object) this;
-        ServerBindingPersistence.setActiveServerList(self.func_146795_p()); // GuiMultiplayer.getServerList
+        if (ServerBindingPersistence.setActiveServerList(self.func_146795_p())) {
+            field_146803_h.func_148195_a(self.func_146795_p()); // Rebuild rows after a stale snapshot reload.
+        }
 
         WawelClient client = WawelClient.instance();
         if (client != null) {

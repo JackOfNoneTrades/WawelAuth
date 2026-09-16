@@ -94,7 +94,7 @@ public class Mixins extends FentMixins {
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.CLIENT)
             .build();
-        registry.mixin("MixinServerListDiagnostics")
+        registry.mixin("MixinServerListPersistence")
             .phase(MixinUtil.Phase.EARLY)
             .side(MiscUtil.Side.CLIENT)
             .build();
