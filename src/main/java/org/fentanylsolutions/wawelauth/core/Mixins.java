@@ -46,7 +46,7 @@ public class Mixins extends FentMixins {
         earlyMixin(CLIENT, registry, "MixinMinecraftSingleplayerAccount");
         earlyMixin(CLIENT, registry, "MixinNetHandlerLoginClient");
         earlyMixin(CLIENT, registry, "MixinServerData");
-        earlyMixin(CLIENT, registry, "MixinServerListDiagnostics");
+        earlyMixin(CLIENT, registry, "MixinServerListPersistence");
         earlyMixin(CLIENT, registry, "MixinNetHandlerPlayClientJoinSync");
 
         // GUI integration
