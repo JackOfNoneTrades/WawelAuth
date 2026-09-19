@@ -156,25 +156,18 @@ val curseForgeReplacementJar = tasks.register<Jar>("curseForgeReplacementJar") {
     }
 }
 
-val curseForgeLangFile = layout.buildDirectory.file(
-    "generated/curseforgeResources/assets/wawelauth/lang/en_US.lang",
+val curseForgeLangDirectory = layout.buildDirectory.dir(
+    "generated/curseforgeResources/assets/wawelauth/lang",
 )
-val generateCurseForgeLang = tasks.register("generateCurseForgeLang") {
-    val source = layout.projectDirectory.file("src/main/resources/assets/wawelauth/lang/en_US.lang")
-
-    notCompatibleWithConfigurationCache("Generates a filtered distribution-specific language file.")
-    inputs.file(source)
-    outputs.file(curseForgeLangFile)
-
-    doLast {
-        val output = curseForgeLangFile.get().asFile
-        output.parentFile.mkdirs()
-        output.writeText(
-            source.asFile.readLines()
-                .filterNot { it.startsWith("wawelauth.gui.launcher_import.") }
-                .joinToString("\n", postfix = "\n"),
-        )
+val generateCurseForgeLang = tasks.register<Sync>("generateCurseForgeLang") {
+    from(layout.projectDirectory.dir("src/main/resources/assets/wawelauth/lang")) {
+        include("**/*.lang")
+        filter { line: String ->
+            line.takeUnless { it.startsWith("wawelauth.gui.launcher_import.") }
+        }
     }
+    into(curseForgeLangDirectory)
+    filteringCharset = "UTF-8"
 }
 
 val curseForgeJar = tasks.register<Jar>("curseForgeJar") {
@@ -203,7 +196,7 @@ val curseForgeJar = tasks.register<Jar>("curseForgeJar") {
     from(shadedDevJar.flatMap { it.archiveFile }.map { zipTree(it) }) {
         exclude(
             "META-INF/MANIFEST.MF",
-            "assets/wawelauth/lang/en_US.lang",
+            "assets/wawelauth/lang/**/*.lang",
             "org/fentanylsolutions/wawelauth/client/gui/LauncherImportPromptHandler.class",
             "org/fentanylsolutions/wawelauth/client/gui/LauncherImportPromptScreen.class",
             "org/fentanylsolutions/wawelauth/client/gui/LauncherImportPromptScreen\$*.class",
@@ -218,7 +211,7 @@ val curseForgeJar = tasks.register<Jar>("curseForgeJar") {
         exclude("META-INF/MANIFEST.MF")
         include("org/fentanylsolutions/wawelauth/wawelclient/ClientStartupExtensions.class")
     }
-    from(curseForgeLangFile) {
+    from(curseForgeLangDirectory) {
         into("assets/wawelauth/lang")
     }
 }

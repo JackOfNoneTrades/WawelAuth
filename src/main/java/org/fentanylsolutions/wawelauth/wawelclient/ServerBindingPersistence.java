@@ -43,8 +43,13 @@ public final class ServerBindingPersistence {
      * Register the currently active multiplayer server list so in-memory rows
      * can be healed immediately when accounts/providers are removed.
      */
-    public static void setActiveServerList(ServerList serverList) {
+    public static boolean setActiveServerList(ServerList serverList) {
         activeServerListRef = new WeakReference<>(serverList);
+        if (serverList != null && !((IServerListPersistence) serverList).wawelauth$isCurrent()) {
+            serverList.loadServerList();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -55,14 +60,12 @@ public final class ServerBindingPersistence {
             return;
         }
 
-        if (persistInActiveServerList(selected)) {
+        if (scheduleOnClientThread(() -> persistServerSelection(selected))) {
             return;
         }
 
         try {
-            // Fallback for non-multiplayer contexts where no active list was registered.
-            ServerList serverList = new ServerList(Minecraft.getMinecraft());
-            serverList.loadServerList();
+            ServerList serverList = authoritativeServerList();
             if (!persistInServerList(serverList, selected, true)) {
                 WawelAuth.debug("No saved server entry matched per-server account selection for " + selected.serverIP);
             }
@@ -139,6 +142,7 @@ public final class ServerBindingPersistence {
      */
     public static int clearMissingAccountBindings(AccountManager accountManager) {
         if (accountManager == null) return 0;
+        if (scheduleOnClientThread(() -> clearMissingAccountBindings(accountManager))) return 0;
 
         List<ClientAccount> accounts = accountManager.listAccounts();
         Set<Long> validIds = new HashSet<>();
@@ -147,16 +151,7 @@ public final class ServerBindingPersistence {
         }
 
         try {
-            ServerList serverList = new ServerList(Minecraft.getMinecraft());
-            serverList.loadServerList();
-
-            int removed = clearMissingInServerList(serverList, validIds, true);
-
-            ServerList active = activeServerListRef.get();
-            if (active != null && active != serverList) {
-                removed += clearMissingInServerList(active, validIds, true);
-            }
-            return removed;
+            return clearMissingInServerList(authoritativeServerList(), validIds, true);
         } catch (Exception e) {
             WawelAuth.LOG.warn("Failed to clean stale server bindings: {}", e.getMessage());
             return 0;
@@ -171,8 +166,25 @@ public final class ServerBindingPersistence {
         if (!(serverData instanceof IServerDataExt)) {
             return;
         }
+        if (scheduleOnClientThread(() -> persistLocalAuthMetadata(serverData, capabilities))) return;
+
+        // A late ping can refer to an old GUI row. Update only its metadata on the current entry;
+        // never replace the current name, icon, resource-pack preference, account or proxy settings.
+        try {
+            ServerList current = authoritativeServerList();
+            int index = findServerIndex(current, serverData);
+            if (index < 0) return;
+            updateLocalAuthMetadata(current, current.getServerData(index), capabilities);
+        } catch (Exception e) {
+            WawelAuth.LOG.warn("Failed to persist server capabilities: {}", e.getMessage());
+        }
+    }
+
+    private static void updateLocalAuthMetadata(ServerList serverList, ServerData serverData,
+        ServerCapabilities capabilities) {
 
         IServerDataExt ext = (IServerDataExt) serverData;
+        ext.setWawelCapabilities(capabilities);
         String current = normalize(ext.getWawelLocalAuthFingerprint());
         String currentApiRoot = WawelPingPayload.normalizeUrl(ext.getWawelLocalAuthApiRoot());
         String currentPublicKeyBase64 = normalizeRaw(ext.getWawelLocalAuthPublicKeyBase64());
@@ -213,7 +225,7 @@ public final class ServerBindingPersistence {
         ext.setWawelLocalAuthApiRoot(nextApiRoot);
         ext.setWawelLocalAuthPublicKeyBase64(nextPublicKeyBase64);
         ext.setWawelOriginalServerIp(nextOrigin);
-        persistServerSelection(serverData);
+        saveServerListWithBackup(serverList);
     }
 
     /**
@@ -223,17 +235,9 @@ public final class ServerBindingPersistence {
      * @return number of entries cleared
      */
     public static int clearRetargetedServerBindings(WawelClient client) {
+        if (scheduleOnClientThread(() -> clearRetargetedServerBindings(client))) return 0;
         try {
-            ServerList serverList = new ServerList(Minecraft.getMinecraft());
-            serverList.loadServerList();
-
-            int cleared = clearRetargetedInServerList(serverList, client, true);
-
-            ServerList active = activeServerListRef.get();
-            if (active != null && active != serverList) {
-                cleared += clearRetargetedInServerList(active, client, true);
-            }
-            return cleared;
+            return clearRetargetedInServerList(authoritativeServerList(), client, true);
         } catch (Exception e) {
             WawelAuth.LOG.warn("Failed to clean retargeted server bindings: {}", e.getMessage());
             return 0;
@@ -256,16 +260,10 @@ public final class ServerBindingPersistence {
         if (client == null) return 0;
 
         try {
-            ServerList serverList = new ServerList(Minecraft.getMinecraft());
-            serverList.loadServerList();
+            ServerList serverList = authoritativeServerList();
 
             ReferencedLocalAuths referenced = new ReferencedLocalAuths();
             collectReferencedLocalAuths(serverList, referenced);
-
-            ServerList active = activeServerListRef.get();
-            if (active != null && active != serverList) {
-                collectReferencedLocalAuths(active, referenced);
-            }
 
             List<ClientProvider> providers = new ArrayList<>(
                 client.getProviderRegistry()
@@ -310,16 +308,10 @@ public final class ServerBindingPersistence {
         }
 
         try {
-            ServerList serverList = new ServerList(Minecraft.getMinecraft());
-            serverList.loadServerList();
+            ServerList serverList = authoritativeServerList();
 
             ReferencedLocalAuths referenced = new ReferencedLocalAuths();
             collectReferencedLocalAuths(serverList, referenced);
-
-            ServerList active = activeServerListRef.get();
-            if (active != null && active != serverList) {
-                collectReferencedLocalAuths(active, referenced);
-            }
 
             for (ClientProvider provider : client.getProviderRegistry()
                 .listProviders()) {
@@ -350,37 +342,79 @@ public final class ServerBindingPersistence {
         return a.serverIP.equals(b.serverIP);
     }
 
-    private static boolean persistInActiveServerList(ServerData selected) {
-        ServerList active = activeServerListRef.get();
-        if (active == null) {
-            return false;
-        }
+    private static boolean scheduleOnClientThread(Runnable action) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.func_152345_ab()) return false;
+        mc.func_152344_a(action);
+        return true;
+    }
 
-        try {
-            return persistInServerList(active, selected, true);
-        } catch (Throwable t) {
-            WawelAuth.debug("Active server list save failed, using fallback save path: " + t.getMessage());
-            return false;
+    private static ServerList authoritativeServerList() throws IOException {
+        if (!Minecraft.getMinecraft()
+            .func_152345_ab()) {
+            throw new IllegalStateException("Server list mutations must run on the client thread");
         }
+        ServerList active = activeServerListRef.get();
+        if (active != null && ((IServerListPersistence) active).wawelauth$isCurrent()) {
+            return active;
+        }
+        ServerList fresh = new ServerList(Minecraft.getMinecraft());
+        if (!((IServerListPersistence) fresh).wawelauth$isLoaded()) {
+            throw new IOException("Server list could not be read; refusing to modify it");
+        }
+        return fresh;
+    }
+
+    public static boolean addServer(ServerData server) {
+        try {
+            ServerList list = authoritativeServerList();
+            list.addServerData(server);
+            if (saveServerListWithBackup(list)) return true;
+            list.removeServerData(list.countServers() - 1);
+        } catch (Exception e) {
+            WawelAuth.LOG.warn("Failed to add saved server: {}", e.getMessage());
+        }
+        return false;
+    }
+
+    private static int findServerIndex(ServerList list, ServerData selected) {
+        int addressMatch = -1;
+        int nameMatch = -1;
+        int addressMatches = 0;
+        int nameMatches = 0;
+        for (int i = 0; i < list.countServers(); i++) {
+            ServerData existing = list.getServerData(i);
+            if (existing == selected) return i;
+            if (sameServer(existing, selected)) {
+                addressMatch = i;
+                addressMatches++;
+                if (java.util.Objects.equals(existing.serverName, selected.serverName)) {
+                    nameMatch = i;
+                    nameMatches++;
+                }
+            }
+        }
+        return nameMatches == 1 ? nameMatch : addressMatches == 1 ? addressMatch : -1;
+    }
+
+    private static void copyBinding(ServerData source, ServerData target) {
+        IServerDataExt from = (IServerDataExt) source;
+        IServerDataExt to = (IServerDataExt) target;
+        to.setWawelAccountId(from.getWawelAccountId());
+        to.setWawelProviderName(from.getWawelProviderName());
+        to.setWawelOriginalServerIp(from.getWawelOriginalServerIp());
+        to.setWawelServerProxySettings(from.getWawelServerProxySettings());
+        // Local-auth identity is written separately by persistLocalAuthMetadata, not stale GUI rows.
     }
 
     private static boolean persistInServerList(ServerList serverList, ServerData selected, boolean save) {
         if (serverList == null || selected == null) {
             return false;
         }
-
-        for (int i = 0; i < serverList.countServers(); i++) {
-            ServerData existing = serverList.getServerData(i);
-            if (existing == selected || sameServer(existing, selected)) {
-                serverList.func_147413_a(i, selected); // ServerList.setServer
-                if (save) {
-                    saveServerListWithBackup(serverList);
-                }
-                return true;
-            }
-        }
-
-        return false;
+        int index = findServerIndex(serverList, selected);
+        if (index < 0) return false;
+        copyBinding(selected, serverList.getServerData(index));
+        return !save || saveServerListWithBackup(serverList);
     }
 
     private static int clearMissingInServerList(ServerList serverList, Set<Long> validIds, boolean save) {
@@ -442,9 +476,9 @@ public final class ServerBindingPersistence {
         return cleared;
     }
 
-    private static void saveServerListWithBackup(ServerList serverList) {
+    private static boolean saveServerListWithBackup(ServerList serverList) {
         backupServerListFile();
-        serverList.saveServerList();
+        return ((IServerListPersistence) serverList).wawelauth$saveSafely();
     }
 
     private static void backupServerListFile() {
