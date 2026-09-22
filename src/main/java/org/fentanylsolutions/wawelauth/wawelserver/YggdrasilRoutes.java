@@ -5,8 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.crypto.KeyManager;
 import org.fentanylsolutions.wawelauth.wawelcore.data.WawelProfile;
 import org.fentanylsolutions.wawelauth.wawelcore.storage.ProfileDAO;

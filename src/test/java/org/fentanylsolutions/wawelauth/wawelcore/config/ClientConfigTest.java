@@ -1,5 +1,6 @@
 package org.fentanylsolutions.wawelauth.wawelcore.config;
 
+import org.fentanylsolutions.wawelauth.config.ClientConfig;
 import org.junit.Assert;
 import org.junit.Test;
 

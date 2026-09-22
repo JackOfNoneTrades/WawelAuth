@@ -343,4 +343,9 @@ wawelauth.gui.skincustomization.right_sleeve=Right Sleeve
 wawelauth.gui.skincustomization.left_pants=Left Pants Leg
 wawelauth.gui.skincustomization.right_pants=Right Pants Leg
 wawelauth.gui.skincustomization.hat=Hat
+wawelauth.gui.skincustomization.disabled=OFF
+wawelauth.gui.skincustomization.flat=2D
+wawelauth.gui.skincustomization.volumetric=3D
+wawelauth.gui.skincustomization.enabled=ON
+
 wawelauth.key.accountmanager=Open Account Manager

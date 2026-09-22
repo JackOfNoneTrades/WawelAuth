@@ -4,7 +4,7 @@ import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
 
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DSetup;
+import org.fentanylsolutions.wawelauth.client.render.skinlayers3d.SkinLayers3DSetup;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
@@ -45,9 +45,7 @@ public final class SkinInvalidatePacket implements IMessage {
 
         @Override
         public IMessage onMessage(SkinInvalidatePacket message, MessageContext ctx) {
-            if (!ctx.side.isClient()) {
-                return null;
-            }
+            if (!ctx.side.isClient()) return null;
 
             final UUID profileId = new UUID(message.uuidMost, message.uuidLeast);
             Minecraft.getMinecraft()

@@ -6,11 +6,11 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.OsConfigDir;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServersConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.JsonConfigIO;
 import org.fentanylsolutions.wawelauth.wawelcore.config.LocalConfig;
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

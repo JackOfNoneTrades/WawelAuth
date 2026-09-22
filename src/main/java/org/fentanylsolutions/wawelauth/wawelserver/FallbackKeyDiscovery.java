@@ -9,8 +9,8 @@ import java.nio.charset.StandardCharsets;
 
 import org.fentanylsolutions.fentlib.util.StringUtil;
 import org.fentanylsolutions.wawelauth.WawelAuth;
+import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.config.FallbackServer;
-import org.fentanylsolutions.wawelauth.wawelcore.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.wawelcore.ping.WawelPingPayload;
 
 import com.google.gson.JsonElement;

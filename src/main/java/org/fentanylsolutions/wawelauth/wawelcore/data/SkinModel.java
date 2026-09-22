@@ -35,4 +35,13 @@ public enum SkinModel {
         if ("slim".equalsIgnoreCase(model)) return SLIM;
         return CLASSIC;
     }
+
+    public boolean isClassic() {
+        return this == CLASSIC;
+    }
+
+    public boolean isSlim() {
+        return this == SLIM;
+    }
+
 }

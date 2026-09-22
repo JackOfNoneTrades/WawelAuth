@@ -4,8 +4,8 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 
-import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayersConfig;
+import org.fentanylsolutions.wawelauth.api.modernskinsupport.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.config.SkinLayersConfig;
 
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 
@@ -23,17 +23,19 @@ public class GuiSkinCustomization extends GuiScreen {
 
         this.buttonList.add(new GuiButton(-1, this.width / 2 - 100, this.height / 6 + 168, I18n.format("gui.done")));
 
-        for (SkinLayersHelper.EnumPlayerModelParts part : SkinLayersHelper.EnumPlayerModelParts.values()) {
-            int partID = part.id();
-            this.buttonList.add(
-                new GuiCustomToggleButton(
-                    partID + 1,
-                    this.width / 2 - 155 + ((partID) % 2) * 160,
-                    this.height / 6 + 24 * ((partID) >> 1),
-                    150,
-                    20,
-                    I18n.format(part.partName()),
-                    !part.hidden()));
+        for (SkinLayersHelper.SkinLayer layer : SkinLayersHelper.SkinLayer.VALUES) {
+            int ordinal = layer.ordinal();
+            GuiCustomToggleButton toggle = new GuiCustomToggleButton(
+                ordinal + 1,
+                this.width / 2 - 155 + ((ordinal) % 2) * 160,
+                this.height / 6 + 24 * ((ordinal) >> 1),
+                150,
+                20,
+                I18n.format(layer.layerName()),
+                layer.stateGetter()
+                    .get());
+            if (layer == SkinLayersHelper.SkinLayer.CAPE) toggle.updateTextDual();
+            this.buttonList.add(toggle);
         }
     }
 
@@ -57,10 +59,12 @@ public class GuiSkinCustomization extends GuiScreen {
     @Override
     protected void actionPerformed(GuiButton button) {
         if (button instanceof GuiCustomToggleButton toggle) {
-            SkinLayersHelper.EnumPlayerModelParts part = SkinLayersHelper.EnumPlayerModelParts.fromId(button.id - 1);
-            if (part != null) {
-                toggle.toggle();
-                part.setHidden(!toggle.getEnabled());
+            SkinLayersHelper.SkinLayer layer = SkinLayersHelper.SkinLayer.fromOrdinal(button.id - 1);
+            if (layer != null) {
+                if (layer == SkinLayersHelper.SkinLayer.CAPE) toggle.toggleDual();
+                else toggle.toggle();
+                layer.stateSetter()
+                    .accept(toggle.get());
             }
         } else if (button.id == -1) {
             this.mc.displayGuiScreen(this.parentScreen);

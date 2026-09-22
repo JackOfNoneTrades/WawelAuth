@@ -28,8 +28,7 @@ public abstract class MixinTabSkinCache {
     @Inject(method = "getOrLoadSkin", at = @At("HEAD"), cancellable = true, remap = false)
     private void wawelauth$resolveTabSkin(String playerName, CallbackInfoReturnable<ResourceLocation> cir) {
         ResourceLocation skin = wawelauth$resolveSkin(playerName);
-        if (skin != null && !skin.equals(WawelTextureResolver.getDefaultSkin())
-            && !skin.equals(WawelTextureResolver.getLegacyDefaultSkin())) {
+        if (skin != null && !skin.equals(WawelTextureResolver.getDefaultSkin())) {
             cir.setReturnValue(skin);
         }
     }

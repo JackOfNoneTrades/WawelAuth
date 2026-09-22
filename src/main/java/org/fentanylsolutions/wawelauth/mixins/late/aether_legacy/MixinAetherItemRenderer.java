@@ -1,13 +1,13 @@
 package org.fentanylsolutions.wawelauth.mixins.late.aether_legacy;
 
-import static org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts.RIGHT_SLEEVE;
+import static org.fentanylsolutions.wawelauth.api.modernskinsupport.SkinLayersHelper.SkinLayer.RIGHT_SLEEVE;
 
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
 
-import org.fentanylsolutions.wawelauth.client.render.IModelBipedModernExt;
+import org.fentanylsolutions.wawelauth.api.modernskinsupport.IModelBipedModern;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
@@ -18,8 +18,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Pseudo
 @Mixin(targets = "com.gildedgames.the_aether.client.renders.AetherItemRenderer", remap = false)
 public abstract class MixinAetherItemRenderer {
-
-    // TODO: not the first person only (zfighting)
 
     @Unique
     private final ModelBiped wawelauth$legacyGloveModel = new ModelBiped();
@@ -34,12 +32,12 @@ public abstract class MixinAetherItemRenderer {
         require = 1,
         remap = false)
     private void wawelauth$renderArmWithoutSleeve(RenderPlayer renderer, EntityPlayer player) {
-        IModelBipedModernExt ext = (IModelBipedModernExt) renderer.modelBipedMain;
-        ext.hidePart(RIGHT_SLEEVE, true);
+        IModelBipedModern bipedModern = (IModelBipedModern) renderer.modelBipedMain;
+        bipedModern.hideLayer(RIGHT_SLEEVE, true);
         try {
             renderer.renderFirstPersonArm(player);
         } finally {
-            ext.hidePart(RIGHT_SLEEVE, false);
+            bipedModern.hideLayer(RIGHT_SLEEVE, false);
         }
     }
 

@@ -5,4 +5,10 @@ repositories {
         name = "Fent Maven"
         url "https://maven.fentanylsolutions.org/releases"
     }
+
+    //todo: test | remove
+    maven {
+        name = "Jitpack"
+        url = "https://jitpack.io"
+    }
 }

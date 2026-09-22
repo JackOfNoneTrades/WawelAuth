@@ -12,47 +12,36 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public final class EtFuturumCompat {
 
-    private static final String MODID = "etfuturum";
-    private static final int CHEST_SLOT = 3;
+    private static Item elytra;
 
-    private static boolean elytraLookupAttempted;
-    private static Item cachedElytraItem;
-
-    private EtFuturumCompat() {}
+    public static void init() {
+        if (Loader.isModLoaded("etfuturum")) {
+            elytra = GameRegistry.findItem("etfuturum", "elytra");
+        }
+    }
 
     public static boolean isPreviewElytraAvailable() {
         return getElytraItem() != null;
     }
 
     public static void applyPreviewElytra(EntityLivingBase entity, boolean enabled) {
-        if (entity == null) {
-            return;
-        }
+        if (entity == null) return;
 
         Item elytraItem = getElytraItem();
-        ItemStack equipped = entity.getEquipmentInSlot(CHEST_SLOT);
+        ItemStack equipped = entity.getEquipmentInSlot(3);
 
         if (!enabled || elytraItem == null) {
-            if (isPreviewElytra(equipped, elytraItem)) {
-                entity.setCurrentItemOrArmor(CHEST_SLOT, null);
-            }
+            if (isPreviewElytra(equipped, elytraItem)) entity.setCurrentItemOrArmor(3, null);
             return;
         }
 
         if (!isPreviewElytra(equipped, elytraItem)) {
-            entity.setCurrentItemOrArmor(CHEST_SLOT, new ItemStack(elytraItem));
+            entity.setCurrentItemOrArmor(3, new ItemStack(elytraItem));
         }
     }
 
     private static Item getElytraItem() {
-        if (!Loader.isModLoaded(MODID)) {
-            return null;
-        }
-        if (!elytraLookupAttempted) {
-            elytraLookupAttempted = true;
-            cachedElytraItem = GameRegistry.findItem(MODID, "elytra");
-        }
-        return cachedElytraItem;
+        return elytra;
     }
 
     private static boolean isPreviewElytra(ItemStack stack, Item elytraItem) {

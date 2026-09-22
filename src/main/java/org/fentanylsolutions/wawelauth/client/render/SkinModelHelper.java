@@ -9,7 +9,6 @@ import net.minecraft.client.resources.SkinManager;
 
 import org.fentanylsolutions.wawelauth.WawelAuth;
 import org.fentanylsolutions.wawelauth.api.YggdrasilTexturePayload;
-import org.fentanylsolutions.wawelauth.client.render.skinlayers.SkinLayers3DConfig;
 import org.fentanylsolutions.wawelauth.wawelclient.WawelClient;
 import org.fentanylsolutions.wawelauth.wawelclient.data.ClientProvider;
 import org.fentanylsolutions.wawelauth.wawelcore.data.SkinModel;
@@ -27,11 +26,6 @@ public final class SkinModelHelper {
     private SkinModelHelper() {}
 
     public static SkinModel getSkinModel(AbstractClientPlayer player) {
-        if (!SkinLayers3DConfig.modernSkinSupport) {
-            debugResolution(player, SkinModel.CLASSIC, "modern_disabled");
-            return SkinModel.CLASSIC;
-        }
-
         SkinModel forced = resolveForced(player);
         if (forced != null) {
             debugResolution(player, forced, "forced");
