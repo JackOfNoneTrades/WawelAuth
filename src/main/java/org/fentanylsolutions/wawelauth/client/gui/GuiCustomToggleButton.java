@@ -4,15 +4,15 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.EnumChatFormatting;
 
-import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.api.modernskinsupport.SkinLayersHelper;
 
 public class GuiCustomToggleButton extends GuiButton {
 
     private final String prefix;
-    private SkinLayersHelper.PartState value;
+    private SkinLayersHelper.LayerState value;
 
     public GuiCustomToggleButton(int id, int x, int y, int width, int height, String prefix,
-        SkinLayersHelper.PartState initialValue) {
+        SkinLayersHelper.LayerState initialValue) {
         super(id, x, y, width, height, "");
         this.prefix = prefix;
         this.value = initialValue;
@@ -25,11 +25,11 @@ public class GuiCustomToggleButton extends GuiButton {
     }
 
     public void toggleDual() {
-        this.value = this.value.isDisabled() ? SkinLayersHelper.PartState.FLAT : SkinLayersHelper.PartState.DISABLED;
+        this.value = this.value.isDisabled() ? SkinLayersHelper.LayerState.FLAT : SkinLayersHelper.LayerState.DISABLED;
         updateTextDual();
     }
 
-    public SkinLayersHelper.PartState get() {
+    public SkinLayersHelper.LayerState get() {
         return this.value;
     }
 

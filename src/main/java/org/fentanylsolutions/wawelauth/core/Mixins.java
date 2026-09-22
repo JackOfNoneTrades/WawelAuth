@@ -18,6 +18,7 @@ public class Mixins extends FentMixins {
     protected void registerEarlyMixins(MixinUtil.Registry registry) {
         // Modern Skin Support
         earlyMixin(BOTH, registry, "modernskinsupport.MixinEntityPlayer");
+        earlyMixin(BOTH, registry, "modernskinsupport.MixinModelBiped");
         earlyMixin(BOTH, registry, "modernskinsupport.MixinGameSettings");
         earlyMixin(CLIENT, registry, "modernskinsupport.MixinImageBufferDownload");
         earlyMixin(CLIENT, registry, "modernskinsupport.MixinRenderPlayer");

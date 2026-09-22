@@ -35,9 +35,6 @@ import com.mojang.authlib.GameProfile;
 public class MixinTileEntitySkullRenderer {
 
     @Shadow
-    private ModelSkeletonHead field_147533_g;
-
-    @Shadow
     private ModelSkeletonHead field_147538_h;
 
     /** Swap to 64x64 UV model for player skulls when modern skin support is on. */

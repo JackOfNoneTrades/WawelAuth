@@ -2,7 +2,7 @@ package org.fentanylsolutions.wawelauth.client.render.skinlayers3d;
 
 import net.minecraft.util.ResourceLocation;
 
-import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.api.modernskinsupport.SkinLayersHelper;
 
 /**
  * Per-player state holding 3D meshes for each body part overlay.
@@ -27,8 +27,8 @@ public class SkinLayers3DState {
     /** Whether this state was built for slim arms. */
     public boolean slim;
 
-    public SkinLayers3DMesh meshFromPart(SkinLayersHelper.EnumPlayerModelParts part) {
-        return switch (part) {
+    public SkinLayers3DMesh meshFromPart(SkinLayersHelper.SkinLayer layer) {
+        return switch (layer) {
             case CAPE -> null;
             case JACKET -> jacketMesh;
             case LEFT_SLEEVE -> leftSleeveMesh;

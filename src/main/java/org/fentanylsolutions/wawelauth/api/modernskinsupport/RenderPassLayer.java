@@ -1,9 +1,11 @@
-package org.fentanylsolutions.wawelauth.api;
+package org.fentanylsolutions.wawelauth.api.modernskinsupport;
 
 import net.minecraftforge.client.MinecraftForgeClient;
 
 /**
  * todo
+ * 
+ * @author kotmatross
  */
 public enum RenderPassLayer {
 
@@ -31,8 +33,8 @@ public enum RenderPassLayer {
     public boolean shouldRender(boolean behindTranslucent) {
         return switch (this) {
             case GUI -> true;
-            case MAIN -> !behindTranslucent;
-            case TRANSLUCENT -> behindTranslucent;
+            case MAIN -> behindTranslucent;
+            case TRANSLUCENT -> !behindTranslucent;
         };
     }
 }

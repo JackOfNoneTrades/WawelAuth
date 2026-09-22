@@ -2,7 +2,7 @@ package org.fentanylsolutions.wawelauth.mixins.early.minecraft.modernskinsupport
 
 import net.minecraft.client.settings.GameSettings;
 
-import org.fentanylsolutions.wawelauth.api.SkinLayersHelper.EnumPlayerModelParts;
+import org.fentanylsolutions.wawelauth.api.modernskinsupport.SkinLayersHelper.SkinLayer;
 import org.fentanylsolutions.wawelauth.packet.PacketHandler;
 import org.fentanylsolutions.wawelauth.packet.UpdateSkinLayersPacket;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,9 +24,9 @@ public class MixinGameSettings {
             shift = At.Shift.AFTER))
     private void sendSettingsToServer(CallbackInfo ci) {
         int mask = 0;
-        for (EnumPlayerModelParts part : EnumPlayerModelParts.VALUES) {
-            int shift = part.ordinal() * 2;
-            int bitValue = switch (part.stateS()
+        for (SkinLayer layer : SkinLayer.VALUES) {
+            int shift = layer.ordinal() * 2;
+            int bitValue = switch (layer.stateGetter()
                 .get()) {
                 case DISABLED -> 0;
                 case FLAT -> 1;

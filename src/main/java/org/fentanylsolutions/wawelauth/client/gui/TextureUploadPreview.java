@@ -7,7 +7,7 @@ import java.nio.file.Files;
 
 import net.minecraft.util.ResourceLocation;
 
-import org.fentanylsolutions.wawelauth.api.SkinImageUtil;
+import org.fentanylsolutions.wawelauth.api.modernskinsupport.SkinImageUtil;
 import org.fentanylsolutions.wawelauth.client.render.LocalTextureLoader;
 import org.fentanylsolutions.wawelauth.client.render.animatedcape.AnimatedCapeTexture;
 import org.fentanylsolutions.wawelauth.wawelcore.data.TextureType;

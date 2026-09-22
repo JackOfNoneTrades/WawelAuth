@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.api;
+package org.fentanylsolutions.wawelauth.api.modernskinsupport;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -10,10 +10,12 @@ import org.fentanylsolutions.wawelauth.config.SkinLayersConfig;
 
 /**
  * Various utilities for managing player overlays
+ *
+ * @author kotmatross
  */
 public class SkinLayersHelper {
 
-    public enum EnumPlayerModelParts {
+    public enum SkinLayer {
 
         CAPE("wawelauth.gui.skincustomization.cape", () -> (SkinLayersConfig.cape), v -> SkinLayersConfig.cape = v),
         JACKET("wawelauth.gui.skincustomization.jacket", () -> SkinLayersConfig.jacket,
@@ -30,15 +32,15 @@ public class SkinLayersHelper {
 
         ;
 
-        private final String partName;
-        private final Supplier<PartState> stateSupplier;
-        private final Consumer<PartState> stateConsumer;
+        private final String layerName;
+        private final Supplier<LayerState> stateSupplier;
+        private final Consumer<LayerState> stateConsumer;
 
-        public static final EnumPlayerModelParts[] VALUES = values();
+        public static final SkinLayer[] VALUES = values();
         public static final int COUNT = VALUES.length;
 
-        EnumPlayerModelParts(String partName, Supplier<PartState> stateS, Consumer<PartState> stateC) {
-            this.partName = partName;
+        SkinLayer(String layerName, Supplier<LayerState> stateS, Consumer<LayerState> stateC) {
+            this.layerName = layerName;
             this.stateSupplier = stateS;
             this.stateConsumer = stateC;
         }
@@ -46,33 +48,33 @@ public class SkinLayersHelper {
         /**
          * Translation key for GUI use
          */
-        public String partName() {
-            return this.partName;
+        public String layerName() {
+            return this.layerName;
         }
 
         /**
          * Gets current client state of overlay | Packet sending
          */
-        public Supplier<PartState> stateS() {
+        public Supplier<LayerState> stateGetter() {
             return this.stateSupplier;
         }
 
         /**
          * Sets current client state of overlay | GUI
          */
-        public Consumer<PartState> stateC() {
+        public Consumer<LayerState> stateSetter() {
             return this.stateConsumer;
         }
 
-        public static EnumPlayerModelParts fromOrdinal(int ordinal) {
-            for (EnumPlayerModelParts part : VALUES) {
-                if (part.ordinal() == ordinal) return part;
+        public static SkinLayer fromOrdinal(int ordinal) {
+            for (SkinLayer layer : VALUES) {
+                if (layer.ordinal() == ordinal) return layer;
             }
             return null;
         }
     }
 
-    public enum PartState {
+    public enum LayerState {
 
         DISABLED,
         FLAT,
@@ -92,9 +94,9 @@ public class SkinLayersHelper {
             return this == VOLUMETRIC;
         }
 
-        public static final PartState[] VALUES = values();
+        public static final LayerState[] VALUES = values();
 
-        public PartState next() {
+        public LayerState next() {
             return VALUES[(this.ordinal() + 1) % VALUES.length];
         }
     }
@@ -102,31 +104,30 @@ public class SkinLayersHelper {
     /**
      * Gets overlay state for a specific player | Clientside
      */
-    public static PartState getSkinLayerState(EntityPlayer player, EnumPlayerModelParts part) {
-        // todo: or maybe just force enable during preview?
-        if (PreviewEntityRenderContext.isRenderingInGui) return part.stateS()
-            .get();
+    public static LayerState getSkinLayerState(EntityPlayer player, SkinLayer layer) {
+        /// Max visibility since it's preview
+        if (PreviewEntityRenderContext.isRenderingInGui) return LayerState.VOLUMETRIC;
 
         short mask = player.getDataWatcher()
             .getWatchableObjectShort(16);
         int tmask = mask & 0xFFFF;
-        int shift = part.ordinal() * 2;
+        int shift = layer.ordinal() * 2;
         int bits = (tmask >> shift) & 3;
         return switch (bits) {
-            case 1 -> PartState.FLAT;
-            case 3 -> PartState.VOLUMETRIC;
-            default -> PartState.DISABLED;
+            case 1 -> LayerState.FLAT;
+            case 3 -> LayerState.VOLUMETRIC;
+            default -> LayerState.DISABLED;
         };
     }
 
     /**
      * Sets overlay state for a specific player | Serverside
      */
-    public static void setSkinLayerState(EntityPlayer player, EnumPlayerModelParts part, PartState state) {
+    public static void setSkinLayerState(EntityPlayer player, SkinLayer layer, LayerState state) {
         short mask = player.getDataWatcher()
             .getWatchableObjectShort(16);
         int tmask = mask & 0xFFFF;
-        int shift = part.ordinal() * 2;
+        int shift = layer.ordinal() * 2;
         int bitValue = switch (state) {
             case DISABLED -> 0;
             case FLAT -> 1;

@@ -24,7 +24,7 @@ import org.fentanylsolutions.fentlib.gui.PanoramaOverlayRenderer;
 import org.fentanylsolutions.fentlib.util.FileUtil;
 import org.fentanylsolutions.fentlib.util.GuiText;
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.api.modernskinsupport.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.ClipboardHelper;
 import org.fentanylsolutions.wawelauth.client.compat.EtFuturumCompat;
 import org.fentanylsolutions.wawelauth.client.fakeworld.DummyEntityClientPlayerMP;
@@ -1699,8 +1699,8 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
         entity.setCapeVisible(normalizedMode != PreviewBackMode.NONE);
         SkinLayersHelper.setSkinLayerState(
             entity,
-            SkinLayersHelper.EnumPlayerModelParts.CAPE,
-            useElytra ? SkinLayersHelper.PartState.DISABLED : SkinLayersHelper.PartState.FLAT);
+            SkinLayersHelper.SkinLayer.CAPE,
+            useElytra ? SkinLayersHelper.LayerState.DISABLED : SkinLayersHelper.LayerState.FLAT);
         EtFuturumCompat.applyPreviewElytra(entity, useElytra);
     }
 
@@ -2106,8 +2106,7 @@ public class AccountManagerScreen extends ParentAwareModularScreen {
             entity.setForcedCape(previewTexture);
         }
         entity.setCapeVisible(true);
-        SkinLayersHelper
-            .setSkinLayerState(entity, SkinLayersHelper.EnumPlayerModelParts.CAPE, SkinLayersHelper.PartState.FLAT);
+        SkinLayersHelper.setSkinLayerState(entity, SkinLayersHelper.SkinLayer.CAPE, SkinLayersHelper.LayerState.FLAT);
         EtFuturumCompat.applyPreviewElytra(entity, false);
         if (account != null && ProviderDisplayName.isOfflineProvider(account.getProviderName())) {
             entity.setForcedSkinModel(account.getLocalSkinModel());

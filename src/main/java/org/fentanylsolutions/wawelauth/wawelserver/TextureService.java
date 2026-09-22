@@ -17,7 +17,7 @@ import javax.imageio.stream.MemoryCacheImageInputStream;
 
 import org.fentanylsolutions.wawelauth.Config;
 import org.fentanylsolutions.wawelauth.WawelAuth;
-import org.fentanylsolutions.wawelauth.api.SkinImageUtil;
+import org.fentanylsolutions.wawelauth.api.modernskinsupport.SkinImageUtil;
 import org.fentanylsolutions.wawelauth.config.ServerConfig;
 import org.fentanylsolutions.wawelauth.packet.PacketHandler;
 import org.fentanylsolutions.wawelauth.packet.SkinInvalidatePacket;

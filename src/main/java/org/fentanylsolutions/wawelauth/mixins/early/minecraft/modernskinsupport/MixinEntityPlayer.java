@@ -5,7 +5,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
 
-import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
+import org.fentanylsolutions.wawelauth.api.modernskinsupport.SkinLayersHelper;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,7 +20,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 public abstract class MixinEntityPlayer extends EntityLivingBase {
 
     /**
-     * Support for translucent (transparent) overlays
+     * Support for translucent overlays
      */
     @Override
     public boolean shouldRenderInPass(int pass) {
@@ -48,8 +48,7 @@ public abstract class MixinEntityPlayer extends EntityLivingBase {
     @Overwrite
     @SideOnly(Side.CLIENT)
     protected boolean getHideCape(int p_82241_1_) {
-        return SkinLayersHelper
-            .getSkinLayerState(((EntityPlayer) (Object) this), SkinLayersHelper.EnumPlayerModelParts.CAPE)
+        return SkinLayersHelper.getSkinLayerState(((EntityPlayer) (Object) this), SkinLayersHelper.SkinLayer.CAPE)
             .isDisabled();
     }
 
@@ -61,8 +60,8 @@ public abstract class MixinEntityPlayer extends EntityLivingBase {
     protected void setHideCape(int p_82239_1_, boolean p_82239_2_) {
         SkinLayersHelper.setSkinLayerState(
             ((EntityPlayer) (Object) this),
-            SkinLayersHelper.EnumPlayerModelParts.CAPE,
-            p_82239_2_ ? SkinLayersHelper.PartState.DISABLED : SkinLayersHelper.PartState.FLAT);
+            SkinLayersHelper.SkinLayer.CAPE,
+            p_82239_2_ ? SkinLayersHelper.LayerState.DISABLED : SkinLayersHelper.LayerState.FLAT);
     }
 
     public MixinEntityPlayer(World p_i1594_1_) {

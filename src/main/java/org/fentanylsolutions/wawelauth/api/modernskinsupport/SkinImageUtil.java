@@ -1,4 +1,4 @@
-package org.fentanylsolutions.wawelauth.api;
+package org.fentanylsolutions.wawelauth.api.modernskinsupport;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
