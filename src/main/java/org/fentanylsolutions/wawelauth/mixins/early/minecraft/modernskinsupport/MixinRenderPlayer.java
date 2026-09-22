@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.player.EntityPlayer;
 
 import org.fentanylsolutions.wawelauth.api.ModelPlayer;
+import org.fentanylsolutions.wawelauth.api.RenderPassLayer;
 import org.fentanylsolutions.wawelauth.api.SkinLayersHelper;
 import org.fentanylsolutions.wawelauth.client.render.SkinModelHelper;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers3d.SkinLayers3DSetup;
@@ -24,6 +25,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+
 /**
  * Replaces legacy 64x32 model with modern 64x64,
  * handles swap between slim/classic arms per player, render first-person arm overlay,
@@ -35,10 +38,21 @@ public class MixinRenderPlayer {
     @Shadow
     public ModelBiped modelBipedMain;
 
-    /// Copied from OfflineAuth (fork); replace with MixinExtras?
+    /// todo Copied from OfflineAuth (fork); replace with MixinExtras?
     @Redirect(method = "<init>", at = @At(value = "NEW", target = "net/minecraft/client/model/ModelBiped", ordinal = 0))
     private static ModelBiped init(float p_i1148_1_) {
         return new ModelPlayer(p_i1148_1_);
+    }
+
+    /**
+     * Some description here idk
+     */
+    @WrapWithCondition(
+        method = "renderEquippedItems(Lnet/minecraft/client/entity/AbstractClientPlayer;F)V",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBiped;renderCloak(F)V"))
+    private boolean capeTranslucentSort(ModelBiped instance, float scale) {
+        RenderPassLayer pass = RenderPassLayer.getCurrent();
+        return pass.shouldRender(((ModelPlayer) instance).behindTranslucent);
     }
 
     /**
@@ -47,7 +61,7 @@ public class MixinRenderPlayer {
      * Also set up 3D skin layer meshes if the player is within LOD range.
      */
     @Inject(method = "doRender(Lnet/minecraft/client/entity/AbstractClientPlayer;DDDFF)V", at = @At("HEAD"))
-    private void wawelauth$setSlimPerPlayer(AbstractClientPlayer player, double x, double y, double z, float yaw,
+    private void setSlimPerPlayer(AbstractClientPlayer player, double x, double y, double z, float yaw,
         float partialTicks, CallbackInfo ci) {
 
         ModelPlayer bipedPlayer = (ModelPlayer) this.modelBipedMain;
@@ -78,7 +92,7 @@ public class MixinRenderPlayer {
      * Set slim/classic before first-person arm rendering.
      */
     @Inject(method = "renderFirstPersonArm", at = @At("HEAD"))
-    private void wawelauth$setSlimFirstPersonArm(EntityPlayer player, CallbackInfo ci) {
+    private void setSlimFirstPersonArm(EntityPlayer player, CallbackInfo ci) {
         ModelPlayer bipedPlayer = (ModelPlayer) this.modelBipedMain;
         UUID uuid = player.getUniqueID();
         bipedPlayer.setRenderPlayerUUID(uuid);
@@ -105,7 +119,7 @@ public class MixinRenderPlayer {
      * Renders right arm overlay
      */
     @Inject(method = "renderFirstPersonArm", at = @At(value = "TAIL"))
-    private void wawelauth$renderFirstPersonSleevePost(EntityPlayer player, CallbackInfo ci) {
+    private void renderFirstPersonSleeve(EntityPlayer player, CallbackInfo ci) {
         ModelPlayer bipedPlayer = (ModelPlayer) this.modelBipedMain;
         SkinLayersHelper.PartState state = SkinLayersHelper.getSkinLayerState(player, RIGHT_SLEEVE);
         UUID uuid = player.getUniqueID();
@@ -116,7 +130,7 @@ public class MixinRenderPlayer {
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             GL11.glDepthMask(true);
             GL11.glEnable(GL11.GL_CULL_FACE);
-            bipedPlayer.renderLayer(RIGHT_SLEEVE, state, state3d, 0.0625F, false, true);
+            bipedPlayer.renderLayer(RIGHT_SLEEVE, state, state3d, 0.0625F);
         } finally {
             GL11.glPopAttrib();
         }

@@ -14,7 +14,6 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
-import net.minecraftforge.client.MinecraftForgeClient;
 
 import org.fentanylsolutions.wawelauth.client.render.skinlayers3d.SkinLayers3DMesh;
 import org.fentanylsolutions.wawelauth.client.render.skinlayers3d.SkinLayers3DSetup;
@@ -70,7 +69,6 @@ public class ModelPlayer extends ModelBiped {
 
         this.textureWidth = 64;
         this.textureHeight = 32;
-        // TODO: our own cape renderer, with proper translucent sorting?
         this.bipedCloak = new ModelRenderer(this, 0, 0);
         this.bipedCloak.addBox(-5.0F, 0.0F, -1.0F, 10, 16, 1, scale);
 
@@ -155,29 +153,75 @@ public class ModelPlayer extends ModelBiped {
         if (!(entity instanceof EntityPlayer player)) return;
         this.setRotationAngles(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scaleFactor, entity);
 
-        int pass = MinecraftForgeClient.getRenderPass();
-        this.behindTranslucent = (pass == 0 || pass == 1)
-            && isBehindTranslucent(player.worldObj, player.posX, player.posY, player.posZ);
+        RenderPassLayer pass = RenderPassLayer.getCurrent();
 
-        /// TRANSLUCENT PASS
-        if (pass == 1) {
-            renderAllLayers(player, scaleFactor, false, false);
-        }
-        /// MAIN PASS
-        else if (pass == 0) {
-            renderBaseModel(scaleFactor);
-            renderAllLayers(player, scaleFactor, true, false);
-        }
-        /// OTHER PASS (GUI)
-        else {
-            renderBaseModel(scaleFactor);
-            renderAllLayers(player, scaleFactor, true, true);
-        }
+        if (pass != RenderPassLayer.GUI)
+            this.behindTranslucent = isBehindTranslucent(player.worldObj, player.posX, player.posY, player.posZ);
+        else this.behindTranslucent = false;
+
+        if (pass != RenderPassLayer.TRANSLUCENT) renderBaseModel(scaleFactor);
+
+        renderAllLayers(player, scaleFactor, pass);
     }
 
     // ========================================
     // A P I
     // ========================================
+
+    /**
+     * Renders all player overlays
+     */
+    public void renderAllLayers(EntityPlayer player, float scale, RenderPassLayer pass) {
+        if (!pass.shouldRender(this.behindTranslucent)) return;
+
+        GL11.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_POLYGON_BIT);
+        try {
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glDepthMask(true);
+            GL11.glEnable(GL11.GL_CULL_FACE);
+
+            SkinLayers3DState state3d = SkinLayers3DSetup.getState(currentRenderingPlayerUuid);
+            for (SkinLayersHelper.EnumPlayerModelParts part : SkinLayersHelper.EnumPlayerModelParts.VALUES) {
+                if (part == CAPE) continue;
+                SkinLayersHelper.PartState state = SkinLayersHelper.getSkinLayerState(player, part);
+                renderLayer(part, state, state3d, scale);
+            }
+        } finally {
+            GL11.glPopAttrib();
+        }
+    }
+
+    /**
+     * Renders an individual overlay
+     */
+    public void renderLayer(SkinLayersHelper.EnumPlayerModelParts part, SkinLayersHelper.PartState state,
+        SkinLayers3DState state3d, float scale) {
+
+        ModelRenderer overlay = rendererFromPart(part);
+
+        if (state.isDisabled() || !overlay.showModel) return;
+
+        SkinLayers3DMesh mesh = null;
+        if (state3d != null && state3d.initialized) mesh = state3d.meshFromPart(part);
+        if (mesh == null || !mesh.isCompiled()) state = SkinLayersHelper.PartState.FLAT;
+
+        renderLayerSide(GL11.GL_FRONT, part, state, mesh, overlay, scale);
+        renderLayerSide(GL11.GL_BACK, part, state, mesh, overlay, scale);
+    }
+
+    /**
+     * Renders an individual overlay side
+     */
+    private void renderLayerSide(int cullFace, SkinLayersHelper.EnumPlayerModelParts part,
+        SkinLayersHelper.PartState state, SkinLayers3DMesh mesh, ModelRenderer overlay, float scale) {
+        GL11.glCullFace(cullFace);
+        if (state == SkinLayersHelper.PartState.VOLUMETRIC) {
+            renderMesh(part, mesh, overlay, scale);
+        } else {
+            overlay.render(scale);
+        }
+    }
 
     public void renderBaseModel(float scaleFactor) {
         this.bipedHead.render(scaleFactor);
@@ -202,60 +246,6 @@ public class ModelPlayer extends ModelBiped {
      */
     public void setRenderPlayerUUID(UUID uuid) {
         this.currentRenderingPlayerUuid = uuid;
-    }
-
-    /**
-     * Renders all player overlays
-     */
-    public void renderAllLayers(EntityPlayer player, float scale, boolean mainPass, boolean bypassTranslucent) {
-        GL11.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_POLYGON_BIT);
-        try {
-            GL11.glEnable(GL11.GL_BLEND);
-            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            GL11.glDepthMask(true);
-            GL11.glEnable(GL11.GL_CULL_FACE);
-
-            SkinLayers3DState state3d = SkinLayers3DSetup.getState(currentRenderingPlayerUuid);
-            for (SkinLayersHelper.EnumPlayerModelParts part : SkinLayersHelper.EnumPlayerModelParts.VALUES) {
-                if (part == CAPE) continue;
-                SkinLayersHelper.PartState state = SkinLayersHelper.getSkinLayerState(player, part);
-                renderLayer(part, state, state3d, scale, mainPass, bypassTranslucent);
-            }
-        } finally {
-            GL11.glPopAttrib();
-        }
-    }
-
-    /**
-     * Renders an individual overlay
-     */
-    public void renderLayer(SkinLayersHelper.EnumPlayerModelParts part, SkinLayersHelper.PartState state,
-        SkinLayers3DState state3d, float scale, boolean mainPass, boolean bypassTranslucent) {
-
-        ModelRenderer overlay = rendererFromPart(part);
-
-        if (state.isDisabled() || !overlay.showModel) return;
-        if (!bypassTranslucent && (this.behindTranslucent != mainPass)) return;
-
-        SkinLayers3DMesh mesh = null;
-        if (state3d != null && state3d.initialized) mesh = state3d.meshFromPart(part);
-        if (mesh == null || !mesh.isCompiled()) state = SkinLayersHelper.PartState.FLAT;
-
-        renderLayerSide(GL11.GL_FRONT, part, state, mesh, overlay, scale);
-        renderLayerSide(GL11.GL_BACK, part, state, mesh, overlay, scale);
-    }
-
-    /**
-     * Renders an individual overlay side
-     */
-    private void renderLayerSide(int cullFace, SkinLayersHelper.EnumPlayerModelParts part,
-        SkinLayersHelper.PartState state, SkinLayers3DMesh mesh, ModelRenderer overlay, float scale) {
-        GL11.glCullFace(cullFace);
-        if (state == SkinLayersHelper.PartState.VOLUMETRIC) {
-            renderMesh(part, mesh, overlay, scale);
-        } else {
-            overlay.render(scale);
-        }
     }
 
     /**

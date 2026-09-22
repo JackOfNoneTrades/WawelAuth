@@ -103,6 +103,7 @@ public class SkinLayersHelper {
      * Gets overlay state for a specific player | Clientside
      */
     public static PartState getSkinLayerState(EntityPlayer player, EnumPlayerModelParts part) {
+        // todo: or maybe just force enable during preview?
         if (PreviewEntityRenderContext.isRenderingInGui) return part.stateS()
             .get();
 
